@@ -1083,6 +1083,7 @@ fn cursor_icon(cursor: Option<Cursor>) -> egui::CursorIcon {
         Some(Cursor::Pan) => egui::CursorIcon::Grab,
         Some(Cursor::Zoom) => egui::CursorIcon::ZoomIn,
         Some(Cursor::ZoomWindow) => egui::CursorIcon::Crosshair,
+        Some(Cursor::NotAllowed) => egui::CursorIcon::NotAllowed,
         Some(_) => egui::CursorIcon::Crosshair,
         None => egui::CursorIcon::Default,
     }

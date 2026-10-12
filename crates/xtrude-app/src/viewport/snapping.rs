@@ -541,13 +541,23 @@ impl Viewport {
         self.inference.dwell_since = None;
     }
 
-    /// Fire the dwell timer if its time has come by `now`.
-    /// `MainWindow::tick` calls this at the start of every frame, before
-    /// the frame's input; the shell asks for a frame when `dwell_due_in`
-    /// says, so the timer fires in a window left alone.
+    /// Fire the timers whose time has come by `now`: the dwell, the
+    /// note beside the pointer. `MainWindow::tick` calls this at the start
+    /// of every frame, before the frame's input; the shell asks for a frame
+    /// when `next_tick_in` says, so the timers fire in a window left alone.
     pub fn tick(&mut self, now: Instant) {
         if self.dwell_due_in(now).is_some_and(|d| d.is_zero()) {
             self.encourage_dwelt();
+        }
+        self.expire_note(now);
+    }
+
+    /// How long from `now` until `tick` has something to fire, `None`
+    /// when nothing waits.
+    pub fn next_tick_in(&self, now: Instant) -> Option<Duration> {
+        match (self.dwell_due_in(now), self.note_due_in(now)) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
         }
     }
 

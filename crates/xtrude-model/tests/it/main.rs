@@ -39,6 +39,7 @@ mod test_paint;
 mod test_parts;
 mod test_plugin_data;
 mod test_purge;
+mod test_pushpull_accepts;
 mod test_pushpull_against_wall;
 mod test_pushpull_in_scene;
 mod test_pushpull_orient;

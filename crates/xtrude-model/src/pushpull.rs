@@ -717,7 +717,28 @@ impl PushPull {
     pub fn mutate(&mut self, scene: &mut Scene) {
         self.refused = false;
         let Some(t) = self.target else { return };
-        let mesh = scene.doc.mesh_mut(t);
+        if self.mutate_mesh(scene.doc.mesh_mut(t)) {
+            scene.version += 1;
+        }
+    }
+
+    /// Whether a commit would push exactly `extrusion`, neither refused
+    /// nor topped out: the push tried on a copy of `mesh`, which must be
+    /// the mesh as it is without the prism preview.
+    pub fn accepts(&self, mesh: &Mesh) -> bool {
+        if self.base_face.is_none() || self.extrusion.abs() < MIN_EXTRUDE {
+            return false;
+        }
+        let mut trial = self.clone();
+        let mut copy = mesh.clone();
+        trial.refused = false;
+        trial.mutate_mesh(&mut copy);
+        !trial.refused
+    }
+
+    /// [`Self::mutate`] on the mesh itself: whether it changed (`false`
+    /// when refused, the mesh left as it was).
+    fn mutate_mesh(&mut self, mesh: &mut Mesh) -> bool {
         let before_edges: HashSet<xtrude_core::EdgeId> = mesh.edge_ids().into_iter().collect();
         let base_paint = self
             .base_face
@@ -735,13 +756,13 @@ impl PushPull {
             if !(is_closed(mesh) || mesh_is_flat(mesh)) {
                 *mesh = g;
                 self.refused = true;
-                return;
+                return false;
             }
         }
         if let Some(fp) = fp_before {
             if self.extrusion.abs() >= MIN_EXTRUDE && mesh_fingerprint(mesh) == fp {
                 self.refused = true;
-                return;
+                return false;
             }
         }
         soften_curve_facets(mesh, &before_edges);
@@ -759,7 +780,7 @@ impl PushPull {
                 }
             }
         }
-        scene.version += 1;
+        true
     }
 
     fn mutate_inner(&mut self, mesh: &mut Mesh) {

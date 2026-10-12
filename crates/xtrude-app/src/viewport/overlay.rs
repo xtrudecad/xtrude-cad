@@ -206,6 +206,7 @@ impl Viewport {
         }
         self.overlay_linear_mode_label(&mut out);
         self.overlay_boxes(&mut out);
+        self.overlay_note(&mut out);
         out
     }
 

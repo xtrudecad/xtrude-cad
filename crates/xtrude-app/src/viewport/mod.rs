@@ -29,6 +29,7 @@ mod inference;
 mod input_state;
 mod nav_style;
 mod navigation;
+mod note;
 mod outbox;
 pub mod overlay;
 mod pick;
@@ -65,6 +66,7 @@ pub use input_state::InputState;
 pub use nav_style::{Binding, NavAction, NavStyle, Trigger};
 pub use navigation::Navigation;
 use navigation::RubberBand;
+pub use note::{CursorNote, Note};
 pub use outbox::Outbox;
 pub use pick::{FaceHit, PickIndex, Placement, Projection};
 pub use prefs::ViewPrefs;
@@ -113,6 +115,8 @@ pub enum Cursor {
     Pan,
     Zoom,
     ZoomWindow,
+    /// The system's "not allowed" pointer: the tool refuses what it shows.
+    NotAllowed,
     /// A tool's pointer, drawn from the icon `key`, with the "+" badge when
     /// `plus`.
     Tool {
@@ -129,6 +133,7 @@ impl Cursor {
             Cursor::Pan => "pan",
             Cursor::Zoom => "zoom",
             Cursor::ZoomWindow => "zoom_window",
+            Cursor::NotAllowed => "not_allowed",
             Cursor::Tool { key, .. } => key,
         }
     }
@@ -209,6 +214,8 @@ pub struct Viewport {
     pub value_box: ValueBox,
     /// Events, the pointer and repaints for the window.
     pub outbox: Outbox,
+    /// The note beside the pointer.
+    pub note: CursorNote,
     /// A window is listening (it handles `ActivateTool` requests).
     pub(crate) has_window: bool,
     /// What a tool shows live while it works.
@@ -250,6 +257,7 @@ impl Viewport {
             select_box: None,
             value_box: ValueBox::default(),
             outbox: Outbox::default(),
+            note: CursorNote::default(),
             has_window: false,
             preview: LivePreview::default(),
             pick: pick::PickCache::default(),

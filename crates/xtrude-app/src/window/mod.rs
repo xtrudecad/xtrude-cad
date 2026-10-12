@@ -1581,7 +1581,7 @@ impl MainWindow {
     }
 
     /// The start of a frame, before its input: fire the timers that came
-    /// due by `now` (the snap dwell).
+    /// due by `now` (the snap dwell, the note beside the pointer).
     pub fn tick(&mut self, now: Instant) {
         self.viewport.tick(now);
         self.pump_events();
@@ -1590,7 +1590,7 @@ impl MainWindow {
     /// How long from `now` until `tick` has something to fire, `None`
     /// when nothing waits: the shell asks for a frame then.
     pub fn next_tick(&self, now: Instant) -> Option<Duration> {
-        self.viewport.dwell_due_in(now)
+        self.viewport.next_tick_in(now)
     }
 
     /// Whether a right click asked for the context menu since the last

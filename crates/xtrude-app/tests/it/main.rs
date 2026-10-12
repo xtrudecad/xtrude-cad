@@ -148,6 +148,7 @@ mod test_pushpull_instances;
 mod test_pushpull_preview_hides_what_it_replaces;
 mod test_pushpull_push_down_follows_the_cursor;
 mod test_pushpull_recess_seen_from_behind;
+mod test_pushpull_refusal_shown;
 mod test_pushpull_snaps_to_guides;
 mod test_pushpull_subtractive;
 mod test_pushpull_through_notch;

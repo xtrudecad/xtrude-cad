@@ -11,9 +11,17 @@
 //! While a push goes into the solid, the frame leaves out what it replaces
 //! — the base face, and the walls it cuts down with their edges — and the
 //! preview draws what stays of those walls.
+//!
+//! A distance the commit would refuse (it would break the solid) is
+//! refused while dragging: no preview, the "not allowed" pointer and a
+//! note beside it, and a click there does nothing. The check is the
+//! commit's own push, tried on a copy of the mesh, once per distance; on a
+//! mesh where one try takes longer than [`TRIAL_BUDGET`], it runs on the
+//! click only.
 
 use crate::input::ScreenPt;
 use std::cell::Cell;
+use std::time::{Duration, Instant};
 
 use glam::DVec3;
 use xtrude_core::math::VecExt;
@@ -30,7 +38,19 @@ use xtrude_model::units::fmt_len;
 
 use super::{Plane, PreviewFace, Rgba, SnapPrefs, Tool, ToolContext, ToolInfo, ToolValue};
 use crate::tool_any;
-use crate::viewport::Viewport;
+use crate::viewport::{Cursor, Viewport};
+
+/// The longest one try of the push may take for the drag to check every
+/// distance it shows; past it, only the click checks.
+pub const TRIAL_BUDGET: Duration = Duration::from_millis(25);
+
+/// How long a note about a commit stays beside the pointer (ms).
+const NOTE_MS: u32 = 4000;
+
+/// The note on a distance the commit would refuse.
+fn refusal_note() -> String {
+    tr("Not possible here: it would break the solid", &[])
+}
 
 thread_local! {
     /// The last committed distance, shared across activations: a
@@ -71,6 +91,13 @@ pub struct PushPullTool {
     light_cut: WallCut,
     /// Per-drag candidate vertices for the distance inference.
     infer_cache: Option<Vec<DVec3>>,
+    /// The distances tried this drag and whether the commit takes them.
+    verdicts: Vec<(f64, bool)>,
+    /// The drag checks each distance it shows (one try fits
+    /// [`TRIAL_BUDGET`]); `None` until the first try is timed.
+    check_live: Option<bool>,
+    /// The distance shown is one the commit would refuse.
+    pub denied: bool,
 }
 
 impl PushPullTool {
@@ -100,17 +127,65 @@ impl PushPullTool {
         self.light_faces.clear();
         self.light_rings.clear();
         self.light_cut = WallCut::default();
+        self.verdicts.clear();
+        self.check_live = None;
+        self.denied = false;
+    }
+
+    /// Whether the commit would push exactly the current distance: the
+    /// push tried on a copy of the mesh (without the prism preview), once
+    /// per distance. The first try is timed for [`TRIAL_BUDGET`].
+    pub fn accepted(&mut self, vp: &mut Viewport) -> bool {
+        let d = self.pp.extrusion;
+        if let Some(&(_, ok)) = self.verdicts.iter().find(|(e, _)| (e - d).abs() < 1e-12) {
+            return ok;
+        }
+        let Some(t) = self.pp.target else {
+            return false;
+        };
+        self.revert_preview(vp);
+        let start = Instant::now();
+        let ok = self.pp.accepts(vp.scene.doc.mesh(t));
+        if self.check_live.is_none() {
+            self.check_live = Some(start.elapsed() <= TRIAL_BUDGET);
+        }
+        self.verdicts.push((d, ok));
+        ok
+    }
+
+    /// Refuse the distance shown: no preview, the note beside the pointer.
+    fn deny(&mut self, vp: &mut Viewport) {
+        if !self.denied {
+            self.denied = true;
+            vp.refresh_tool_cursor();
+        }
+        self.light_faces.clear();
+        self.light_rings.clear();
+        self.light_cut = WallCut::default();
+        self.revert_preview(vp);
+        vp.set_suppressed([], []);
+        vp.hold_note(Some(&refusal_note()));
+        vp.update();
+    }
+
+    /// Take the refusal back.
+    fn allow(&mut self, vp: &mut Viewport) {
+        if self.denied {
+            self.denied = false;
+            vp.refresh_tool_cursor();
+        }
+        vp.hold_note(None);
     }
 
     /// A face inside a group that is not open is not pushable — and the
     /// refusal has to speak.
     fn refuse_closed_group(vp: &mut Viewport) {
-        vp.flash_status(
+        vp.flash_note(
             &tr(
                 "That face belongs to a group — double-click to open it first, then push inside",
                 &[],
             ),
-            4000,
+            NOTE_MS,
         );
     }
 
@@ -126,7 +201,7 @@ impl PushPullTool {
                 "Push limited to {value} — deeper would leave the solid",
                 &[("value", &fmt_len(l))],
             );
-            vp.flash_status(&msg, 5000);
+            vp.flash_note(&msg, 5000);
         }
     }
 
@@ -211,6 +286,7 @@ impl PushPullTool {
     /// Commit the push (one undo step) and say what happened.
     pub fn commit(&mut self, vp: &mut Viewport) {
         vp.set_hover(None);
+        vp.hold_note(None);
         self.light_faces.clear();
         self.light_rings.clear();
         self.light_cut = WallCut::default();
@@ -227,11 +303,11 @@ impl PushPullTool {
                     "Push stopped at {d}: going further would break the solid",
                     &[("d", &fmt_len(self.pp.extrusion.abs()))],
                 );
-                vp.flash_status(&msg, 4000);
+                vp.flash_note(&msg, NOTE_MS);
                 set_last_distance(Some(self.pp.extrusion));
             }
             PushOutcome::Refused => {
-                vp.flash_status(
+                vp.flash_note(
                     &tr(
                         "Push refused: would break the solid (left it unchanged)",
                         &[],
@@ -243,6 +319,7 @@ impl PushPullTool {
             PushOutcome::NoOp => {}
         }
         self.reset();
+        vp.refresh_tool_cursor();
         vp.update();
     }
 
@@ -482,6 +559,14 @@ impl Tool for PushPullTool {
     fn wireframe_color(&self) -> Option<Rgba> {
         Some([0.13, 0.17, 0.23, 1.0])
     }
+    fn cursor(&self, _vp: &Viewport) -> Option<Cursor> {
+        if self.denied {
+            return Some(Cursor::NotAllowed);
+        }
+        self.info()
+            .icon
+            .map(|key| Cursor::Tool { key, plus: false })
+    }
     tool_any!();
 
     fn on_activate(&mut self, _vp: &mut Viewport) {
@@ -491,6 +576,7 @@ impl Tool for PushPullTool {
     fn on_deactivate(&mut self, vp: &mut Viewport) {
         self.revert_preview(vp);
         vp.set_hover(None);
+        vp.hold_note(None);
         vp.set_suppressed([], []);
         self.reset();
     }
@@ -552,6 +638,12 @@ impl Tool for PushPullTool {
             }
         }
         self.clamp(vp);
+        let live = self.check_live != Some(false) && self.pp.extrusion.abs() >= MIN_EXTRUDE;
+        if live && !self.accepted(vp) {
+            self.deny(vp);
+            return;
+        }
+        self.allow(vp);
         if self.pp.prism_cap && !self.pp.keep_base {
             self.show_prism_preview(vp);
         } else {
@@ -571,6 +663,13 @@ impl Tool for PushPullTool {
             return;
         }
         if self.pp.extrusion.abs() < MIN_EXTRUDE {
+            return;
+        }
+        if !self.accepted(vp) {
+            // The drag goes on: a distance the commit takes is still a move
+            // away.
+            self.deny(vp);
+            vp.flash_status(&refusal_note(), NOTE_MS);
             return;
         }
         self.commit(vp);
@@ -613,6 +712,7 @@ impl Tool for PushPullTool {
     }
 
     fn on_cancel(&mut self, vp: &mut Viewport) {
+        vp.hold_note(None);
         self.light_faces.clear();
         self.light_rings.clear();
         self.light_cut = WallCut::default();
@@ -620,6 +720,7 @@ impl Tool for PushPullTool {
         vp.set_hover(None);
         vp.set_suppressed([], []);
         self.reset();
+        vp.refresh_tool_cursor();
         vp.update();
     }
 
