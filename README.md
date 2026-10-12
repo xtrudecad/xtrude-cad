@@ -32,8 +32,8 @@ open directly, and documents written by Xtrude CAD open in IngeTrazo.
 - **Documents:** `.igz`, open and save.
 - **Import:** STEP (`.step`, `.stp`; AP203, AP214, AP242), STL, Wavefront
   OBJ, glTF/GLB, COLLADA (`.dae`), DXF and `.skp`.
-- **Export:** STL (millimetres), Wavefront OBJ, glTF/GLB, COLLADA and
-  images.
+- **Export:** STL (millimetres), 3MF (millimetres, one object per part,
+  with colours), Wavefront OBJ, glTF/GLB, COLLADA and images.
 
 A STEP file describes exact surfaces; Xtrude CAD models with flat faces,
 so it tessellates the file on import (0.01 mm chord tolerance by
