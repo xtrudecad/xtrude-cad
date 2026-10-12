@@ -30,8 +30,8 @@ jobs:
   checks:
     uses: ./.github/workflows/checks.yml
 
-  # The desktop integration files, validated with the freedesktop tools
-  # (no Rust build).
+  # The desktop integration files, validated with the freedesktop tools,
+  # and the workflows, with actionlint (no Rust build).
   packaging:
     runs-on: ubuntu-24.04
     steps:
@@ -58,6 +58,22 @@ jobs:
       # Offline: the URLs and screenshots are not fetched.
       - name: Validate the AppStream metadata
         run: appstreamcli validate --no-net packaging/linux/org.xtrudecad.XtrudeCAD.metainfo.xml
+      # The release binary, checked against its pinned checksum. It runs
+      # the runner's shellcheck on the `run:` scripts too.
+      - name: Install actionlint
+        env:
+          VERSION: 1.7.12
+          SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="actionlint_${VERSION}_linux_amd64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" \
+              "https://github.com/rhysd/actionlint/releases/download/v$VERSION/$archive"
+          echo "$SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/actionlint" actionlint
+          echo "$RUNNER_TEMP/actionlint" >>"$GITHUB_PATH"
+      - name: Lint the workflows
+        run: actionlint -color
 
   # The Flatpak's vendored crates, regenerated from Cargo.lock: a
   # dependency change that forgets to run the script fails here, not at

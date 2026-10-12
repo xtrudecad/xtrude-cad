@@ -151,6 +151,13 @@ jobs:
         if: ${{ github.event.repository.private }}
         run: |
           echo "::warning::Private repository: the release files have no build attestations."
+      # A tag with a pre-release part (v0.1.0-rc.1) makes a pre-release
+      # draft: publishing it does not open the Flathub update.
+      - name: Is it a pre-release
+        id: prerelease
+        env:
+          TAG: ${{ github.ref_name }}
+        run: echo "prerelease=$(scripts/release/prerelease.sh "$TAG")" | tee -a "$GITHUB_OUTPUT"
       # The notes: the newest release's description in the metainfo, or
       # GitHub's generated notes when it has none.
       - name: Create the draft release
@@ -158,6 +165,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
+          PRERELEASE: ${{ steps.prerelease.outputs.prerelease }}
         run: |
           notes="$RUNNER_TEMP/notes.md"
           scripts/release/release_notes.py \
@@ -167,5 +175,9 @@ jobs:
           else
               notes_args=(--generate-notes)
           fi
-          gh release create "$TAG" --draft --verify-tag \
+          prerelease_args=()
+          if [[ "$PRERELEASE" == true ]]; then
+              prerelease_args=(--prerelease)
+          fi
+          gh release create "$TAG" --draft --verify-tag "${prerelease_args[@]}" \
               --title "Xtrude CAD ${TAG#v}" "${notes_args[@]}" assets/*

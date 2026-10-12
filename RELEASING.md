@@ -69,7 +69,9 @@ before anything is built.
   with Flathub's linter (see [Flatpak](#flatpak));
 - **release**: writes `SHA256SUMS`, attests every file's build
   provenance, and creates the draft release `Xtrude CAD X.Y.Z` with the
-  files attached. GitHub makes attestations only for a public
+  files attached; a tag with a pre-release part (`vX.Y.Z-rc.N`) makes
+  a pre-release draft (`scripts/release/prerelease.sh`, see
+  [Release candidates](#release-candidates)). GitHub makes attestations only for a public
   repository on the organisation's plan: a tag pushed to a private one
   (a dry run) gets its draft without them, and a warning.
 
@@ -96,6 +98,35 @@ Then click **Publish release**. Publishing opens the Flathub update pull
 request (see [Flathub](#flathub)). A published release is public and its
 tag should never move again; a mistake found afterwards is fixed by the
 next version.
+
+## Release candidates
+
+A release candidate is a test build for users before `X.Y.Z`: the same
+steps, with a SemVer pre-release version, `X.Y.Z-rc.N` (`rc.1`, `rc.2`…):
+
+1. The workspace `version` in `Cargo.toml` is `X.Y.Z-rc.N`
+   (`xtrude --version` says `Xtrude CAD X.Y.Z-rc.N`).
+2. Its metainfo entry has the same version and `type="development"`,
+   which software centres do not offer as a stable release:
+
+   ```xml
+   <release version="X.Y.Z-rc.N" date="YYYY-MM-DD" type="development">
+   ```
+
+3. The screenshot URLs name the **final** tag, `vX.Y.Z`, not the rc's:
+   they are the ones the final release ships. They resolve only once
+   `vX.Y.Z` is tagged, so for an rc the Flatpak job warns that they do
+   not resolve and accepts their two lint errors; for the final tag it
+   fails instead.
+4. Tag `vX.Y.Z-rc.N` and push it (step 2). The tag names the version,
+   suffix included (`check_tag.sh`).
+
+The release job sees the pre-release part of the tag and makes the
+draft a **pre-release**. Publishing it leaves the "Set as a pre-release"
+box ticked: GitHub does not show it as the latest release, and
+`flathub-update.yml`, which skips pre-releases, never sends it to
+Flathub. For the final release, set the version back to `X.Y.Z` and add
+its own metainfo entry (`type="stable"`) above the rc's.
 
 ## Checking a release file
 

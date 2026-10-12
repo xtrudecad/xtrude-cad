@@ -4,7 +4,8 @@
 #
 # Tests the helpers of the release workflow (.github/workflows/release.yml)
 # that run before and after the build: check_tag.sh (the tag names the
-# workspace version), release_notes.py (the draft's notes from the
+# workspace version), prerelease.sh (a pre-release tag makes a
+# pre-release draft), release_notes.py (the draft's notes from the
 # metainfo) and flatpak_lint_exceptions.py (the Flatpak job's screenshot
 # mirroring and lint exceptions; file:// URLs keep it offline). scripts/check.sh runs it, so a mistake shows on every push,
 # not at release time.
@@ -46,6 +47,32 @@ grep -q 'expected v0.1.0' "$TMP/out" || fail "check_tag.sh does not name the exp
 VERSION="$(sed -nE 's/^version = "([^"]+)"/\1/p' "$HERE/../../Cargo.toml" | head -n1)"
 if ! out="$("$HERE/check_tag.sh" "v$VERSION" 2>&1)"; then
     fail "check_tag.sh v$VERSION (the workspace version) failed: $out"
+fi
+
+# prerelease.sh: what it prints for a tag, and its exit status.
+expect_prerelease() {
+    local want_status="$1" want="$2" tag="$3" got=0 out
+    out="$("$HERE/prerelease.sh" "$tag" 2>"$TMP/err")" || got=$?
+    if [[ "$got" != "$want_status" ]]; then
+        fail "prerelease.sh '$tag' exited $got, expected $want_status: $out $(cat "$TMP/err")"
+    elif [[ "$out" != "$want" ]]; then
+        fail "prerelease.sh '$tag' printed '$out', expected '$want'"
+    fi
+}
+expect_prerelease 0 false v0.1.0
+expect_prerelease 0 false v1.22.333
+expect_prerelease 0 false v1.2.3+build.5
+expect_prerelease 0 true v0.1.0-rc.1
+expect_prerelease 0 true v1.2.3-beta.4
+expect_prerelease 0 true v0.2.0-alpha
+expect_prerelease 0 true v1.2.3-rc.1+build.5
+expect_prerelease 2 "" 0.1.0-rc.1
+expect_prerelease 2 "" v0.1
+expect_prerelease 2 "" v0.1.0-
+expect_prerelease 2 "" v0.1.0-rc..1
+expect_prerelease 2 "" ""
+if "$HERE/prerelease.sh" >/dev/null 2>&1; then
+    fail "prerelease.sh accepted no tag"
 fi
 
 # release_notes.py: the Markdown printed for a metainfo.
