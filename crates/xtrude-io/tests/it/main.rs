@@ -6,6 +6,7 @@
 
 mod common;
 
+mod test_3mf_export;
 mod test_app_version;
 mod test_clipboard_windows;
 mod test_component_copies_share_nested;

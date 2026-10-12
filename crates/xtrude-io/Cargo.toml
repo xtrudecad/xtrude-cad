@@ -9,7 +9,7 @@ license.workspace = true
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "Xtrude CAD file formats: .igz documents, STL, OBJ, DAE and GLB, and DXF and SKP import"
+description = "Xtrude CAD file formats: .igz documents, STL, 3MF export, OBJ, DAE and GLB, and DXF and SKP import"
 publish = false
 
 [dependencies]
