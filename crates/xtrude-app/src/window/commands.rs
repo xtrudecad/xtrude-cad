@@ -1037,6 +1037,8 @@ impl MainWindow {
         }
         if on {
             self.activate_tool("paint");
+            // run last: its stack shows it, not the Paint it armed
+            self.toolbar_stacks.follow("eyedropper");
             self.viewport
                 .flash_status(&tr("Click a face to sample its color", &[]), 2500);
         }

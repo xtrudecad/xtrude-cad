@@ -1143,6 +1143,40 @@ fn zoom_selection(p: &mut Painter, ink: Rgba) {
     p.restore();
 }
 
+/// A box seen in perspective: its far face small, its near face (in the
+/// accent) large, the edges between them running to the eye.
+fn projection(p: &mut Painter, _ink: Rgba) {
+    let far = [(20.0, 14.0), (34.0, 14.0), (34.0, 26.0), (20.0, 26.0)];
+    let near = [(8.0, 20.0), (28.0, 20.0), (28.0, 40.0), (8.0, 40.0)];
+    accent_fill(p, &near, 150);
+    p.no_brush();
+    p.draw_polygon(&far);
+    for (a, b) in far.iter().zip(near.iter()) {
+        p.draw_line(a.0, a.1, b.0, b.1);
+    }
+    p.draw_polygon(&near);
+}
+
+/// An "i" in a circle: what the model holds.
+fn model_info(p: &mut Painter, _ink: Rgba) {
+    p.no_brush();
+    p.draw_ellipse(24.0, 24.0, 16.0, 16.0);
+    dot(p, 24.0, 15.5, 2.8, None);
+    p.save();
+    p.set_pen(Pen::round(ACCENT, 4.2));
+    p.draw_line(24.0, 22.0, 24.0, 33.0);
+    p.restore();
+}
+
+/// A solid under the magnifier: a cube, and a lens over its corner.
+fn solid_inspector(p: &mut Painter, ink: Rgba) {
+    p.save();
+    p.translate(-5.0, -4.0);
+    cube(p, &[("top", 90), ("front", 150), ("right", 120)]);
+    p.restore();
+    magnifier(p, ink, 30.0, 30.0, 8.0, true);
+}
+
 // ---- the view cube ----------------------------------------------------------------
 
 fn cube_corner(k: &str) -> (f32, f32) {
@@ -1494,6 +1528,9 @@ pub const KEYS: &[&str] = &[
     "zoom_window",
     "zoom_extents",
     "zoom_selection",
+    "projection",
+    "model_info",
+    "solid_inspector",
     "view_iso",
     "view_top",
     "view_bottom",
@@ -1554,6 +1591,9 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "zoom_window" => zoom_window,
         "zoom_extents" => zoom_extents,
         "zoom_selection" => zoom_selection,
+        "projection" => projection,
+        "model_info" => model_info,
+        "solid_inspector" => solid_inspector,
         "view_iso" => |p, _| cube(p, &[("top", 60), ("front", 150), ("right", 100)]),
         "view_top" => |p, _| view_face(p, "top"),
         "view_bottom" => |p, _| view_face(p, "bottom"),

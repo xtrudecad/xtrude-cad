@@ -395,11 +395,11 @@ fn test_sweep_tool_is_registered_as_sweep() {
     assert!(
         xtrude_app::shell::icons::render("sweep", 1.0, xtrude_app::shell::icons::ACCENT).is_some()
     );
-    let modify = xtrude_app::window::TOOLBAR_LAYOUT
+    let model = xtrude_app::window::TOOLBAR_LAYOUT
         .iter()
-        .find(|(id, _, _)| *id == "modify")
-        .expect("no Modify toolbar");
-    assert!(modify.2.contains(&"sweep"));
+        .find(|(id, _, _)| *id == "model")
+        .expect("no Model toolbar");
+    assert!(model.2.contains(&"sweep"));
     // The old id is gone: tool ids are not persisted, so nothing reads it.
     assert!(xtrude_app::window::make_tool("followme").is_none());
     assert!(
