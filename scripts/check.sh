@@ -19,8 +19,11 @@ else
     exit 1
 fi
 scripts/spdx_check.sh
-# The release workflow's tag check and release notes.
+# The release workflow's helpers, the glibc floor check and the tarball's
+# install.sh, which otherwise run only when a tag is built.
 scripts/release/test_release_workflow.sh
+scripts/release/test_check_glibc.sh
+scripts/release/test_install.sh
 # REUSE compliance (fsfe/reuse): every file has licence and copyright info.
 if command -v reuse >/dev/null; then
     reuse lint

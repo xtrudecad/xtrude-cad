@@ -21,6 +21,8 @@ path = [
     "packaging/flatpak/lint-exceptions.json",
     "packaging/screenshots/**",
     "resources/**",
+    # Saved `objdump -T` outputs for scripts/release/test_check_glibc.sh.
+    "scripts/release/fixtures/**",
     "tests/**",
 ]
 precedence = "aggregate"

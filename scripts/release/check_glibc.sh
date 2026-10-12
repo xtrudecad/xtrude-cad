@@ -10,12 +10,26 @@
 # pulls in a newer symbol must fail the release build, not users' machines.
 #
 # Usage: scripts/release/check_glibc.sh <binary> <max>
+#        scripts/release/check_glibc.sh --objdump-output <file> <max>
 #   e.g. scripts/release/check_glibc.sh dist/bin/xtrude 2.28
+#
+# The second form reads a saved `objdump -T` output instead of a binary;
+# scripts/release/test_check_glibc.sh tests the check that way.
 set -euo pipefail
 
-if [[ $# -ne 2 ]]; then
+usage() {
     echo "usage: $0 <binary> <max glibc version, e.g. 2.28>" >&2
+    echo "       $0 --objdump-output <saved objdump -T output> <max>" >&2
     exit 2
+}
+
+SAVED=0
+if [[ "${1:-}" == --objdump-output ]]; then
+    SAVED=1
+    shift
+fi
+if [[ $# -ne 2 ]]; then
+    usage
 fi
 BIN="$1"
 MAX="$2"
@@ -27,7 +41,7 @@ if [[ ! "$MAX" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
     echo "error: '$MAX' is not a version such as 2.28" >&2
     exit 2
 fi
-if ! command -v objdump >/dev/null; then
+if [[ $SAVED -eq 0 ]] && ! command -v objdump >/dev/null; then
     echo "error: objdump not found (binutils)" >&2
     exit 2
 fi
@@ -35,7 +49,9 @@ fi
 # The dynamic symbols, one "<version> <symbol>" line per GLIBC_ reference.
 # objdump prints the version either bare or in parentheses (hidden
 # versions), followed by the symbol name in the last column.
-if ! dynsyms="$(objdump -T "$BIN" 2>&1)"; then
+if [[ $SAVED -eq 1 ]]; then
+    dynsyms="$(<"$BIN")"
+elif ! dynsyms="$(objdump -T "$BIN" 2>&1)"; then
     echo "error: objdump -T failed on $BIN:" >&2
     echo "$dynsyms" >&2
     exit 2

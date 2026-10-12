@@ -68,7 +68,8 @@ before anything is built.
   `almalinux:8` container (glibc 2.28), checks both binaries against
   the 2.28 glibc floor (`scripts/release/check_glibc.sh`), runs the
   packed binary's `--version`, and installs and uninstalls the tarball
-  in a temporary prefix with its `install.sh`;
+  in a temporary prefix with its `install.sh` (`scripts/check.sh`
+  already tests the glibc check and `install.sh` on every push);
 - **flatpak**: builds `xtrude-cad-X.Y.Z-x86_64.flatpak` and lints it
   with Flathub's linter (see [Flatpak](#flatpak));
 - **release**: writes `SHA256SUMS`, attests every file's build
