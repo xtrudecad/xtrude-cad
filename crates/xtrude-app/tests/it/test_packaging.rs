@@ -417,3 +417,136 @@ fn the_flatpak_opencascade_module_builds_the_locked_occt_sys_sources() {
         "cleaned up"
     );
 }
+
+#[test]
+fn the_app_id_is_a_valid_reverse_dns_id() {
+    // Flathub and the desktop entry spec: three parts or more, each of
+    // `[A-Za-z0-9_]`, none starting with a digit.
+    let parts: Vec<&str> = APP_ID.split('.').collect();
+    assert!(parts.len() >= 3, "APP_ID {APP_ID:?} has fewer than 3 parts");
+    for part in parts {
+        assert!(
+            part.chars()
+                .next()
+                .is_some_and(|c| c.is_ascii_alphabetic() || c == '_'),
+            "APP_ID {APP_ID:?}: part {part:?} is empty or starts with a digit"
+        );
+        assert!(
+            part.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'),
+            "APP_ID {APP_ID:?}: part {part:?} has a character outside [A-Za-z0-9_]"
+        );
+    }
+}
+
+/// The types the MIME file declares.
+fn declared_mime_types() -> Vec<String> {
+    let path = linux_dir().join(format!("{APP_ID}.mime.xml"));
+    let text = std::fs::read_to_string(&path).expect("the MIME file");
+    let doc = roxmltree::Document::parse(&text).expect("well-formed XML");
+    doc.descendants()
+        .filter(|n| n.has_tag_name("mime-type"))
+        .map(|n| n.attribute("type").expect("a type").to_owned())
+        .collect()
+}
+
+#[test]
+fn the_desktop_file_and_the_metainfo_name_the_declared_and_system_types() {
+    let mut expected = declared_mime_types();
+    expected.extend(SYSTEM_TYPES.iter().map(|t| t.to_string()));
+    expected.sort();
+    let mime_type = desktop_entry("MimeType").expect("a MimeType");
+    let mut desktop: Vec<String> = mime_type
+        .split(';')
+        .filter(|t| !t.is_empty())
+        .map(str::to_owned)
+        .collect();
+    desktop.sort();
+    assert_eq!(
+        desktop, expected,
+        "{APP_ID}.desktop MimeType={mime_type}: the types of {APP_ID}.mime.xml and SYSTEM_TYPES"
+    );
+    let text = metainfo();
+    let doc = roxmltree::Document::parse(&text).expect("well-formed XML");
+    let mut provided: Vec<String> = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("provides"))
+        .flat_map(|n| n.children().filter(|c| c.has_tag_name("mediatype")))
+        .map(|n| n.text().unwrap_or_default().trim().to_owned())
+        .collect();
+    provided.sort();
+    assert_eq!(
+        provided, expected,
+        "{APP_ID}.metainfo.xml <provides><mediatype>: the types of {APP_ID}.mime.xml and SYSTEM_TYPES"
+    );
+}
+
+/// The width and height in a PNG's `IHDR` chunk.
+fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    const SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+    // The signature, then the IHDR chunk: length (4), type (4), width
+    // (4), height (4), big-endian.
+    if bytes.len() < 24 || &bytes[..8] != SIGNATURE || &bytes[12..16] != b"IHDR" {
+        return None;
+    }
+    let be = |at: usize| u32::from_be_bytes(bytes[at..at + 4].try_into().unwrap());
+    Some((be(16), be(20)))
+}
+
+#[test]
+fn every_hicolor_png_has_the_size_of_its_folder() {
+    let mut pngs = 0;
+    for f in files_under(&hicolor_dir()) {
+        if f.extension() != Some("png".as_ref()) {
+            continue;
+        }
+        let folder = f.components().next().unwrap().as_os_str().to_string_lossy();
+        let n: u32 = folder
+            .split_once('x')
+            .filter(|(w, h)| w == h)
+            .and_then(|(w, _)| w.parse().ok())
+            .unwrap_or_else(|| panic!("{}: the folder is not NxN", f.display()));
+        let bytes = std::fs::read(hicolor_dir().join(&f)).expect("a readable icon");
+        let size = png_size(&bytes).unwrap_or_else(|| panic!("{}: not a PNG", f.display()));
+        assert_eq!(
+            size,
+            (n, n),
+            "{}: {}x{} pixels",
+            f.display(),
+            size.0,
+            size.1
+        );
+        pngs += 1;
+    }
+    assert!(pngs > 0, "no PNG icon under resources/icons/hicolor/");
+    let svg = hicolor_dir().join(format!("scalable/apps/{APP_ID}.svg"));
+    assert!(svg.is_file(), "{} is missing", svg.display());
+}
+
+#[test]
+fn the_screenshot_urls_name_existing_files_at_the_release_tag() {
+    // A release candidate links the final release's tag, where the URLs
+    // will resolve: 0.1.0-rc.1 links v0.1.0.
+    let release = VERSION.split_once('-').map_or(VERSION, |(v, _)| v);
+    let prefix = format!(
+        "https://raw.githubusercontent.com/xtrudecad/xtrude-cad/v{release}/packaging/screenshots/"
+    );
+    let screenshots = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../packaging/screenshots");
+    let text = metainfo();
+    let doc = roxmltree::Document::parse(&text).expect("well-formed XML");
+    let urls: Vec<&str> = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("screenshot"))
+        .flat_map(|n| n.children().filter(|c| c.has_tag_name("image")))
+        .map(|n| n.text().unwrap_or_default().trim())
+        .collect();
+    assert!(!urls.is_empty(), "{APP_ID}.metainfo.xml has no screenshot");
+    for url in urls {
+        let name = url.strip_prefix(&prefix).unwrap_or_else(|| {
+            panic!("{APP_ID}.metainfo.xml screenshot {url}: not under {prefix}")
+        });
+        assert!(
+            screenshots.join(name).is_file(),
+            "{APP_ID}.metainfo.xml screenshot {url}: packaging/screenshots/{name} is missing"
+        );
+    }
+}

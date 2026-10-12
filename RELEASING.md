@@ -37,7 +37,11 @@ it.
    tagged tree, so new or changed screenshots in `packaging/screenshots/`
    go into this commit too.
 4. Run `scripts/check.sh`: `test_packaging.rs` checks that the newest
-   metainfo release is the workspace version.
+   metainfo release is the workspace version, and that every screenshot
+   URL names a file in `packaging/screenshots/` at the tag `vX.Y.Z` (the
+   version without its pre-release part, see
+   [Release candidates](#release-candidates)), so a bump that forgets
+   the URLs fails.
 5. Commit, for example `release: X.Y.Z`, and push it to `main`.
 
 ## 2. Tag and push the tag
