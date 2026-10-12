@@ -138,7 +138,7 @@ fn test_the_axes_are_drawn_at_the_groups_origin() {
     let (vp, _g) = vp_in_turned_group();
     vp.sync_axes();
     let mut f = FrameData::default();
-    push_axis(&mut f, Axis::X, 0.1, [1.0; 4]);
+    push_axis(&mut f, &vp.camera, Axis::X, 0.1, [1.0; 4]);
     let p = |i: usize| {
         let q = f.lines[i].pos;
         DVec3::new(q[0] as f64, q[1] as f64, q[2] as f64)

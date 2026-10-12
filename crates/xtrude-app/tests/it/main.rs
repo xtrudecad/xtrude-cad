@@ -14,6 +14,7 @@ mod test_acquired_edge_sticky;
 mod test_alt_inference_toggle;
 mod test_annotation_depth_occlusion;
 mod test_arc_rounds_corners;
+mod test_axes_close_up;
 mod test_axis_drag_preview;
 mod test_axis_inference_on_screen;
 mod test_axis_lock_reads_the_hovered_reference;

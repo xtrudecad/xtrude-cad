@@ -8,6 +8,7 @@ mod snap_common;
 
 mod test_axis_inference_is_magnetic;
 mod test_axis_inference_on_screen;
+mod test_camera_clip_depth;
 mod test_camera_orbit;
 mod test_camera_zoom;
 mod test_center_inference;

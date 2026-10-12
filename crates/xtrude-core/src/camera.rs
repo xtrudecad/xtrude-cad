@@ -146,17 +146,60 @@ impl OrbitCamera {
         DMat4::look_at_rh(self.eye(), self.target, self.up_vector())
     }
 
+    /// The perspective near plane: it follows the camera in when it comes
+    /// right up to something.
+    pub fn near(&self) -> f64 {
+        self.znear.min((self.distance * 0.02).max(1e-4))
+    }
+
     pub fn projection_matrix(&self) -> DMat4 {
         if self.perspective {
-            // The near plane follows the camera in when it comes right up
-            // to something.
-            let near = self.znear.min((self.distance * 0.02).max(1e-4));
-            DMat4::perspective_rh_gl(self.fov_deg.to_radians(), self.aspect, near, self.zfar)
+            DMat4::perspective_rh_gl(
+                self.fov_deg.to_radians(),
+                self.aspect,
+                self.near(),
+                self.zfar,
+            )
         } else {
             let half_h = self.distance * (self.fov_deg.to_radians() / 2.0).tan();
             let half_w = half_h * self.aspect;
             DMat4::orthographic_rh_gl(-half_w, half_w, -half_h, half_h, -self.zfar, self.zfar)
         }
+    }
+
+    /// The part of segment `a`–`b` between the near and far planes, cut in
+    /// `f64`, or `None` when none of it is. The GPU clips in `f32`: on a
+    /// segment kilometres long that crosses the eye's plane, its cut lands
+    /// centimetres off, which a near plane of a few millimetres turns into
+    /// a line flung across the screen. The cut keeps 1 % inside the near
+    /// plane so the GPU has nothing left to clip there.
+    pub fn clip_to_depth(&self, a: DVec3, b: DVec3) -> Option<(DVec3, DVec3)> {
+        let (lo, hi) = if self.perspective {
+            (self.near() * 1.01, self.zfar)
+        } else {
+            (-self.zfar, self.zfar)
+        };
+        let (eye, f) = (self.eye(), self.forward());
+        let (da, db) = ((a - eye).dot(f), (b - eye).dot(f));
+        // The range of t in [0, 1] whose depth da + t (db - da) is in [lo, hi].
+        let (mut t0, mut t1) = (0.0f64, 1.0f64);
+        let dd = db - da;
+        for (bound, keep_above) in [(lo, true), (hi, false)] {
+            if dd.abs() < 1e-12 {
+                let inside = if keep_above { da >= bound } else { da <= bound };
+                if !inside {
+                    return None;
+                }
+                continue;
+            }
+            let t = (bound - da) / dd;
+            if keep_above == (dd > 0.0) {
+                t0 = t0.max(t);
+            } else {
+                t1 = t1.min(t);
+            }
+        }
+        (t0 < t1).then(|| (a + (b - a) * t0, a + (b - a) * t1))
     }
 
     // ---- Navigation ---------------------------------------------------------

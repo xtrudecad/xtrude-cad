@@ -13,6 +13,7 @@ use xtrude_core::Axis;
 
 use glam::{DMat4, DVec3};
 use xtrude_core::attrs::{Back, FaceAttrs};
+use xtrude_core::camera::OrbitCamera;
 use xtrude_core::math::{newell, MatExt, VecExt};
 use xtrude_core::triangulate::triangulate;
 use xtrude_core::{EdgeId, FaceId, Mesh};
@@ -799,7 +800,7 @@ impl Viewport {
             let spacing = (self.camera.distance * 0.008).max(1e-4);
             for (axis, color) in AXES {
                 let first = f.lines.len() as u32;
-                push_axis(&mut f, axis, spacing, color);
+                push_axis(&mut f, &self.camera, axis, spacing, color);
                 let count = f.lines.len() as u32 - first;
                 f.draws
                     .push(Draw::new(Source::Lines, first, count).depth(Depth::TestOnly));
@@ -1192,11 +1193,20 @@ fn mapped_loops(
 }
 
 /// A long solid line toward + and evenly spaced short
-/// dashes toward −, for one drawing axis.
-pub fn push_axis(f: &mut FrameData, axis: Axis, spacing: f64, color: [f32; 4]) {
+/// dashes toward −, for one drawing axis. The solid line is cut to what
+/// `camera` sees in depth (see [`OrbitCamera::clip_to_depth`]).
+pub fn push_axis(
+    f: &mut FrameData,
+    camera: &OrbitCamera,
+    axis: Axis,
+    spacing: f64,
+    color: [f32; 4],
+) {
     let o = xtrude_core::axes::origin();
     let d = xtrude_core::axes::axis(axis);
-    f.push_line(o, o + d * 1.0e5, color);
+    if let Some((a, b)) = camera.clip_to_depth(o, o + d * 1.0e5) {
+        f.push_line(a, b, color);
+    }
     let dash = spacing * 0.18;
     for k in 0..520 {
         let t0 = k as f64 * spacing;
