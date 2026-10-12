@@ -91,7 +91,7 @@ fn test_a_command_runs_again_on_the_new_selection() {
     let (a, b) = (face(&mut w, 0.), face(&mut w, 5.));
     let (na, nb) = (normal(&w, a), normal(&w, b));
     select(&mut w, a);
-    assert!(w.trigger("reverse_faces")); // the Edit menu entry
+    assert!(w.trigger("reverse_faces")); // the Model ▸ Mesh repair entry
     assert!(normal(&w, a).dot(na) < -0.99);
     assert_eq!(repeat_text(&w), "Repeat Reverse Faces");
     select(&mut w, b);

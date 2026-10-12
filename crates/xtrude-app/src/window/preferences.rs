@@ -7,7 +7,7 @@
 //! Five pages ([`PrefsPage`]), each a few titled groups of fields
 //! ([`PrefsGroup`], [`PrefsField`]). **General**: theme, toolbar icons, how
 //! the rest of the model reads while editing a group (applied through
-//! `set_edit_rest_mode`, the Camera menu's path), the section-plane prompt,
+//! `set_edit_rest_mode`, the View menu's path), the section-plane prompt,
 //! backups, undo depth. **Navigation**: the mouse style, the wheel and orbit
 //! directions. **Display**: anti-aliasing, graphics server. **Import**: the
 //! units the OBJ and DXF import dialogs preselect. **Units**: the open

@@ -146,7 +146,7 @@ fn test_make_independent_on_a_component() {
 }
 
 #[test]
-fn test_the_hidden_views_in_the_camera_menu() {
+fn test_the_hidden_views_in_the_view_menu() {
     let w = window();
     assert_eq!(label(&w, "show_hidden_groups"), "Hidden Groups");
     assert_eq!(
@@ -155,9 +155,9 @@ fn test_the_hidden_views_in_the_camera_menu() {
     );
     assert!(w.actions.get("hidden_objects").is_none());
     assert!(w.actions.get("hidden_geometry").is_none());
-    let camera = &w.menus.iter().find(|(t, _)| t == "Camera").unwrap().1;
+    let view = &w.menus.iter().find(|(t, _)| t == "View").unwrap().1;
     for id in ["show_hidden_groups", "show_hidden_edges_faces"] {
-        assert!(camera.contains(&MenuItem::Action(id.into())), "{id}");
+        assert!(view.contains(&MenuItem::Action(id.into())), "{id}");
     }
 }
 

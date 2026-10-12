@@ -86,9 +86,10 @@ fn without_a_folder_the_menu_has_the_fixed_entries() {
         [
             "File",
             "Edit",
-            "Camera",
+            "View",
             "Draw",
-            "Tools",
+            "Model",
+            "Inspect",
             "Extensions",
             "Window",
             "Help"

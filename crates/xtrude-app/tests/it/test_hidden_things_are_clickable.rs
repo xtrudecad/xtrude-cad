@@ -68,7 +68,7 @@ fn test_a_hidden_object_shown_as_a_ghost_takes_the_click() {
         .hidden = true;
     vp.scene.version += 1;
     assert_eq!(vp.pick_group(x, y), None); // hidden: gone
-    vp.scene.show_hidden_objects = true; // Camera ▸ Hidden Groups
+    vp.scene.show_hidden_objects = true; // View ▸ Hidden Groups
     vp.scene.version += 1;
     assert_eq!(vp.pick_group(x, y), Some(g)); // the ghost is clickable
     vp.scene.show_hidden_objects = false;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The Edit and Camera menus' one-shot commands. Every path ANSWERS: a refusal
+//! The Edit, View and Model menus' one-shot commands. Every path ANSWERS: a refusal
 //! says why in the status bar.
 
 use glam::DVec3;
@@ -994,7 +994,7 @@ impl MainWindow {
         self.viewport.update();
     }
 
-    /// Camera ▸ Hidden Groups / Hidden Edges and Faces: a scene flag, a version bump so
+    /// View ▸ Hidden Groups / Hidden Edges and Faces: a scene flag, a version bump so
     /// the pick index learns what became selectable; off, what the view no
     /// longer shows cannot stay selected.
     pub(super) fn set_hidden_view(&mut self, objects: bool, on: bool) {
