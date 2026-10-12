@@ -870,14 +870,13 @@ impl MainWindow {
                 "zoom_selection",
             ]
             .map(String::from)
-            .to_vec(),
-        ));
-        self.toolbars.push((
-            "views".into(),
-            tr("Standard Views", &[]),
-            ["iso", "top", "front", "right", "left", "back", "bottom"]
-                .map(|k| format!("view:{k}"))
-                .to_vec(),
+            .into_iter()
+            // the standard views, folded into one stacked button
+            .chain(
+                ["iso", "top", "front", "right", "left", "back", "bottom"]
+                    .map(|k| format!("view:{k}")),
+            )
+            .collect(),
         ));
         // the Styles / Dimension style drop-downs: the shell draws them
         self.toolbars

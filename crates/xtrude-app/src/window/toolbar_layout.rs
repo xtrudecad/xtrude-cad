@@ -147,22 +147,20 @@ fn ids(v: &[&str]) -> Vec<String> {
 
 impl ToolbarLayout {
     /// The factory layout: one top line, Draw at its end (a new bar goes
-    /// after it), Standard Views, Solids and Panels hidden in it, and
+    /// after it), Solids and Panels hidden in it, and
     /// Annotate hidden on the left, where it comes back when shown.
     pub fn factory() -> ToolbarLayout {
         ToolbarLayout {
             lines: [
                 vec![ids(&[
-                    "main", "modify", "view", "sections", "views", "solids", "panels", "draw",
+                    "main", "modify", "view", "sections", "solids", "panels", "draw",
                 ])],
                 Vec::new(),
                 vec![ids(&["annotate"])],
                 Vec::new(),
             ],
             floating: Vec::new(),
-            hidden: ids(&["annotate", "panels", "solids", "views"])
-                .into_iter()
-                .collect(),
+            hidden: ids(&["annotate", "panels", "solids"]).into_iter().collect(),
         }
     }
 

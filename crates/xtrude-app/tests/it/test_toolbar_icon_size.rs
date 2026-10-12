@@ -89,7 +89,7 @@ fn test_a_fresh_install_gets_the_factory_layout_and_normal_icons() {
     let win = common::window();
     assert_eq!(toolbar_icon_px(), 24); // normal, since 14-09
     assert_eq!(win.toolbar_area("annotate"), Some(ToolbarArea::Left));
-    for name in ["main", "modify", "view", "sections", "views", "draw"] {
+    for name in ["main", "modify", "view", "sections", "draw"] {
         assert!(win.toolbars.iter().any(|(id, _, _)| id == name), "{name}");
         assert_eq!(win.toolbar_area(name), Some(ToolbarArea::Top), "{name}");
     }

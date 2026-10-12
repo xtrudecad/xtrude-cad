@@ -82,7 +82,9 @@ fn test_every_tool_is_still_on_a_bar_alone_or_in_a_stack() {
 #[test]
 fn test_the_stacks_sit_where_their_members_were() {
     let w = common::window();
-    assert_eq!(bar(&w, "views"), ["stack:views"]);
+    // the views at the end of the View bar
+    assert_eq!(bar(&w, "view").last().unwrap(), "stack:views");
+    assert!(w.toolbars.iter().all(|(b, _, _)| b != "views"));
     let draw = bar(&w, "draw");
     assert_eq!(
         draw,
@@ -188,4 +190,25 @@ fn test_unknown_entries_in_the_setting_are_ignored() {
     assert_eq!(w.stack_current("views"), Some("view:back"));
     settings::set(keys::TOOLBAR_STACKS.name(), json!("not an object"));
     assert_eq!(MainWindow::new().stack_current("views"), Some("view:iso"));
+}
+
+#[test]
+fn test_a_layout_saved_with_the_old_standard_views_bar_drops_it() {
+    let _w = common::window();
+    settings::set(
+        keys::TOOLBAR_LAYOUT.name(),
+        json!({
+            "top": [["main", "views", "view"]],
+            "floating": [{"id": "views", "pos": [1.0, 2.0]}],
+            "hidden": ["views"],
+        }),
+    );
+    let w = MainWindow::new();
+    let all: Vec<&String> = w.toolbar_layout.lines.iter().flatten().flatten().collect();
+    assert!(!all.iter().any(|b| *b == "views"));
+    assert!(w.toolbar_layout.floating.is_empty());
+    assert!(!w.toolbar_layout.hidden.contains("views"));
+    // the views are on the View bar, which stays where it was
+    assert_eq!(w.toolbar_layout.lines[0][0][..2], ["main", "view"]);
+    assert_eq!(bar(&w, "view").last().unwrap(), "stack:views");
 }
