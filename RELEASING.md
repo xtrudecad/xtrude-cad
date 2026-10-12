@@ -265,14 +265,27 @@ with the xtrude-cad module's `dir` source replaced by the public
 repository at a release tag (`type: git`, `url`, `tag`, `commit`), and
 the tag's `cargo-sources.json` beside it.
 
+`scripts/release/flathub_set_source.sh <manifest> <tag> <commit>` makes
+that edit: it sets the `tag` and `commit` of the xtrude-cad module's git
+source, leaves every other line as it is, and fails when that module
+has no git source or more than one. Use it for a manual update (or the
+first submission), with the full commit the tag points to:
+
+```bash
+scripts/release/flathub_set_source.sh ../org.xtrudecad.XtrudeCAD/org.xtrudecad.XtrudeCAD.yml \
+    v0.1.0 "$(git rev-parse 'v0.1.0^{commit}')"
+```
+
+`scripts/check.sh` tests it (`test_flathub_set_source.sh`).
+
 ### On publish: the update pull request
 
 Publishing a release (not a pre-release) runs
 `.github/workflows/flathub-update.yml`. It checks out the Flathub
 repository, sets the xtrude-cad source's `tag` to the release tag and
-its `commit` to the commit the tag points to (no other line of the
-manifest changes), copies `packaging/flatpak/cargo-sources.json` from
-the tag, pushes the branch `update-X.Y.Z` and opens the pull request
+its `commit` to the commit the tag points to with the tag's
+`flathub_set_source.sh` (no other line of the manifest changes),
+copies `packaging/flatpak/cargo-sources.json` from the tag, pushes the branch `update-X.Y.Z` and opens the pull request
 "Update to X.Y.Z", which links the GitHub release. A draft is never
 published, so it never reaches Flathub.
 

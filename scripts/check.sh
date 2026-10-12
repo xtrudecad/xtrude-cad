@@ -19,11 +19,13 @@ else
     exit 1
 fi
 scripts/spdx_check.sh
-# The release workflow's helpers, the glibc floor check and the tarball's
-# install.sh, which otherwise run only when a tag is built.
+# The release workflow's helpers, the glibc floor check, the tarball's
+# install.sh and the Flathub manifest edit, which otherwise run only when
+# a tag is built or a release published.
 scripts/release/test_release_workflow.sh
 scripts/release/test_check_glibc.sh
 scripts/release/test_install.sh
+scripts/release/test_flathub_set_source.sh
 # REUSE compliance (fsfe/reuse): every file has licence and copyright info.
 if command -v reuse >/dev/null; then
     reuse lint

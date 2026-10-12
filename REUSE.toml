@@ -21,7 +21,8 @@ path = [
     "packaging/flatpak/lint-exceptions.json",
     "packaging/screenshots/**",
     "resources/**",
-    # Saved `objdump -T` outputs for scripts/release/test_check_glibc.sh.
+    # Saved `objdump -T` outputs for scripts/release/test_check_glibc.sh,
+    # Flathub manifests for scripts/release/test_flathub_set_source.sh.
     "scripts/release/fixtures/**",
     "tests/**",
 ]

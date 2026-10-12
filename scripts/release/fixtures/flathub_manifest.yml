@@ -1,0 +1,192 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+#
+# Flatpak manifest of Xtrude CAD. This in-tree copy builds the checked-out
+# source (CI, local checks):
+#
+#   flatpak-builder --user --install --force-clean \
+#       --install-deps-from=flathub build-dir \
+#       packaging/flatpak/org.xtrudecad.XtrudeCAD.yml
+#
+# The Flathub copy is the same manifest with the `dir` source replaced by
+# the public repository at a release tag (`type: git`, `url`, `tag`,
+# `commit`).
+#
+# The build is offline: cargo-sources.json lists every crate in
+# Cargo.lock, which flatpak-builder downloads into CARGO_HOME. Regenerate
+# it with scripts/release/update_cargo_sources.sh whenever Cargo.lock
+# changes.
+#
+# Flathub's linter flags two of the finish-args below, on purpose; their
+# reasons are in lint-exceptions.json, which Flathub is asked to grant at
+# submission. Lint with it:
+#
+#   flatpak-builder-lint --exceptions \
+#       --user-exceptions packaging/flatpak/lint-exceptions.json \
+#       manifest packaging/flatpak/org.xtrudecad.XtrudeCAD.yml
+#   (and `repo <the --repo folder>` after a build)
+id: org.xtrudecad.XtrudeCAD
+runtime: org.freedesktop.Platform
+runtime-version: "26.08"
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: xtrude
+finish-args:
+  # X11 shared memory (MIT-SHM) needs the host's IPC namespace.
+  - --share=ipc
+  # The window opens on Wayland when the session has it.
+  - --socket=wayland
+  # Not fallback-x11: in a Wayland session the user can still choose X11
+  # (Preferences > Display > Graphics server), and the app restarts
+  # itself under X11 when Wayland gives no GPU context. Both need the X11
+  # socket while the Wayland one is there.
+  - --socket=x11
+  # GPU access for the wgpu (Vulkan/OpenGL) renderer.
+  - --device=dri
+  # "Open Recent" reopens files by path, and importers read the files
+  # next to the one chosen (an OBJ's .mtl material library), which a
+  # file-chooser portal grant for the single chosen file does not cover.
+  - --filesystem=home
+  # No --share=network: the app never goes online.
+modules:
+  # Manifold (the solid booleans). The manifold-csg-sys crate clones and
+  # builds it in its build script, which the offline build cannot do; it
+  # links a build given in MANIFOLD_CSG_LIB_DIR instead. This module
+  # builds the same Manifold commit with the same CMake options as the
+  # crate (manifold-csg-sys 3.5.105: MANIFOLD_VERSION, build/build.rs,
+  # without its `parallel` feature, which xtrude-core leaves off), with
+  # Clipper2 at the commit Manifold's cmake/manifoldDeps.cmake fetches.
+  # (Manifold's carry-patch on Clipper2 only adds CLIPPER2_NO_IOSTREAM
+  # guards, off here.) Update both commits when that crate moves to
+  # another Manifold. The static libraries are only linked into xtrude:
+  # cleanup drops them from the app.
+  - name: manifold
+    buildsystem: simple
+    cleanup:
+      - /lib/manifold-csg
+    build-commands:
+      - cmake -S manifold -B build -G Ninja
+        -DCMAKE_BUILD_TYPE=Release
+        -DMANIFOLD_TEST=OFF
+        -DMANIFOLD_PYBIND=OFF
+        -DMANIFOLD_JSBIND=OFF
+        -DMANIFOLD_CBIND=ON
+        -DMANIFOLD_CROSS_SECTION=ON
+        -DMANIFOLD_USE_BUILTIN_CLIPPER2=ON
+        -DFETCHCONTENT_SOURCE_DIR_CLIPPER2=$PWD/clipper2
+        -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+        -DBUILD_SHARED_LIBS=OFF
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DMANIFOLD_PAR=OFF
+      - cmake --build build
+      - |
+        for lib in manifoldc manifold Clipper2; do
+            install -Dm644 "$(find build -name "lib$lib.a" | head -n1)" \
+                "${FLATPAK_DEST}/lib/manifold-csg/lib$lib.a"
+        done
+    sources:
+      - type: git
+        url: https://github.com/elalish/manifold.git
+        tag: v3.5.3
+        commit: 0edd9d54876f3135e431575214dd6d8a72866fee
+        dest: manifold
+      - type: git
+        url: https://github.com/AngusJohnson/Clipper2.git
+        commit: 46f639177fe418f9689e8ddb74f08a870c71f5b4
+        dest: clipper2
+
+  # OpenCascade, for the STEP helper: the sources that the occt-sys crate
+  # vendors (its crate archive, as in cargo-sources.json), built with the
+  # options of that crate's build_occt() (occt-sys 7.8.1, src/lib.rs). The
+  # helper links it through XTRUDE_OCCT_DIR instead of building it again
+  # in its own build script. As a module of its own, flatpak-builder's
+  # cache keeps it while this definition is unchanged, and a CI build
+  # with that cache skips its half hour. Update the archive and the
+  # options when occt-sys moves. The SDK's -g would make the static
+  # libraries several GB; nothing ships them (only linked into
+  # xtrude-step: cleanup drops them from the app).
+  - name: opencascade
+    buildsystem: simple
+    build-options:
+      cflags: -O2
+      cflags-override: true
+      cxxflags: -O2
+      cxxflags-override: true
+      env:
+        # OpenCascade's CMake files predate CMake 4, which refuses them
+        # without a policy minimum.
+        CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+    cleanup:
+      - /lib/opencascade
+    build-commands:
+      - cmake -S OCCT -B build -G Ninja
+        -DCMAKE_BUILD_TYPE=Release
+        -DCMAKE_INSTALL_PREFIX=${FLATPAK_DEST}/lib/opencascade
+        -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        -DBUILD_PATCH=$PWD/patch
+        -DBUILD_LIBRARY_TYPE=Static
+        -DBUILD_MODULE_ApplicationFramework=FALSE
+        -DBUILD_MODULE_Draw=FALSE
+        -DUSE_D3D=FALSE
+        -DUSE_DRACO=FALSE
+        -DUSE_EIGEN=FALSE
+        -DUSE_FFMPEG=FALSE
+        -DUSE_FREEIMAGE=FALSE
+        -DUSE_FREETYPE=FALSE
+        -DUSE_GLES2=FALSE
+        -DUSE_OPENGL=FALSE
+        -DUSE_OPENVR=FALSE
+        -DUSE_RAPIDJSON=FALSE
+        -DUSE_TBB=FALSE
+        -DUSE_TCL=FALSE
+        -DUSE_TK=FALSE
+        -DUSE_VTK=FALSE
+        -DUSE_XLIB=FALSE
+        -DINSTALL_DIR_LIB=lib
+        -DINSTALL_DIR_INCLUDE=include
+      - cmake --build build
+      - cmake --install build
+    sources:
+      - type: archive
+        archive-type: tar-gzip
+        url: https://static.crates.io/crates/occt-sys/occt-sys-7.8.1.crate
+        sha256: c3d2199ccf5331d261cf293abbc6b6b6ca1eb7187ef2113c181c49f9365cd9ae
+
+  - name: xtrude-cad
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      env:
+        CARGO_HOME: /run/build/xtrude-cad/cargo
+        CARGO_NET_OFFLINE: "true"
+        # The Manifold build of the module above.
+        MANIFOLD_CSG_LIB_DIR: /app/lib/manifold-csg
+        MANIFOLD_CSG_LIB_KIND: static
+        # The OpenCascade build of the module above.
+        XTRUDE_OCCT_DIR: /app/lib/opencascade
+    build-commands:
+      - cargo --offline build --release --locked -p xtrude-app
+      # The STEP helper, linked with OpenCascade. The app finds it next to
+      # its own binary.
+      - cargo --offline build --release --locked -p xtrude-step --features occt
+      - install -Dm755 target/release/xtrude ${FLATPAK_DEST}/bin/xtrude
+      - install -Dm755 target/release/xtrude-step ${FLATPAK_DEST}/bin/xtrude-step
+      - install -Dm644 packaging/linux/${FLATPAK_ID}.desktop
+        ${FLATPAK_DEST}/share/applications/${FLATPAK_ID}.desktop
+      - install -Dm644 packaging/linux/${FLATPAK_ID}.metainfo.xml
+        ${FLATPAK_DEST}/share/metainfo/${FLATPAK_ID}.metainfo.xml
+      - install -Dm644 packaging/linux/${FLATPAK_ID}.mime.xml
+        ${FLATPAK_DEST}/share/mime/packages/${FLATPAK_ID}.xml
+      - |
+        for icon in resources/icons/hicolor/*/apps/${FLATPAK_ID}.*; do
+            size="$(basename "$(dirname "$(dirname "$icon")")")"
+            install -Dm644 "$icon" \
+                "${FLATPAK_DEST}/share/icons/hicolor/$size/apps/$(basename "$icon")"
+        done
+    sources:
+      - cargo-sources.json
+      - type: git
+        url: https://github.com/xtrudecad/xtrude-cad.git
+        tag: v0.1.0-rc.1
+        commit: 0123456789abcdef0123456789abcdef01234567

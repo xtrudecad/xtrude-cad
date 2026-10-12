@@ -54,35 +54,12 @@ jobs:
       # Only the xtrude-cad module's git source changes: its `tag` and
       # `commit` lines get the release's, and every other line (the
       # comments, the manifold module's own git sources) stays as it is.
+      # The script is the tag's, tested by scripts/check.sh.
       - name: Point the manifest at the release
         if: steps.token.outputs.enabled == 'true'
         run: |
           commit="$(git -C source rev-parse HEAD)"
-          python3 - flathub/"$MANIFEST" "$TAG" "$commit" <<'PY'
-          import re
-          import sys
-
-          path, tag, commit = sys.argv[1:]
-          with open(path, encoding="utf-8") as f:
-              lines = f.read().splitlines(keepends=True)
-          module = None
-          changed = {"tag": 0, "commit": 0}
-          for i, line in enumerate(lines):
-              name = re.match(r"  - name: (\S+)\s*$", line)
-              if name:
-                  module = name.group(1)
-                  continue
-              key = re.match(r"(\s+)(tag|commit):\s", line)
-              if module == "xtrude-cad" and key:
-                  value = tag if key.group(2) == "tag" else commit
-                  lines[i] = f"{key.group(1)}{key.group(2)}: {value}\n"
-                  changed[key.group(2)] += 1
-          if changed != {"tag": 1, "commit": 1}:
-              sys.exit(f"error: {path}: expected one tag and one commit "
-                       f"in the xtrude-cad module, found {changed}")
-          with open(path, "w", encoding="utf-8") as f:
-              f.writelines(lines)
-          PY
+          source/scripts/release/flathub_set_source.sh flathub/"$MANIFEST" "$TAG" "$commit"
           cp source/packaging/flatpak/cargo-sources.json flathub/cargo-sources.json
           git -C flathub diff --stat
       - name: Open the pull request
