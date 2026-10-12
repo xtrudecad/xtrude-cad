@@ -18,7 +18,7 @@ can agree on the approach first. Report security problems privately, as
 |---|---|
 | `xtrude-core` | geometry kernel (`f64`/`glam`): meshes with holed faces, triangulation, offset, fillet, solids, snapping, camera, 3D-text outlines. No GUI or GPU. |
 | `xtrude-model` | the document: scene, groups and components, commands, snapshot undo/redo, push/pull, selection, layers, units, settings |
-| `xtrude-io` | `.igz` documents, STL, OBJ, DAE and GLB, DXF, SKP and STEP import |
+| `xtrude-io` | `.igz` documents, STL, 3MF export, OBJ, DAE and GLB, DXF, SKP and STEP import |
 | `xtrude-render` | the wgpu viewport renderer and its WGSL shaders |
 | `xtrude-ext` | sandboxed Lua extensions and their API ([docs/extensions.md](docs/extensions.md)) |
 | `xtrude-app` | the application, binary `xtrude` |

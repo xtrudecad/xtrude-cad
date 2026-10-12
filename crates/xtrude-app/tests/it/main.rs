@@ -53,6 +53,7 @@ mod test_edit_inside_group_draws;
 mod test_esc_cascade;
 mod test_explode_redraws_lifted_groups;
 mod test_explode_view;
+mod test_export_3mf;
 mod test_extensions;
 mod test_face_sides;
 mod test_file_dialogs;

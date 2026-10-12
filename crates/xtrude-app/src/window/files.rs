@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use xtrude_core::camera::OrbitCamera;
 
 use xtrude_io::step::{self, HelperBackend, StepError, Tessellation};
-use xtrude_io::{dae, dxf_in, glb, gltf, igz, obj, skp, stl};
+use xtrude_io::{dae, dxf_in, glb, gltf, igz, obj, skp, stl, threemf};
 use xtrude_model::history::{CmdError, Command, FnCommand};
 use xtrude_model::i18n::tr;
 use xtrude_model::saved_views::CameraHome;
@@ -1153,6 +1153,7 @@ impl MainWindow {
         }
         let (label, suffix, filter) = match kind {
             "stl" => ("STL", "stl", "STL mesh (*.stl)"),
+            "3mf" => ("3MF", "3mf", "3MF package (*.3mf)"),
             "obj" => ("OBJ", "obj", "Wavefront OBJ (*.obj)"),
             "glb" => ("GLB", "glb", "glTF binary (*.glb)"),
             _ => ("COLLADA", "dae", "COLLADA (*.dae)"),
@@ -1173,6 +1174,7 @@ impl MainWindow {
         let scene = &self.viewport.scene;
         let result: Result<(), String> = match suffix {
             "stl" => stl::save_stl(scene, &path, "mm").map_err(|e| e.to_string()),
+            "3mf" => threemf::save_3mf(scene, &path).map_err(|e| e.to_string()),
             "obj" => obj::save_obj(scene, &path).map_err(|e| e.to_string()),
             "glb" => gltf::save_glb(scene, &path).map_err(|e| e.to_string()),
             _ => dae::save_dae(scene, &path, &base).map_err(|e| e.to_string()),

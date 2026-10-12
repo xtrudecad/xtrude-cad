@@ -72,9 +72,10 @@ fn test_file_exports_stl_first() {
     let file = menu(&w, "File");
     let at = file.iter().position(|e| e == "Export ▸").unwrap();
     assert_eq!(
-        file[at + 1..at + 6],
+        file[at + 1..at + 7],
         [
             "  export:stl",
+            "  export:3mf",
             "  export:obj",
             "  export:glb",
             "  export:dae",

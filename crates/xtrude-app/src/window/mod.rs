@@ -620,6 +620,11 @@ impl MainWindow {
                 "Save the model as an STL mesh in millimetres, for 3D printing.",
             ),
             (
+                "export:3mf",
+                "3MF (for printing)…",
+                "Save the model as a 3MF file for slicers: one object per part, in millimetres, with its colours.",
+            ),
+            (
                 "export:obj",
                 "Wavefront OBJ (.obj)…",
                 "Save the model as Wavefront OBJ with its materials.",
@@ -956,7 +961,7 @@ impl MainWindow {
             ),
             M(
                 tr("Export", &[]),
-                ["stl", "obj", "glb", "dae", "image"]
+                ["stl", "3mf", "obj", "glb", "dae", "image"]
                     .map(|k| act(&format!("export:{k}")))
                     .to_vec(),
             ),
