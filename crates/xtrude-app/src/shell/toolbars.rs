@@ -8,7 +8,7 @@
 use super::{paint, XtrudeApp};
 use crate::window::toolbar_layout::{DropTarget, LayoutGeometry, Rect};
 use crate::window::toolbar_stacks::{self, STACK_PREFIX};
-use crate::window::{ToolbarArea, ToolbarDef};
+use crate::window::{ToolbarArea, ToolbarDef, PANEL_PREFIX, TOOLBAR_PANELS};
 use xtrude_model::i18n::tr;
 
 /// The grip's thickness along its bar.
@@ -100,7 +100,7 @@ impl XtrudeApp {
         vertical: bool,
     ) -> egui::Rect {
         let px = self.icon_px();
-        let n = keys.len() + if id == "panels" { 2 } else { 0 };
+        let n = keys.len();
         let stacks = keys.iter().filter(|k| k.starts_with(STACK_PREFIX)).count();
         let length = GRIP + n as f32 * (px + 9.0) + stacks as f32 * (ARROW + 1.0);
         let (size, layout) = if vertical {
@@ -117,13 +117,13 @@ impl XtrudeApp {
         let inner = ui.allocate_ui_with_layout(size, layout, |ui| {
             ui.spacing_mut().item_spacing = egui::vec2(1.0, 1.0);
             let grip = self.grip(ui, id, vertical, px);
-            if id == "panels" {
-                self.panel_buttons(ui, vertical);
-            }
             for k in keys {
-                match k.strip_prefix(STACK_PREFIX) {
-                    Some(stack) => self.stack_button(ui, stack, vertical, px),
-                    None => self.tool_button(ui, k, px),
+                if let Some(stack) = k.strip_prefix(STACK_PREFIX) {
+                    self.stack_button(ui, stack, vertical, px);
+                } else if let Some(panel) = k.strip_prefix(PANEL_PREFIX) {
+                    self.panel_button(ui, panel, vertical);
+                } else {
+                    self.tool_button(ui, k, px);
                 }
             }
             grip
@@ -515,55 +515,57 @@ impl XtrudeApp {
         }
     }
 
-    /// The Styles / Dimension style drop-downs (the Panels toolbar); in a
-    /// column they open beside the button, not below it.
-    fn panel_buttons(&mut self, ui: &mut egui::Ui, vertical: bool) {
+    /// A drop-down panel (the Styles or the Dimension style, by its
+    /// [`TOOLBAR_PANELS`] key); in a column it opens beside the button,
+    /// not below it.
+    fn panel_button(&mut self, ui: &mut egui::Ui, key: &str, vertical: bool) {
+        let Some(&(key, title)) = TOOLBAR_PANELS.iter().find(|(k, _)| *k == key) else {
+            return;
+        };
         let px = self.icon_px();
-        for (key, title) in [("styles", "Styles"), ("dimension_style", "Dimension style")] {
-            let size = egui::vec2(px + 8.0, px + 8.0);
-            let (rect, r) = ui.allocate_exact_size(size, egui::Sense::click());
-            let ink = ui.visuals().text_color();
-            if let Some((tex, _)) = self.icon(ui.ctx(), key, ink) {
-                ui.painter().image(
-                    tex,
-                    egui::Rect::from_center_size(rect.center(), egui::vec2(px, px)),
-                    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                    egui::Color32::WHITE,
-                );
-            }
-            let r = r.on_hover_text(tr(title, &[]));
-            if r.clicked() {
-                self.open_panel = if self.open_panel == Some(key) {
-                    None
-                } else {
-                    Some(key)
-                };
-                self.tray.styles.refresh(&self.window);
-            }
-            if self.open_panel == Some(key) {
-                let pos = if vertical {
-                    r.rect.right_top()
-                } else {
-                    r.rect.left_bottom()
-                };
-                let mut open = true;
-                egui::Window::new(tr(title, &[]))
-                    .id(egui::Id::new(("panel", key)))
-                    .default_pos(pos)
-                    .collapsible(false)
-                    .resizable(false)
-                    .open(&mut open)
-                    .show(ui.ctx(), |ui| {
-                        if key == "styles" {
-                            self.tray_ui.styles(ui, &mut self.tray, &mut self.window);
-                        } else {
-                            self.tray_ui.dimstyle(ui, &mut self.tray, &mut self.window);
-                        }
-                    });
-                // a dialog opened from the panel closes the drop-down first
-                if !open || self.dialogs.borrow().pending.is_some() {
-                    self.open_panel = None;
-                }
+        let size = egui::vec2(px + 8.0, px + 8.0);
+        let (rect, r) = ui.allocate_exact_size(size, egui::Sense::click());
+        let ink = ui.visuals().text_color();
+        if let Some((tex, _)) = self.icon(ui.ctx(), key, ink) {
+            ui.painter().image(
+                tex,
+                egui::Rect::from_center_size(rect.center(), egui::vec2(px, px)),
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+        }
+        let r = r.on_hover_text(tr(title, &[]));
+        if r.clicked() {
+            self.open_panel = if self.open_panel == Some(key) {
+                None
+            } else {
+                Some(key)
+            };
+            self.tray.styles.refresh(&self.window);
+        }
+        if self.open_panel == Some(key) {
+            let pos = if vertical {
+                r.rect.right_top()
+            } else {
+                r.rect.left_bottom()
+            };
+            let mut open = true;
+            egui::Window::new(tr(title, &[]))
+                .id(egui::Id::new(("panel", key)))
+                .default_pos(pos)
+                .collapsible(false)
+                .resizable(false)
+                .open(&mut open)
+                .show(ui.ctx(), |ui| {
+                    if key == "styles" {
+                        self.tray_ui.styles(ui, &mut self.tray, &mut self.window);
+                    } else {
+                        self.tray_ui.dimstyle(ui, &mut self.tray, &mut self.window);
+                    }
+                });
+            // a dialog opened from the panel closes the drop-down first
+            if !open || self.dialogs.borrow().pending.is_some() {
+                self.open_panel = None;
             }
         }
     }

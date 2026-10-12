@@ -92,9 +92,24 @@ pub const TRAYS: [(&str, &str); 1] = [(PROPERTIES_TRAY, "Properties")];
 /// The tray that holds the tray sections ([`SECTIONS`]).
 pub const PROPERTIES_TRAY: &str = "tray_properties";
 
-/// The toolbars, one per task, each a list of tool keys.
-pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 6] = [
-    ("main", "Main", &["select", "eraser", "paint"]),
+/// The toolbars in the order of the work: `(object name, title, action
+/// ids)`. The members of a stack ([`toolbar_stacks::TOOLBAR_STACKS`]) fold
+/// into one stacked button where the first of them stands; a
+/// [`PANEL_PREFIX`] entry is a drop-down panel ([`TOOLBAR_PANELS`]).
+pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
+    (
+        "main",
+        "Main",
+        &[
+            "save_tb",
+            "undo",
+            "redo",
+            "select",
+            "eraser",
+            "paint",
+            "eyedropper",
+        ],
+    ),
     (
         "draw",
         "Draw",
@@ -112,40 +127,114 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 6] = [
         ],
     ),
     (
-        "modify",
-        "Modify",
+        "model",
+        "Model",
         &[
-            "pushpull", "move", "rotate", "scale", "flip", "sweep", "offset", "fillet",
-        ],
-    ),
-    (
-        "annotate",
-        "Annotate",
-        &["measure", "protractor", "dimension", "text"],
-    ),
-    ("sections", "Sections", &["section"]),
-    (
-        "solids",
-        "Solids",
-        &[
-            "merge_solids",
+            "pushpull",
+            "sweep",
+            "offset",
+            "fillet",
             "solid_union",
             "solid_subtract",
             "solid_trim",
             "solid_intersect",
             "solid_split",
+            "merge_solids",
+            "text3d",
         ],
+    ),
+    (
+        "transform",
+        "Transform",
+        &["move", "rotate", "scale", "flip"],
+    ),
+    (
+        "inspect",
+        "Inspect",
+        &[
+            "measure",
+            "protractor",
+            "section",
+            "solid_inspector",
+            "model_info",
+        ],
+    ),
+    (
+        "view",
+        "View",
+        &[
+            "nav:orbit",
+            "nav:pan",
+            "nav:zoom",
+            "nav:zoom_window",
+            "zoom_extents",
+            "zoom_selection",
+            "view:iso",
+            "view:top",
+            "view:front",
+            "view:right",
+            "view:left",
+            "view:back",
+            "view:bottom",
+            "toggle_projection",
+            "panel:styles",
+        ],
+    ),
+    (
+        "annotate",
+        "Annotate",
+        &["dimension", "text", "panel:dimension_style"],
     ),
 ];
 
-/// Every tool key, toolbars first, then the context-menu ones.
+/// The prefix of a drop-down panel in a bar's action ids.
+pub const PANEL_PREFIX: &str = "panel:";
+
+/// The drop-down panels a bar can hold: `(key, title)`; the key names the
+/// icon too.
+pub const TOOLBAR_PANELS: [(&str, &str); 2] =
+    [("styles", "Styles"), ("dimension_style", "Dimension style")];
+
+/// Every tool, in the order of the bars, then the context-menu ones.
+const TOOL_KEYS: &[&str] = &[
+    "select",
+    "eraser",
+    "paint",
+    "line",
+    "freehand",
+    "rectangle",
+    "rotated_rect",
+    "circle",
+    "polygon",
+    "arc",
+    "arc3",
+    "center_arc",
+    "sector",
+    "pushpull",
+    "sweep",
+    "offset",
+    "fillet",
+    "solid_union",
+    "solid_subtract",
+    "solid_trim",
+    "solid_intersect",
+    "solid_split",
+    "merge_solids",
+    "move",
+    "rotate",
+    "scale",
+    "flip",
+    "measure",
+    "protractor",
+    "section",
+    "dimension",
+    "text",
+    "change_axes",
+];
+
+/// Every tool key, in the order of the bars, then the context-menu ones.
 pub fn tool_keys() -> Vec<&'static str> {
-    let mut v: Vec<&'static str> = TOOLBAR_LAYOUT
-        .iter()
-        .flat_map(|(_, _, keys)| keys.iter().copied())
-        .collect();
-    v.push("change_axes");
-    v
+    TOOL_KEYS.to_vec()
 }
 
 const VIEW_TIPS: [(&str, &str, &str); 7] = [
@@ -704,7 +793,8 @@ impl MainWindow {
                 .tip(&tr(
                     "Switch between perspective and a parallel projection, where sizes do not shrink with distance.",
                     &[],
-                )),
+                ))
+                .icon("projection"),
         );
         for st in builtin_styles() {
             a.add(
@@ -825,65 +915,26 @@ impl MainWindow {
         );
         a.add(
             Action::new("model_info", &tr(model_info::NAME, &[]))
-                .tip(&tr(model_info::DESCRIPTION, &[])),
+                .tip(&tr(model_info::DESCRIPTION, &[]))
+                .icon("model_info"),
         );
         a.add(
             Action::new("solid_inspector", &tr(solid_inspector::NAME, &[]))
-                .tip(&tr(solid_inspector::DESCRIPTION, &[])),
+                .tip(&tr(solid_inspector::DESCRIPTION, &[]))
+                .icon("solid_inspector"),
         );
         a.add(Action::new("about", &tr("About Xtrude CAD", &[])).tip(&tr(
             "The version, the authors and the licence of Xtrude CAD.",
             &[],
         )));
-        // toolbars
+        // toolbars, their stacks folded
         self.toolbars = TOOLBAR_LAYOUT
             .iter()
-            .map(|(o, t, keys)| {
-                let mut ids: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
-                match *o {
-                    "main" => {
-                        ids.insert(0, "save_tb".into());
-                        // Undo and Redo right after the pointer
-                        ids.insert(2, "undo".into());
-                        ids.insert(3, "redo".into());
-                        ids.push("eyedropper".into());
-                    }
-                    "annotate" => ids.push("text3d".into()),
-                    "sections" => ids.extend(
-                        ["show_section_planes", "show_section_cuts", "section_fill"]
-                            .map(String::from),
-                    ),
-                    _ => {}
-                }
-                (o.to_string(), tr(t, &[]), ids)
+            .map(|(o, t, ids)| {
+                let ids = ids.iter().map(|k| k.to_string()).collect();
+                (o.to_string(), tr(t, &[]), toolbar_stacks::fold(ids))
             })
             .collect();
-        self.toolbars.push((
-            "view".into(),
-            tr("View", &[]),
-            [
-                "nav:orbit",
-                "nav:pan",
-                "nav:zoom",
-                "nav:zoom_window",
-                "zoom_extents",
-                "zoom_selection",
-            ]
-            .map(String::from)
-            .into_iter()
-            // the standard views, folded into one stacked button
-            .chain(
-                ["iso", "top", "front", "right", "left", "back", "bottom"]
-                    .map(|k| format!("view:{k}")),
-            )
-            .collect(),
-        ));
-        // the Styles / Dimension style drop-downs: the shell draws them
-        self.toolbars
-            .push(("panels".into(), tr("Panels", &[]), Vec::new()));
-        for (_, _, ids) in &mut self.toolbars {
-            *ids = toolbar_stacks::fold(std::mem::take(ids));
-        }
     }
 
     fn build_menus(&mut self) {
@@ -1166,6 +1217,7 @@ impl MainWindow {
         self.active_key = None;
         let id = format!("nav:{key}");
         self.check_tool_action(Some(&id));
+        self.toolbar_stacks.follow(&id);
         self.pump_events();
     }
 

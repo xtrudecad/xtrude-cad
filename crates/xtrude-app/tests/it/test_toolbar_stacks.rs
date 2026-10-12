@@ -11,7 +11,7 @@ use std::collections::HashSet;
 use serde_json::json;
 use xtrude_app::input::KeyEvent;
 use xtrude_app::window::toolbar_stacks::{self, STACK_PREFIX, TOOLBAR_STACKS};
-use xtrude_app::window::{MainWindow, Repeat, TOOLBAR_LAYOUT};
+use xtrude_app::window::{tool_keys, MainWindow, Repeat};
 use xtrude_model::settings::{self, keys};
 
 fn bar<'a>(w: &'a MainWindow, id: &str) -> &'a [String] {
@@ -69,10 +69,18 @@ fn test_every_tool_is_still_on_a_bar_alone_or_in_a_stack() {
             None => vec![i.as_str()],
         })
         .collect();
-    for (_, _, tools) in TOOLBAR_LAYOUT {
-        for t in tools {
-            assert!(on_bars.contains(t), "{t} is on no bar");
-        }
+    // every tool but Change Axes, which the context menu starts
+    for t in tool_keys().into_iter().filter(|t| *t != "change_axes") {
+        assert!(on_bars.contains(t), "{t} is on no bar");
+    }
+    for a in [
+        "eyedropper",
+        "nav:orbit",
+        "nav:pan",
+        "nav:zoom",
+        "nav:zoom_window",
+    ] {
+        assert!(on_bars.contains(a), "{a} is on no bar");
     }
     for v in ["iso", "top", "front", "right", "left", "back", "bottom"] {
         assert!(on_bars.contains(format!("view:{v}").as_str()), "{v}");
@@ -82,23 +90,25 @@ fn test_every_tool_is_still_on_a_bar_alone_or_in_a_stack() {
 #[test]
 fn test_the_stacks_sit_where_their_members_were() {
     let w = common::window();
-    // the views at the end of the View bar
-    assert_eq!(bar(&w, "view").last().unwrap(), "stack:views");
+    // the views after the zooms on the View bar, the camera modes first
+    assert_eq!(
+        bar(&w, "view")[..4],
+        ["stack:nav", "zoom_extents", "zoom_selection", "stack:views"]
+    );
     assert!(w.toolbars.iter().all(|(b, _, _)| b != "views"));
     let draw = bar(&w, "draw");
     assert_eq!(
         draw,
         [
-            "line",
-            "freehand",
+            "stack:lines",
             "stack:rectangles",
-            "circle",
-            "polygon",
+            "stack:circles",
             "stack:arcs",
         ]
     );
-    let solids = bar(&w, "solids");
-    assert_eq!(solids, ["merge_solids", "stack:booleans", "solid_split"]);
+    assert_eq!(bar(&w, "main").last().unwrap(), "stack:paint");
+    let model = bar(&w, "model");
+    assert_eq!(model[4..6], ["stack:booleans", "solid_split"]);
 }
 
 #[test]
@@ -210,5 +220,41 @@ fn test_a_layout_saved_with_the_old_standard_views_bar_drops_it() {
     assert!(!w.toolbar_layout.hidden.contains("views"));
     // the views are on the View bar, which stays where it was
     assert_eq!(w.toolbar_layout.lines[0][0][..2], ["main", "view"]);
-    assert_eq!(bar(&w, "view").last().unwrap(), "stack:views");
+    assert!(bar(&w, "view").iter().any(|i| i == "stack:views"));
+}
+
+#[test]
+fn test_the_camera_modes_and_sample_color_move_their_stacks() {
+    let mut w = common::window();
+    assert_eq!(w.stack_current("nav"), Some("nav:orbit"));
+    w.trigger("nav:pan");
+    assert_eq!(w.stack_current("nav"), Some("nav:pan"));
+    assert!(w.is_checked("nav:pan"));
+    // by its shortcut, through the viewport's own switch too
+    let m = press_a_shortcut(&mut w, "nav");
+    assert_eq!(w.stack_current("nav"), Some(m));
+    w.activate_nav("zoom_window");
+    assert_eq!(w.stack_current("nav"), Some("nav:zoom_window"));
+    // Sample Color arms Paint, and its stack shows Sample Color
+    assert_eq!(w.stack_current("paint"), Some("paint"));
+    w.trigger("eyedropper");
+    assert_eq!(w.active_tool_key(), Some("paint"));
+    assert_eq!(w.stack_current("paint"), Some("eyedropper"));
+    w.trigger("paint");
+    assert_eq!(w.stack_current("paint"), Some("paint"));
+}
+
+#[test]
+fn test_the_new_stacks_hold_their_families() {
+    for (id, members) in [
+        ("paint", &["paint", "eyedropper"][..]),
+        ("lines", &["line", "freehand"]),
+        ("circles", &["circle", "polygon"]),
+        (
+            "nav",
+            &["nav:orbit", "nav:pan", "nav:zoom", "nav:zoom_window"],
+        ),
+    ] {
+        assert_eq!(toolbar_stacks::members(id), Some(members), "{id}");
+    }
 }

@@ -35,7 +35,8 @@ fn test_the_main_toolbar_starts_with_save() {
         .2;
     assert_eq!(main[0], "save_tb");
     assert_eq!(win.actions.get("save_tb").unwrap().text, "Save");
-    assert_eq!(main[1], "select");
+    // Undo and Redo between Save and the pointer
+    assert_eq!(main[1..4], ["undo", "redo", "select"]);
     // it triggers the same save as the menu
     let dialogs = Rc::new(RefCell::new(ScriptedDialogs::default()));
     win.dialogs = Box::new(dialogs.clone());
@@ -89,7 +90,7 @@ fn test_a_fresh_install_gets_the_factory_layout_and_normal_icons() {
     let win = common::window();
     assert_eq!(toolbar_icon_px(), 24); // normal, since 14-09
     assert_eq!(win.toolbar_area("annotate"), Some(ToolbarArea::Left));
-    for name in ["main", "modify", "view", "sections", "draw"] {
+    for name in ["main", "draw", "model", "transform", "inspect", "view"] {
         assert!(win.toolbars.iter().any(|(id, _, _)| id == name), "{name}");
         assert_eq!(win.toolbar_area(name), Some(ToolbarArea::Top), "{name}");
     }

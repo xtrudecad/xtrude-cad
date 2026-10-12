@@ -16,7 +16,7 @@ fn test_a_left_column_packs_and_the_top_keeps_its_order() {
     xtrude_model::settings::set(
         keys::TOOLBAR_LAYOUT.name(),
         json!({
-            "top": [["main", "modify", "view", "sections", "solids", "panels"]],
+            "top": [["main", "model", "view", "inspect", "transform"]],
             "left": [["draw", "annotate"]],
         }),
     );
@@ -33,5 +33,5 @@ fn test_a_left_column_packs_and_the_top_keeps_its_order() {
         .map(|b| b.0)
         .collect();
     let at = |n: &str| top.iter().position(|t| t == n).unwrap();
-    assert!(at("view") < at("sections")); // the saved order
+    assert!(at("view") < at("inspect")); // the saved order
 }

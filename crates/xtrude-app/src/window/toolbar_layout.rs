@@ -25,6 +25,11 @@ use xtrude_model::settings::{self, keys};
 
 use serde_json::{json, Map, Value};
 
+/// The bars the parts layout replaced (Modify became Model and Transform;
+/// Sections, Solids and Panels joined other bars). A saved layout that
+/// names one loads as the factory layout.
+pub const REPLACED_BARS: [&str; 4] = ["modify", "sections", "solids", "panels"];
+
 /// How far inside an area's inner edge a drop still
 /// opens a new line there.
 pub const NEW_LINE_REACH: f32 = 80.0;
@@ -146,21 +151,26 @@ fn ids(v: &[&str]) -> Vec<String> {
 }
 
 impl ToolbarLayout {
-    /// The factory layout: one top line, Draw at its end (a new bar goes
-    /// after it), Solids and Panels hidden in it, and
-    /// Annotate hidden on the left, where it comes back when shown.
+    /// The factory layout: one top line in the order of the work (it wraps
+    /// into a second row in a narrow window), and Annotate hidden on the
+    /// left, where it comes back when shown.
     pub fn factory() -> ToolbarLayout {
         ToolbarLayout {
             lines: [
                 vec![ids(&[
-                    "main", "modify", "view", "sections", "solids", "panels", "draw",
+                    "main",
+                    "draw",
+                    "model",
+                    "transform",
+                    "inspect",
+                    "view",
                 ])],
                 Vec::new(),
                 vec![ids(&["annotate"])],
                 Vec::new(),
             ],
             floating: Vec::new(),
-            hidden: ids(&["annotate", "panels", "solids"]).into_iter().collect(),
+            hidden: ids(&["annotate"]).into_iter().collect(),
         }
     }
 
@@ -176,13 +186,31 @@ impl ToolbarLayout {
     /// The saved arrangement for the bars `known` (in creation order).
     /// Unknown ids (a bar this version no longer has) are dropped; a known
     /// bar missing from it goes to the end of the innermost top line, where
-    /// a new bar goes. Anything unreadable gives the factory layout.
+    /// a new bar goes. Anything unreadable gives the factory layout, and so
+    /// does a layout that names a bar of [`REPLACED_BARS`]: their buttons
+    /// moved to other bars, and dropping them would leave a muddle. That
+    /// factory layout is saved at once, so it happens once.
     pub fn load(known: &[String]) -> ToolbarLayout {
-        let mut layout = settings::stored(&keys::TOOLBAR_LAYOUT)
-            .and_then(|v| Self::from_json(&v))
-            .unwrap_or_else(Self::factory);
+        let saved = settings::stored(&keys::TOOLBAR_LAYOUT).and_then(|v| Self::from_json(&v));
+        let mut layout = match saved {
+            Some(l) if l.names_any(&REPLACED_BARS) => {
+                let factory = Self::factory_for(known);
+                factory.save();
+                factory
+            }
+            Some(l) => l,
+            None => Self::factory(),
+        };
         layout.repair(known);
         layout
+    }
+
+    /// Whether any of `bars` is docked, floating or hidden in it.
+    fn names_any(&self, bars: &[&str]) -> bool {
+        let named = |id: &String| bars.contains(&id.as_str());
+        self.lines.iter().flatten().flatten().any(named)
+            || self.floating.iter().any(|f| named(&f.id))
+            || self.hidden.iter().any(named)
     }
 
     /// Write the arrangement to the settings now (every change saves).

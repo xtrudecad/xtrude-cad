@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Covers the toolbar areas' mechanics: the factory layout, the
-//! saved arrangement, moving, floating and hiding a bar (Window ▸
+//! Covers the toolbars: the bars for parts, the toolbar areas'
+//! mechanics, the factory layout, the saved arrangement (and one naming a
+//! bar the parts layout replaced), moving, floating and hiding a bar (Window ▸
 //! Toolbars), resetting the layout, and where a drop lands.
 
 use crate::common;
@@ -11,7 +12,9 @@ use std::collections::BTreeSet;
 
 use serde_json::json;
 use xtrude_app::window::toolbar_layout::{DockSpot, DropTarget, FloatingBar, LayoutGeometry, Rect};
-use xtrude_app::window::{CtxItem, MainWindow, MenuItem, ToolbarArea, ToolbarLayout};
+use xtrude_app::window::{
+    CtxItem, MainWindow, MenuItem, ToolbarArea, ToolbarLayout, PANEL_PREFIX, TOOLBAR_PANELS,
+};
 
 use ToolbarArea::{Bottom, Left, Right, Top};
 
@@ -53,9 +56,7 @@ fn ids(win: &MainWindow, area: ToolbarArea) -> Vec<String> {
 fn two_areas() -> ToolbarLayout {
     ToolbarLayout {
         lines: [
-            vec![line(&[
-                "main", "modify", "view", "sections", "solids", "panels",
-            ])],
+            vec![line(&["main", "model", "view", "inspect", "transform"])],
             Vec::new(),
             vec![line(&["draw", "annotate"])],
             Vec::new(),
@@ -76,22 +77,27 @@ fn two_areas_window() -> MainWindow {
 /// The factory layout as stored in the settings.
 fn factory_json() -> serde_json::Value {
     json!({
-        "top": [["main", "modify", "view", "sections", "solids", "panels", "draw"]],
+        "top": [["main", "draw", "model", "transform", "inspect", "view"]],
         "bottom": [],
         "left": [["annotate"]],
         "right": [],
         "floating": [],
-        "hidden": ["annotate", "panels", "solids"],
+        "hidden": ["annotate"],
     })
 }
 
 #[test]
-fn test_the_factory_layout_is_one_top_row_with_draw_last() {
+fn test_the_factory_layout_is_one_top_line_in_the_order_of_the_work() {
     let win = common::window();
     assert_eq!(
         win.toolbar_layout.lines[Top.index()],
         vec![line(&[
-            "main", "modify", "view", "sections", "solids", "panels", "draw"
+            "main",
+            "draw",
+            "model",
+            "transform",
+            "inspect",
+            "view"
         ])]
     );
     assert_eq!(
@@ -103,21 +109,17 @@ fn test_the_factory_layout_is_one_top_row_with_draw_last() {
     assert!(win.toolbar_layout.floating.is_empty());
     assert_eq!(
         win.toolbar_layout.hidden,
-        ["annotate", "panels", "solids"].map(String::from).into()
+        ["annotate"].map(String::from).into()
     );
     assert_eq!(win.toolbar_layout, ToolbarLayout::factory());
     assert_eq!(win.toolbar_layout.to_json(), factory_json());
-    // what shows: one top row, a free left edge
+    // what shows: one top line, a free left edge
     assert_eq!(
         ids(&win, Top),
-        ["main", "modify", "view", "sections", "draw"]
+        ["main", "draw", "model", "transform", "inspect", "view"]
     );
     assert!(ids(&win, Left).is_empty());
     assert_whole(&win.toolbar_layout, &known());
-    // the Panels bar is a toolbar like the others, with no actions
-    let panels = win.toolbars.iter().find(|t| t.0 == "panels").unwrap();
-    assert_eq!(panels.1, "Panels");
-    assert!(panels.2.is_empty());
 }
 
 #[test]
@@ -125,23 +127,23 @@ fn test_save_and_load_round_trip_every_area_line_float_and_flag() {
     let known = known();
     let mut layout = ToolbarLayout::factory();
     layout.lines = [
-        vec![line(&["main", "modify"]), line(&["view"])],
-        vec![line(&["sections"])],
-        vec![line(&["draw"]), line(&["annotate"])],
-        vec![line(&["solids"])],
+        vec![line(&["main", "model"]), line(&["view"])],
+        vec![line(&["inspect"])],
+        vec![line(&["draw"])],
+        vec![line(&["annotate"])],
     ];
     layout.floating = vec![FloatingBar {
-        id: "panels".into(),
+        id: "transform".into(),
         pos: (412.5, 301.25),
     }];
-    layout.hidden = ["sections".to_string(), "panels".to_string()].into();
+    layout.hidden = ["inspect".to_string(), "transform".to_string()].into();
     layout.save();
     assert_eq!(ToolbarLayout::load(&known), layout);
     // and a new window starts from it
     let win = MainWindow::new();
     assert_eq!(win.toolbar_layout, layout);
-    assert_eq!(ids(&win, Top), ["main", "modify", "view"]);
-    assert_eq!(win.floating_toolbars().len(), 0); // Panels is hidden
+    assert_eq!(ids(&win, Top), ["main", "model", "view"]);
+    assert_eq!(win.floating_toolbars().len(), 0); // Transform is hidden
 }
 
 #[test]
@@ -153,8 +155,8 @@ fn test_a_corrupt_wrong_or_empty_value_gives_the_factory_layout() {
         json!(["main"]),
         json!({"top": "main"}),
         json!({"top": [["main", 3]]}),
-        json!({"floating": [{"id": "solids"}]}),
-        json!({"hidden": "solids"}),
+        json!({"floating": [{"id": "transform"}]}),
+        json!({"hidden": "transform"}),
         json!({}),
         json!({"top": [], "left": []}),
     ] {
@@ -173,10 +175,10 @@ fn test_unknown_ids_are_dropped_and_missing_ones_join_the_top_line() {
     xtrude_model::settings::set(
         keys::TOOLBAR_LAYOUT.name(),
         json!({
-            "top": [["main", "modify"], ["view", "solids"]],
+            "top": [["main", "model"], ["view", "transform"]],
             "left": [["draw", "walkthrough", "annotate"], ["walkthrough"]],
             "floating": [{"id": "ghost", "pos": [1.0, 2.0]}],
-            "hidden": ["ghost", "solids"],
+            "hidden": ["ghost", "transform"],
         }),
     );
     let layout = ToolbarLayout::load(&known);
@@ -185,14 +187,14 @@ fn test_unknown_ids_are_dropped_and_missing_ones_join_the_top_line() {
         vec![line(&["draw", "annotate"])]
     );
     assert!(layout.floating.is_empty());
-    assert_eq!(layout.hidden, ["solids".to_string()].into());
-    // sections and panels were not saved: where a new bar goes, the
-    // end of the innermost top line
+    assert_eq!(layout.hidden, ["transform".to_string()].into());
+    // inspect was not saved: where a new bar goes, the end of the
+    // innermost top line
     assert_eq!(
         layout.lines[Top.index()],
         vec![
-            line(&["main", "modify"]),
-            line(&["view", "solids", "sections", "panels"])
+            line(&["main", "model"]),
+            line(&["view", "transform", "inspect"])
         ]
     );
     assert_whole(&layout, &known);
@@ -214,19 +216,19 @@ fn test_a_bar_saved_twice_is_kept_once() {
 fn test_place_within_a_line_forward_and_backward() {
     let known = known();
     let mut l = two_areas();
-    // main dropped before sections (index 3, counted with main still in
+    // main dropped before inspect (index 3, counted with main still in
     // the line)
     l.place("main", into(Top, 0, 3));
     assert_eq!(
         l.lines[Top.index()][0],
-        line(&["modify", "view", "main", "sections", "solids", "panels"])
+        line(&["model", "view", "main", "inspect", "transform"])
     );
     // and back to the front
     l.place("main", into(Top, 0, 0));
     assert_eq!(l, two_areas());
     // past the last bar
-    l.place("modify", into(Top, 0, 6));
-    assert_eq!(l.lines[Top.index()][0].last().unwrap(), "modify");
+    l.place("model", into(Top, 0, 5));
+    assert_eq!(l.lines[Top.index()][0].last().unwrap(), "model");
     // onto its own place: nothing moves
     let before = l.clone();
     l.place("view", into(Top, 0, 1));
@@ -246,51 +248,53 @@ fn test_place_to_other_lines_and_areas() {
     l.place("view", into(Top, 1, 0));
     assert_eq!(l.lines[Top.index()][1], line(&["view", "annotate"]));
     // a new line at 0 (outermost)
-    l.place("solids", DropTarget::NewLine { area: Top, line: 0 });
+    l.place("transform", DropTarget::NewLine { area: Top, line: 0 });
     assert_eq!(l.lines[Top.index()].len(), 3);
-    assert_eq!(l.lines[Top.index()][0], line(&["solids"]));
+    assert_eq!(l.lines[Top.index()][0], line(&["transform"]));
     // to another area: the bottom and the right open their first line
     l.place(
-        "sections",
+        "inspect",
         DropTarget::NewLine {
             area: Bottom,
             line: 0,
         },
     );
     l.place(
-        "panels",
+        "draw",
         DropTarget::NewLine {
             area: Right,
             line: 0,
         },
     );
-    assert_eq!(l.lines[Bottom.index()], vec![line(&["sections"])]);
-    assert_eq!(l.lines[Right.index()], vec![line(&["panels"])]);
-    // a line emptied by the move closes
-    l.place("solids", into(Left, 0, 1));
+    assert_eq!(l.lines[Bottom.index()], vec![line(&["inspect"])]);
+    assert_eq!(l.lines[Right.index()], vec![line(&["draw"])]);
+    assert!(l.lines[Left.index()].is_empty());
+    // a line emptied by the move closes; into a line the area does not
+    // have opens it
+    l.place("transform", into(Left, 0, 1));
     assert_eq!(l.lines[Top.index()].len(), 2);
-    assert_eq!(l.lines[Left.index()][0], line(&["draw", "solids"]));
+    assert_eq!(l.lines[Left.index()][0], line(&["transform"]));
     // emptying a line before the target shifts the target line down
     l.place(
-        "sections",
+        "inspect",
         DropTarget::NewLine {
             area: Bottom,
             line: 1,
         },
     );
-    assert_eq!(l.lines[Bottom.index()], vec![line(&["sections"])]);
+    assert_eq!(l.lines[Bottom.index()], vec![line(&["inspect"])]);
     l.place("main", DropTarget::NewLine { area: Top, line: 2 });
     let top = &l.lines[Top.index()];
-    assert_eq!(top[0], line(&["modify"]));
+    assert_eq!(top[0], line(&["model"]));
     assert_eq!(top[1], line(&["view", "annotate"]));
     assert_eq!(top[2], line(&["main"]));
-    l.place("modify", into(Top, 2, 1));
+    l.place("model", into(Top, 2, 1));
     let top = &l.lines[Top.index()];
     assert_eq!(top.len(), 2);
-    assert_eq!(top[1], line(&["main", "modify"]));
+    assert_eq!(top[1], line(&["main", "model"]));
     // a bar alone on its line dropped into that same line stays put
-    l.place("panels", into(Right, 0, 0));
-    assert_eq!(l.lines[Right.index()], vec![line(&["panels"])]);
+    l.place("draw", into(Right, 0, 0));
+    assert_eq!(l.lines[Right.index()], vec![line(&["draw"])]);
     assert_whole(&l, &known);
 }
 
@@ -349,17 +353,17 @@ fn test_every_move_is_saved_at_once() {
     win.toolbar_layout = two_areas(); // every bar shown, nothing saved yet
     assert!(xtrude_model::settings::get(keys::TOOLBAR_LAYOUT.name()).is_none());
     win.place_toolbar(
-        "solids",
+        "transform",
         DropTarget::NewLine {
             area: Bottom,
             line: 0,
         },
     );
-    assert_eq!(MainWindow::new().toolbar_area("solids"), Some(Bottom));
-    win.place_toolbar("solids", DropTarget::Float { pos: (5.0, 6.0) });
+    assert_eq!(MainWindow::new().toolbar_area("transform"), Some(Bottom));
+    win.place_toolbar("transform", DropTarget::Float { pos: (5.0, 6.0) });
     let win = MainWindow::new();
-    assert_eq!(win.toolbar_area("solids"), None);
-    assert_eq!(win.floating_toolbars()[0].0 .0, "solids");
+    assert_eq!(win.toolbar_area("transform"), None);
+    assert_eq!(win.floating_toolbars()[0].0 .0, "transform");
     assert_eq!(win.floating_toolbars()[0].1, (5.0, 6.0));
 }
 
@@ -390,29 +394,28 @@ fn test_the_toolbars_menu_lists_the_toolbars_then_the_reset() {
         [
             "Main",
             "Draw",
-            "Modify",
-            "Annotate",
-            "Sections",
-            "Solids",
+            "Model",
+            "Transform",
+            "Inspect",
             "View",
-            "Panels",
+            "Annotate",
             "",
             "Reset toolbar layout"
         ]
     );
-    assert!(menu[..8].iter().flatten().all(|e| e.2 == Some(true)));
+    assert!(menu[..7].iter().flatten().all(|e| e.2 == Some(true)));
     let reset = menu.last().unwrap().as_ref().unwrap();
     assert_eq!((reset.0.as_str(), reset.2), ("reset_toolbar_layout", None));
-    win.trigger("toolbar:solids");
-    assert!(!win.toolbar_layout.is_shown("solids"));
-    let solids = toolbars_menu(&win)
+    win.trigger("toolbar:transform");
+    assert!(!win.toolbar_layout.is_shown("transform"));
+    let transform = toolbars_menu(&win)
         .into_iter()
         .flatten()
-        .find(|e| e.0 == "toolbar:solids")
+        .find(|e| e.0 == "toolbar:transform")
         .unwrap();
-    assert_eq!(solids.2, Some(false));
-    win.trigger("toolbar:solids");
-    assert!(win.toolbar_layout.is_shown("solids"));
+    assert_eq!(transform.2, Some(false));
+    win.trigger("toolbar:transform");
+    assert!(win.toolbar_layout.is_shown("transform"));
 }
 
 #[test]
@@ -432,7 +435,7 @@ fn test_reset_toolbar_layout_restores_the_factory_layout_and_saves_it() {
     let known = known();
     let mut win = common::window();
     win.place_toolbar(
-        "solids",
+        "transform",
         DropTarget::NewLine {
             area: Bottom,
             line: 0,
@@ -441,7 +444,7 @@ fn test_reset_toolbar_layout_restores_the_factory_layout_and_saves_it() {
     win.place_toolbar("draw", DropTarget::Float { pos: (50.0, 60.0) });
     win.place_toolbar("main", into(Right, 0, 0));
     win.toggle_toolbar("annotate");
-    win.toggle_toolbar("solids");
+    win.toggle_toolbar("transform");
     assert_ne!(win.toolbar_layout, ToolbarLayout::factory());
 
     assert!(win.trigger("reset_toolbar_layout"));
@@ -450,12 +453,10 @@ fn test_reset_toolbar_layout_restores_the_factory_layout_and_saves_it() {
         .iter()
         .filter(|id| win.toolbar_layout.is_shown(id))
         .collect();
-    assert_eq!(shown, ["main", "draw", "modify", "sections", "view"]);
+    let factory = ["main", "draw", "model", "transform", "inspect", "view"];
+    assert_eq!(shown, factory);
     assert!(win.floating_toolbars().is_empty());
-    assert_eq!(
-        ids(&win, Top),
-        ["main", "modify", "view", "sections", "draw"]
-    );
+    assert_eq!(ids(&win, Top), factory);
     assert!(ids(&win, Left).is_empty());
     // saved at once, as the factory layout: the setting reloads to it
     assert_eq!(
@@ -522,7 +523,7 @@ fn test_reset_toolbar_layout_leaves_hidden_trays_hidden() {
 fn test_clean_screen_leaves_the_saved_layout_untouched() {
     let mut win = common::window();
     win.place_toolbar(
-        "solids",
+        "transform",
         DropTarget::NewLine {
             area: Right,
             line: 0,
@@ -539,12 +540,12 @@ fn test_clean_screen_leaves_the_saved_layout_untouched() {
 }
 
 /// A 1000 × 700 window: a top area with one 40-pt line holding main
-/// (0..200) and modify (200..400) from y 30; a left column 40 pt wide
+/// (0..200) and model (200..400) from y 30; a left column 40 pt wide
 /// holding draw from y 70; empty bottom (above a status bar at 680) and
 /// right areas.
 fn geometry() -> (ToolbarLayout, LayoutGeometry) {
     let mut l = two_areas();
-    l.lines[Top.index()] = vec![line(&["main", "modify"])];
+    l.lines[Top.index()] = vec![line(&["main", "model"])];
     l.lines[Left.index()] = vec![line(&["draw"])];
     let g = LayoutGeometry {
         areas: vec![
@@ -559,7 +560,7 @@ fn geometry() -> (ToolbarLayout, LayoutGeometry) {
         ],
         bars: vec![
             ("main".into(), Rect::new(0.0, 30.0, 200.0, 70.0)),
-            ("modify".into(), Rect::new(200.0, 30.0, 400.0, 70.0)),
+            ("model".into(), Rect::new(200.0, 30.0, 400.0, 70.0)),
             ("draw".into(), Rect::new(0.0, 70.0, 40.0, 300.0)),
         ],
     };
@@ -629,4 +630,133 @@ fn test_drop_target_beyond_the_outermost_line_or_in_the_open_floats() {
             pos: (495.0, 392.0)
         }
     );
+}
+
+#[test]
+fn test_a_layout_naming_a_replaced_bar_loads_as_the_factory_layout_once() {
+    let known = known();
+    // a bar the parts layout replaced, docked, floating or only hidden
+    for saved in [
+        json!({"top": [["main", "modify", "view"]], "left": [["draw"]]}),
+        json!({"top": [["main", "draw"]], "bottom": [["sections"]]}),
+        json!({"top": [["main"]], "floating": [{"id": "solids", "pos": [1.0, 2.0]}]}),
+        json!({"top": [["main", "draw", "view"]], "hidden": ["panels"]}),
+    ] {
+        xtrude_model::settings::set(keys::TOOLBAR_LAYOUT.name(), saved.clone());
+        assert_eq!(
+            ToolbarLayout::load(&known),
+            ToolbarLayout::factory(),
+            "{saved}"
+        );
+        // saved at once, so it happens once
+        assert_eq!(
+            xtrude_model::settings::get(keys::TOOLBAR_LAYOUT.name()),
+            Some(factory_json()),
+            "{saved}"
+        );
+    }
+    // from then on the user's moves stay
+    let mut win = MainWindow::new();
+    assert_eq!(win.toolbar_layout, ToolbarLayout::factory());
+    win.place_toolbar("inspect", into(Left, 0, 0));
+    assert_eq!(MainWindow::new().toolbar_area("inspect"), Some(Left));
+}
+
+#[test]
+fn test_the_bars_hold_the_parts_tools_in_the_order_of_the_work() {
+    let win = common::window();
+    let bars: Vec<(&str, &str, Vec<&str>)> = win
+        .toolbars
+        .iter()
+        .map(|(id, title, ids)| {
+            (
+                id.as_str(),
+                title.as_str(),
+                ids.iter().map(String::as_str).collect(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        bars,
+        [
+            (
+                "main",
+                "Main",
+                vec!["save_tb", "undo", "redo", "select", "eraser", "stack:paint"]
+            ),
+            (
+                "draw",
+                "Draw",
+                vec![
+                    "stack:lines",
+                    "stack:rectangles",
+                    "stack:circles",
+                    "stack:arcs"
+                ]
+            ),
+            (
+                "model",
+                "Model",
+                vec![
+                    "pushpull",
+                    "sweep",
+                    "offset",
+                    "fillet",
+                    "stack:booleans",
+                    "solid_split",
+                    "merge_solids",
+                    "text3d"
+                ]
+            ),
+            (
+                "transform",
+                "Transform",
+                vec!["move", "rotate", "scale", "flip"]
+            ),
+            (
+                "inspect",
+                "Inspect",
+                vec![
+                    "measure",
+                    "protractor",
+                    "section",
+                    "solid_inspector",
+                    "model_info"
+                ]
+            ),
+            (
+                "view",
+                "View",
+                vec![
+                    "stack:nav",
+                    "zoom_extents",
+                    "zoom_selection",
+                    "stack:views",
+                    "toggle_projection",
+                    "panel:styles"
+                ]
+            ),
+            (
+                "annotate",
+                "Annotate",
+                vec!["dimension", "text", "panel:dimension_style"]
+            ),
+        ]
+    );
+    // every plain entry is an action with an icon of its own; every panel
+    // entry is a known drop-down
+    for (_, _, ids) in &bars {
+        for id in ids {
+            if let Some(panel) = id.strip_prefix(PANEL_PREFIX) {
+                assert!(TOOLBAR_PANELS.iter().any(|(k, _)| *k == panel), "{id}");
+            } else if !id.starts_with("stack:") {
+                let a = win.actions.get(id).unwrap_or_else(|| panic!("{id}"));
+                assert!(a.icon.is_some(), "{id} has no icon");
+            }
+        }
+    }
+    // no bar under four buttons but Annotate, which is hidden
+    for (id, _, ids) in &bars {
+        assert!(ids.len() >= 4 || *id == "annotate", "{id}");
+    }
 }
