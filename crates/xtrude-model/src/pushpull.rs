@@ -807,7 +807,10 @@ impl PushPull {
                             .any(|&p| seedkeys.contains(&tkey(p)))
                     })
                     .collect();
-                rebuild_planes_fixpoint(mesh, fresh, &seed, false, d < 0.0);
+                let ours = fresh.clone();
+                rebuild_keeping_closed(mesh, &seed, ours, |m| {
+                    rebuild_planes_fixpoint(m, fresh, &seed, false, d < 0.0)
+                });
             } else {
                 heal_overlapping_faces(mesh, 0.5, None, None);
             }
@@ -931,13 +934,125 @@ impl PushPull {
             !solid,
         );
         if solid {
-            rebuild_planes_fixpoint(mesh, new_faces, &seed, self.keep_base, d < 0.0);
+            let keep_base = self.keep_base;
+            let ours = new_faces.clone();
+            rebuild_keeping_closed(mesh, &seed, ours, |m| {
+                rebuild_planes_fixpoint(m, new_faces, &seed, keep_base, d < 0.0)
+            });
         }
         if !sheet_fast || is_closed(mesh) {
             let touched = touched_faces(mesh, &seedkeys);
             orient_outward(mesh, DEFAULT_SEED, touched.as_deref());
         }
     }
+}
+
+/// Run the plane rebuild `rebuild` on the stitched `mesh`, unless it
+/// opens a solid the stitch left closed. The rebuild takes faces within
+/// 0.999 of a plane's normal and 0.1 mm of it as on it, so on a fine curve
+/// (facets a degree apart, a few millimetres wide) it flattens a facet onto
+/// its neighbour and cracks the next seam. Then the stitched mesh stays,
+/// with the faces of the push (`ours`: made or reshaped by it) merged with
+/// the neighbours lying exactly in their plane, which moves no vertex — if
+/// that leaves it closed and with no such seam; else the rebuild's result
+/// stands (and the guard refuses it).
+fn rebuild_keeping_closed(
+    mesh: &mut Mesh,
+    seed: &[DVec3],
+    ours: HashSet<FaceId>,
+    rebuild: impl FnOnce(&mut Mesh),
+) {
+    let stitched = is_closed(mesh).then(|| mesh.clone());
+    rebuild(mesh);
+    let Some(mut stitched) = stitched else { return };
+    if is_closed(mesh) {
+        return;
+    }
+    let ours = merge_flush_faces(&mut stitched, seed, ours);
+    if is_closed(&stitched) && flush_seams(&stitched, &ours).is_empty() {
+        *mesh = stitched;
+    }
+}
+
+/// How far a vertex may lie off a face's plane for two faces to count as
+/// one plane in [`merge_flush_faces`]: rounding, not modelling tolerance.
+const FLUSH: f64 = 1e-7;
+
+/// Whether `g` lies exactly in `f`'s plane.
+fn flush(m: &Mesh, f: FaceId, g: FaceId) -> bool {
+    let (nf, ng) = (
+        m.face_normal(f).unit_or_zero(),
+        m.face_normal(g).unit_or_zero(),
+    );
+    let c = m.face_centroid(f);
+    nf.dot(ng).abs() > 1.0 - 1e-12
+        && m.face_positions(g)
+            .iter()
+            .all(|&p| (p - c).dot(nf).abs() < FLUSH)
+}
+
+/// The pairs of faces across an edge, one of them in `ours`, lying exactly
+/// in one plane (interior faces aside).
+fn flush_seams(mesh: &Mesh, ours: &HashSet<FaceId>) -> Vec<(FaceId, FaceId)> {
+    mesh.edge_ids()
+        .into_iter()
+        .filter_map(|e| {
+            let ef = &mesh.edge(e).faces;
+            if ef.len() != 2 || mesh.face(ef[0]).interior || mesh.face(ef[1]).interior {
+                return None;
+            }
+            let (f, g) = (ef[0], ef[1]);
+            ((ours.contains(&f) || ours.contains(&g)) && flush(mesh, f, g)).then_some((f, g))
+        })
+        .collect()
+}
+
+/// Merge each run of faces joined by [`flush_seams`] into one face; then
+/// the stitch drops the vertices left in the middle of a straight side.
+/// Returns `ours` with the merged faces in place of their parts.
+fn merge_flush_faces(
+    mesh: &mut Mesh,
+    seed: &[DVec3],
+    mut ours: HashSet<FaceId>,
+) -> HashSet<FaceId> {
+    // Union-find over the faces, in creation order.
+    let faces = mesh.face_ids();
+    let index: std::collections::HashMap<FaceId, usize> =
+        faces.iter().enumerate().map(|(i, &f)| (f, i)).collect();
+    let mut parent: Vec<usize> = (0..faces.len()).collect();
+    fn root(parent: &mut [usize], mut i: usize) -> usize {
+        while parent[i] != i {
+            parent[i] = parent[parent[i]];
+            i = parent[i];
+        }
+        i
+    }
+    for (f, g) in flush_seams(mesh, &ours) {
+        let (a, b) = (root(&mut parent, index[&f]), root(&mut parent, index[&g]));
+        if a != b {
+            parent[a.max(b)] = a.min(b);
+        }
+    }
+    let mut groups: std::collections::BTreeMap<usize, Vec<FaceId>> = Default::default();
+    for (i, &f) in faces.iter().enumerate() {
+        let r = root(&mut parent, i);
+        groups.entry(r).or_default().push(f);
+    }
+    let mut merged = false;
+    for group in groups.into_values().filter(|g| g.len() > 1) {
+        if let Some(m) = mesh.dissolve_coplanar_region(&group) {
+            ours.retain(|f| !group.contains(f));
+            ours.insert(m);
+            merged = true;
+        }
+    }
+    if merged {
+        let mut kept = ours;
+        run_stitch(mesh, seed, Some(&mut kept), false, true);
+        kept.retain(|&f| mesh.has_face(f));
+        return kept;
+    }
+    ours
 }
 
 /// Every boundary position of `face` — outer loop and hole rims.
