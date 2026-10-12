@@ -212,6 +212,7 @@ mod test_tool_overlays;
 mod test_toolbar_icon_size;
 mod test_toolbar_layout;
 mod test_toolbar_packing;
+mod test_toolbar_stacks;
 mod test_tray_panels;
 mod test_tray_sections_remember;
 mod test_ui_font_coverage;

@@ -22,6 +22,7 @@ pub mod progress;
 pub mod solid_inspector;
 pub mod status_bar;
 pub mod toolbar_layout;
+pub mod toolbar_stacks;
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -40,6 +41,7 @@ pub use actions::{Action, ActionList, KeySeq, MenuItem};
 pub use context::CtxItem;
 pub use dialogs::{Asker, Dialogs, NoDialogs, SaveChoice, ScriptedDialogs};
 pub use toolbar_layout::{ToolbarArea, ToolbarLayout};
+pub use toolbar_stacks::ToolbarStacks;
 
 /// A fresh tool for a toolbar key.
 pub fn make_tool(key: &str) -> Option<Box<dyn Tool>> {
@@ -206,6 +208,8 @@ pub struct MainWindow {
     pub toolbars: Vec<ToolbarDef>,
     /// Where each toolbar sits, saved on every change.
     pub toolbar_layout: ToolbarLayout,
+    /// The member each stacked button shows, saved on every change.
+    pub toolbar_stacks: ToolbarStacks,
     active_key: Option<String>,
     /// Tool keys a workspace allows (`None` = every tool).
     pub tool_filter: Option<HashSet<String>>,
@@ -280,6 +284,7 @@ impl MainWindow {
             menus: Vec::new(),
             toolbars: Vec::new(),
             toolbar_layout: ToolbarLayout::factory(),
+            toolbar_stacks: ToolbarStacks::load(),
             active_key: None,
             tool_filter: None,
             last_command: None,
@@ -877,6 +882,9 @@ impl MainWindow {
         // the Styles / Dimension style drop-downs: the shell draws them
         self.toolbars
             .push(("panels".into(), tr("Panels", &[]), Vec::new()));
+        for (_, _, ids) in &mut self.toolbars {
+            *ids = toolbar_stacks::fold(std::mem::take(ids));
+        }
     }
 
     fn build_menus(&mut self) {
@@ -1091,6 +1099,7 @@ impl MainWindow {
         }
         self.active_key = Some(key.to_string());
         self.check_tool_action(Some(key));
+        self.toolbar_stacks.follow(key);
         // Select is where Repeat is pressed FROM, and the tool entered from
         // a right-click needs the group that click was on.
         if key != "select" && key != "change_axes" {
@@ -1127,6 +1136,23 @@ impl MainWindow {
     /// Whether the action of a tool or camera mode shows checked.
     pub fn is_checked(&self, id: &str) -> bool {
         self.actions.get(id).is_some_and(|a| a.checked)
+    }
+
+    /// The member action stacked button `id` shows (the last member run,
+    /// or its first).
+    pub fn stack_current(&self, id: &str) -> Option<&str> {
+        self.toolbar_stacks.current(id)
+    }
+
+    /// A member picked from a stacked button's list: run it, as its own
+    /// button would; the stack shows it once it has run. Returns whether
+    /// `action` is a member of `id`.
+    pub fn pick_in_stack(&mut self, id: &str, action: &str) -> bool {
+        if !toolbar_stacks::members(id).is_some_and(|ms| ms.contains(&action)) {
+            return false;
+        }
+        self.trigger(action);
+        true
     }
 
     pub fn activate_nav(&mut self, key: &str) {
@@ -1269,6 +1295,7 @@ impl MainWindow {
         }
         if let Some(k) = id.strip_prefix("view:") {
             self.on_standard_view(k);
+            self.toolbar_stacks.follow(id);
             return true;
         }
         if let Some(name) = id.strip_prefix("style:") {

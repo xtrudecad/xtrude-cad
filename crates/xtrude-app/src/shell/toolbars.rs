@@ -7,11 +7,15 @@
 
 use super::{paint, XtrudeApp};
 use crate::window::toolbar_layout::{DropTarget, LayoutGeometry, Rect};
+use crate::window::toolbar_stacks::{self, STACK_PREFIX};
 use crate::window::{ToolbarArea, ToolbarDef};
 use xtrude_model::i18n::tr;
 
 /// The grip's thickness along its bar.
 const GRIP: f32 = 8.0;
+
+/// The thickness of a stacked button's arrow strip along its bar.
+const ARROW: f32 = 10.0;
 
 /// A toolbar held by its grip.
 pub(super) struct ToolbarDrag {
@@ -97,7 +101,8 @@ impl XtrudeApp {
     ) -> egui::Rect {
         let px = self.icon_px();
         let n = keys.len() + if id == "panels" { 2 } else { 0 };
-        let length = GRIP + n as f32 * (px + 9.0);
+        let stacks = keys.iter().filter(|k| k.starts_with(STACK_PREFIX)).count();
+        let length = GRIP + n as f32 * (px + 9.0) + stacks as f32 * (ARROW + 1.0);
         let (size, layout) = if vertical {
             (
                 egui::vec2(px + 8.0, length),
@@ -116,7 +121,10 @@ impl XtrudeApp {
                 self.panel_buttons(ui, vertical);
             }
             for k in keys {
-                self.tool_button(ui, k, px);
+                match k.strip_prefix(STACK_PREFIX) {
+                    Some(stack) => self.stack_button(ui, stack, vertical, px),
+                    None => self.tool_button(ui, k, px),
+                }
             }
             grip
         });
@@ -400,6 +408,110 @@ impl XtrudeApp {
         }
         if r.clicked() && enabled {
             self.trigger(k);
+        }
+    }
+
+    /// A stacked button: its current member's button, then an arrow strip
+    /// (below it in a column) that lists every member: icon, name and
+    /// shortcut, the current one selected. The list opens below the
+    /// button in a row and beside it in a column; a click outside or Esc
+    /// closes it.
+    fn stack_button(&mut self, ui: &mut egui::Ui, stack: &str, vertical: bool, px: f32) {
+        let (Some(current), Some(members)) = (
+            self.window.stack_current(stack).map(str::to_string),
+            toolbar_stacks::members(stack),
+        ) else {
+            return;
+        };
+        self.tool_button(ui, &current, px);
+        let size = if vertical {
+            egui::vec2(px + 8.0, ARROW)
+        } else {
+            egui::vec2(ARROW, px + 8.0)
+        };
+        let (rect, r) = ui.allocate_exact_size(size, egui::Sense::click());
+        let popup_id = egui::Popup::default_response_id(&r);
+        let open = egui::Popup::is_id_open(ui.ctx(), popup_id);
+        let visuals = ui.style().interact_selectable(&r, open);
+        if open || r.hovered() {
+            ui.painter().rect(
+                rect,
+                2.0,
+                visuals.weak_bg_fill,
+                visuals.bg_stroke,
+                egui::StrokeKind::Inside,
+            );
+        }
+        // a small triangle pointing where the list opens
+        let c = rect.center();
+        let tip = if vertical {
+            vec![
+                egui::pos2(c.x - 2.0, c.y - 3.0),
+                egui::pos2(c.x + 2.0, c.y),
+                egui::pos2(c.x - 2.0, c.y + 3.0),
+            ]
+        } else {
+            vec![
+                egui::pos2(c.x - 3.0, c.y - 2.0),
+                egui::pos2(c.x + 3.0, c.y - 2.0),
+                egui::pos2(c.x, c.y + 2.0),
+            ]
+        };
+        ui.painter().add(egui::Shape::convex_polygon(
+            tip,
+            ui.visuals().text_color(),
+            egui::Stroke::NONE,
+        ));
+        let title = tr(toolbar_stacks::title(stack).unwrap_or(stack), &[]);
+        let r = r.on_hover_text(title);
+        let align = if vertical {
+            egui::RectAlign::RIGHT_START
+        } else {
+            egui::RectAlign::BOTTOM_START
+        };
+        egui::Popup::menu(&r).align(align).show(|ui| {
+            for &m in members {
+                self.stack_entry(ui, stack, m, m == current);
+            }
+        });
+    }
+
+    /// One row of a stack's list: the member's icon, name and shortcut.
+    fn stack_entry(&mut self, ui: &mut egui::Ui, stack: &str, action: &str, current: bool) {
+        let Some(a) = self.window.actions.get(action) else {
+            return;
+        };
+        let (text, tip, enabled, keys_txt) = (
+            a.text.replace('&', ""),
+            a.status_tip.clone(),
+            a.enabled,
+            a.shortcut_text(),
+        );
+        let ink = if enabled {
+            ui.visuals().text_color()
+        } else {
+            ui.visuals().weak_text_color()
+        };
+        let key = self.icon_key(action);
+        let side = ui.text_style_height(&egui::TextStyle::Button) + 6.0;
+        let mut b = match self.icon(ui.ctx(), &key, ink) {
+            Some((tex, _)) => {
+                egui::Button::image_and_text(egui::Image::new((tex, egui::vec2(side, side))), text)
+            }
+            None => egui::Button::new(text),
+        }
+        .selected(current);
+        if !keys_txt.is_empty() {
+            b = b.shortcut_text(keys_txt);
+        }
+        let r = ui.add_enabled(enabled, b);
+        if r.hovered() && !tip.is_empty() {
+            self.menu_tip = Some(tip);
+        }
+        if r.clicked() {
+            ui.close();
+            self.window.pick_in_stack(stack, action);
+            self.window.pump_events();
         }
     }
 

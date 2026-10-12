@@ -293,6 +293,9 @@ pub mod keys {
     pub const TOOLBAR_LAYOUT: Key<Value> = Key::new("ui/toolbar_layout", null);
     /// The toolbar icon size in pixels (a number, or a number as text).
     pub const TOOLBAR_ICON_PX: Key<Value> = Key::new("ui/toolbar_icon_px", null);
+    /// The member each stacked toolbar button shows (a JSON object, stack
+    /// id → action id).
+    pub const TOOLBAR_STACKS: Key<Value> = Key::new("ui/toolbar_stacks", null);
     /// The old «large icons» toggle (`"1"`), read once to migrate it.
     pub const LARGE_TOOLBAR_ICONS: Key<String> = Key::new("ui/large_toolbar_icons", empty);
     /// The trays whose tabs are hidden (a list, or one name).
