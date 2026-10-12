@@ -19,10 +19,10 @@ Rust** for speed and robustness. It is licensed under
 [GPL-3.0-or-later](LICENSE).
 
 This is a **modified version** of IngeTrazo (GPL-3.0 §5a), changed in
-2026-10 by Sebastien Baron: the architecture, BIM/IFC, geo-referencing,
-sheet, rendering, texture, translation and packaging features were
-removed, millimetre documents became the default, and the Python/PySide6
-application was rewritten in Rust (wgpu + egui).
+2026-10: the architecture, BIM/IFC, geo-referencing, sheet, rendering,
+texture, translation and packaging features were removed, millimetre
+documents became the default, and the Python/PySide6 application was
+rewritten in Rust (wgpu + egui).
 
 Xtrude CAD keeps IngeTrazo's `.igz` document format: IngeTrazo documents
 open directly, and documents written by Xtrude CAD open in IngeTrazo.
