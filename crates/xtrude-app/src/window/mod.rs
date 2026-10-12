@@ -956,7 +956,7 @@ impl MainWindow {
             ),
             M(
                 tr("Export", &[]),
-                ["glb", "dae", "stl", "obj", "image"]
+                ["stl", "obj", "glb", "dae", "image"]
                     .map(|k| act(&format!("export:{k}")))
                     .to_vec(),
             ),
@@ -973,23 +973,13 @@ impl MainWindow {
             act("paste"),
             act("paste_in_place"),
             S,
+            act("select"),
             act("select_all"),
             act("invert_selection"),
             S,
             act("make_group"),
             act("make_component"),
             act("explode_group"),
-            M(
-                tr("Add Crossing Edges", &[]),
-                vec![
-                    act("intersect:model"),
-                    act("intersect:selection"),
-                    act("intersect:context"),
-                ],
-            ),
-            act("split_into_pieces"),
-            act("simplify_mesh"),
-            act("delete_guides"),
             S,
             act("hide"),
             M(
@@ -1000,10 +990,9 @@ impl MainWindow {
                     act("unhide_all"),
                 ],
             ),
-            act("reverse_faces"),
-            act("orient_faces"),
-            act("heal_overlaps"),
-            act("rebuild_planar"),
+            act("delete_guides"),
+            S,
+            act("cancel_tool"),
         ];
         let mut style_items: Vec<MenuItem> = builtin_styles()
             .iter()
@@ -1017,7 +1006,7 @@ impl MainWindow {
             act("style_silhouettes"),
             act("style_hidden_lines"),
         ]);
-        let camera = vec![
+        let view = vec![
             M(
                 tr("Standard Views", &[]),
                 ["top", "bottom", "front", "back", "left", "right", "iso"]
@@ -1060,33 +1049,70 @@ impl MainWindow {
                     .map(act)
                     .to_vec(),
             ),
+            S,
+            act("eraser"),
         ];
-        let mut tools_items = Vec::new();
-        for keys in [
-            &["select", "eraser", "paint"][..],
-            &["move", "rotate", "scale", "flip"],
-            &["pushpull", "sweep", "offset", "fillet"],
-            &["measure", "protractor"],
-            &["dimension", "text"],
-            &["section"],
-        ] {
-            tools_items.extend(keys.iter().map(|k| act(k)));
-            tools_items.push(S);
-        }
-        tools_items.push(act("merge_solids"));
-        tools_items.push(M(
-            tr("Solids", &[]),
-            [
-                "solid_intersect",
-                "solid_union",
-                "solid_subtract",
-                "solid_trim",
-                "solid_split",
-            ]
-            .map(act)
-            .to_vec(),
-        ));
-        tools_items.extend([S, act("text3d"), S, act("cancel_tool")]);
+        let model = vec![
+            act("pushpull"),
+            act("sweep"),
+            act("offset"),
+            act("fillet"),
+            act("text3d"),
+            S,
+            act("move"),
+            act("rotate"),
+            act("scale"),
+            act("flip"),
+            S,
+            M(
+                tr("Solids", &[]),
+                [
+                    "solid_union",
+                    "solid_subtract",
+                    "solid_trim",
+                    "solid_intersect",
+                    "solid_split",
+                    "merge_solids",
+                ]
+                .map(act)
+                .to_vec(),
+            ),
+            M(
+                tr("Add Crossing Edges", &[]),
+                vec![
+                    act("intersect:model"),
+                    act("intersect:selection"),
+                    act("intersect:context"),
+                ],
+            ),
+            act("split_into_pieces"),
+            S,
+            M(
+                tr("Mesh repair", &[]),
+                [
+                    "reverse_faces",
+                    "orient_faces",
+                    "heal_overlaps",
+                    "rebuild_planar",
+                    "simplify_mesh",
+                ]
+                .map(act)
+                .to_vec(),
+            ),
+            S,
+            act("paint"),
+            act("eyedropper"),
+        ];
+        let inspect = vec![
+            act("measure"),
+            act("protractor"),
+            act("section"),
+            S,
+            act("solid_inspector"),
+            act("model_info"),
+            S,
+            M(tr("Annotations", &[]), vec![act("dimension"), act("text")]),
+        ];
         let window = vec![
             M(tr("Panels", &[]), vec![MenuItem::Dynamic("panels")]),
             M(tr("Toolbars", &[]), vec![MenuItem::Dynamic("toolbars")]),
@@ -1094,17 +1120,15 @@ impl MainWindow {
             act("clean_screen"),
             act("sidebar"),
             S,
-            act("model_info"),
-            act("solid_inspector"),
-            S,
             act("preferences"),
         ];
         self.menus = vec![
             (tr("File", &[]), file),
             (tr("Edit", &[]), edit),
-            (tr("Camera", &[]), camera),
+            (tr("View", &[]), view),
             (tr("Draw", &[]), draw),
-            (tr("Tools", &[]), tools_items),
+            (tr("Model", &[]), model),
+            (tr("Inspect", &[]), inspect),
             (extensions::menu_title(), self.extensions_menu()),
             (tr("Window", &[]), window),
             (tr("Help", &[]), vec![act("about")]),

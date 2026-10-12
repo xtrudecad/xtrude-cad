@@ -101,6 +101,7 @@ mod test_measure_guide_from_guide;
 mod test_measure_on_axis_hint;
 mod test_menu_bar_hover;
 mod test_menu_check_column;
+mod test_menus_for_parts;
 mod test_mirrored_instances_draw;
 mod test_misc_draw_tools;
 mod test_model_info_plugin;

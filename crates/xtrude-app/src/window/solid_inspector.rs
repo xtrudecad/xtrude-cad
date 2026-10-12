@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Window ▸ Solid Inspector: why a solid is not watertight. The diagnosis and
+//! Inspect ▸ Solid Inspector: why a solid is not watertight. The diagnosis and
 //! the dialog's rows live here; the shell draws them.
 //!
 //! One row per solid candidate (the geometry being edited, plus every

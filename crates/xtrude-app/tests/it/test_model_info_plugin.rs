@@ -67,7 +67,7 @@ fn test_geometry_and_groups() {
     assert!((stats.bbox.width - 3.0).abs() < 1e-6);
 }
 
-/// Model Info is a plain menu entry: Window ▸ Model Info, with no key, that opens
+/// Model Info is a plain menu entry: Inspect ▸ Model Info, with no key, that opens
 /// the dialog and leaves the tool in hand alone.
 #[test]
 fn test_tool_metadata() {
@@ -75,12 +75,12 @@ fn test_tool_metadata() {
     let a = w.actions.get("model_info").expect("the Model Info action");
     assert_eq!(a.text, "Model Info");
     assert!(a.shortcuts.is_empty() && !a.checkable);
-    let (_, window_menu) = w
+    let (_, inspect_menu) = w
         .menus
         .iter()
-        .find(|(t, _)| t == "Window")
-        .expect("the Window menu");
-    assert!(window_menu
+        .find(|(t, _)| t == "Inspect")
+        .expect("the Inspect menu");
+    assert!(inspect_menu
         .iter()
         .any(|i| matches!(i, MenuItem::Action(id) if id == "model_info")));
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Add Crossing Edges (Edit ▸ Add Crossing Edges ▸ With Everything / Within
+//! Add Crossing Edges (Model ▸ Add Crossing Edges ▸ With Everything / Within
 //! Selection / Within Open Group): which faces cross which. The crossing geometry itself is
 //! [`xtrude_core::intersect`].
 

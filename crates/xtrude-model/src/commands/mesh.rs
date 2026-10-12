@@ -1183,7 +1183,7 @@ impl Command for RebuildPlaneFacesCommand {
     }
 }
 
-/// Merge near-coplanar faces of the active mesh (Edit ▸ Simplify Mesh).
+/// Merge near-coplanar faces of the active mesh (Model ▸ Mesh repair ▸ Simplify Mesh).
 pub struct SimplifyMeshCommand {
     pub max_angle_degrees: f64,
     pub faces_removed: usize,

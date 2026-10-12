@@ -208,7 +208,7 @@ fn test_dialog_group_edit_context() {
     scene.end_group_edit();
 }
 
-/// Solid Inspector is a plain menu entry: Window ▸ Solid Inspector, with no key. A second
+/// Solid Inspector is a plain menu entry: Inspect ▸ Solid Inspector, with no key. A second
 /// call refreshes the open inspector instead of opening another.
 #[test]
 fn test_tool_metadata_and_singleton() {
@@ -219,12 +219,12 @@ fn test_tool_metadata_and_singleton() {
         .expect("the Solid Inspector action");
     assert_eq!(a.text, "Solid Inspector");
     assert!(a.shortcuts.is_empty() && !a.checkable);
-    let (_, window_menu) = w
+    let (_, inspect_menu) = w
         .menus
         .iter()
-        .find(|(t, _)| t == "Window")
-        .expect("the Window menu");
-    assert!(window_menu
+        .find(|(t, _)| t == "Inspect")
+        .expect("the Inspect menu");
+    assert!(inspect_menu
         .iter()
         .any(|i| matches!(i, MenuItem::Action(id) if id == "solid_inspector")));
 

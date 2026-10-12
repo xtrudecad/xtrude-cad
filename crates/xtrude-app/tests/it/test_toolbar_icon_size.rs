@@ -46,16 +46,16 @@ fn test_the_main_toolbar_starts_with_save() {
 }
 
 #[test]
-fn test_simplify_mesh_is_only_in_the_edit_menu() {
+fn test_simplify_mesh_is_only_in_the_model_menu() {
     let win = common::window();
     assert!(win
         .toolbars
         .iter()
         .all(|(_, _, ids)| !ids.iter().any(|i| i == "simplify_mesh")));
-    let edit = &win
+    let model = &win
         .menus
         .iter()
-        .find(|(t, _)| t.replace('&', "") == "Edit")
+        .find(|(t, _)| t.replace('&', "") == "Model")
         .unwrap()
         .1;
     fn has(items: &[MenuItem], id: &str) -> bool {
@@ -65,7 +65,7 @@ fn test_simplify_mesh_is_only_in_the_edit_menu() {
             _ => false,
         })
     }
-    assert!(has(edit, "simplify_mesh"));
+    assert!(has(model, "simplify_mesh"));
 }
 
 #[test]

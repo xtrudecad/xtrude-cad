@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Window ▸ Model Info: model statistics in a dialog. The statistics, the
+//! Inspect ▸ Model Info: model statistics in a dialog. The statistics, the
 //! copy-as-text summary and the rows of the dialog's tables live here; the
 //! shell draws them.
 //!
