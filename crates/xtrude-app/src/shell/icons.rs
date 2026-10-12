@@ -1311,7 +1311,8 @@ fn text(p: &mut Painter, ink: Rgba) {
 
 fn text3d(p: &mut Painter, ink: Rgba) {
     p.set_font(30.0, true);
-    let base = (12.0f32, 35.0f32);
+    // the "A" (about 20 wide, 21 high) and its 6-px extrusion, centred
+    let base = (11.0f32, 37.0f32);
     p.set_pen(Pen::new(ACCENT, 1.0));
     let (d, n) = (6.0f32, 12);
     for i in (1..=n).rev() {
