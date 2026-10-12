@@ -1,0 +1,201 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+# The checks on every push to `main` and every pull request.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      flatpak:
+        description: Build and lint the Flatpak bundle too (up to 70 minutes)
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# A newer push to a pull request cancels the run it supersedes. On
+# `main` the running run finishes and the newest push waits for it: a
+# cancelled run saves no cache, and the first `main` run after a new
+# OpenCascade key must get through its half-hour build to save one for
+# every branch (a branch's caches are its own, `main`'s are shared).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  # The desktop integration files, validated with the freedesktop tools
+  # (no Rust build).
+  packaging:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the validators
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              appstream desktop-file-utils libxml2-utils shared-mime-info
+      - name: Validate the desktop file
+        run: desktop-file-validate packaging/linux/org.xtrudecad.XtrudeCAD.desktop
+      # Against the shared-mime-info schema when the package ships one.
+      - name: Validate the MIME type
+        run: |
+          mime=packaging/linux/org.xtrudecad.XtrudeCAD.mime.xml
+          schema=$(dpkg -L shared-mime-info | grep -E '\.(rng|xsd)$' | head -n1 || true)
+          case "$schema" in
+              *.rng) xmllint --noout --relaxng "$schema" "$mime" ;;
+              *.xsd) xmllint --noout --schema "$schema" "$mime" ;;
+              *) xmllint --noout "$mime" ;;
+          esac
+      # Offline: the URLs and screenshots are not fetched.
+      - name: Validate the AppStream metadata
+        run: appstreamcli validate --no-net packaging/linux/org.xtrudecad.XtrudeCAD.metainfo.xml
+
+  # The Flatpak's vendored crates, regenerated from Cargo.lock: a
+  # dependency change that forgets to run the script fails here, not at
+  # release time. Only when Cargo.lock, packaging/ or the script changed
+  # since the base of the pull request or the previous push (the
+  # generator downloads its tools and queries crates.io); always when
+  # there is no base to compare with, and on workflow_dispatch.
+  cargo-sources:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The whole history, so that the base commit is there.
+          fetch-depth: 0
+      - name: Look for changes to the crates or the packaging
+        id: changed
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ] || [ -z "$BASE" ] \
+              || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              check=true
+          elif git diff --name-only "$BASE" HEAD -- Cargo.lock packaging \
+              scripts/release/update_cargo_sources.sh | grep -q .; then
+              check=true
+          else
+              check=false
+          fi
+          echo "check=$check" | tee -a "$GITHUB_OUTPUT"
+      - name: Regenerate the cargo sources
+        if: steps.changed.outputs.check == 'true'
+        run: scripts/release/update_cargo_sources.sh
+      - name: Fail if they were out of date
+        if: steps.changed.outputs.check == 'true'
+        run: |
+          file=packaging/flatpak/cargo-sources.json
+          if ! git diff --exit-code --stat -- "$file"; then
+              echo "::error file=$file::$file is out of date with Cargo.lock: run scripts/release/update_cargo_sources.sh and commit the result."
+              exit 1
+          fi
+
+  # The Flatpak bundle (flatpak.yml), built and linted only when
+  # packaging/ or flatpak.yml changed since the base of the pull request
+  # or the previous push, and on workflow_dispatch unless its `flatpak`
+  # input is off: about 70 minutes of runner time when it builds
+  # OpenCascade, a few when its module cache has it (release.yml always
+  # builds it, from scratch).
+  flatpak-changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.changed.outputs.build }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Look for changes to the packaging
+        id: changed
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          FLATPAK_INPUT: ${{ inputs.flatpak }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+              build="$FLATPAK_INPUT"
+          elif [ -z "$BASE" ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+              build=false
+          elif git diff --name-only "$BASE" HEAD -- packaging \
+              .github/workflows/flatpak.yml | grep -q .; then
+              build=true
+          else
+              build=false
+          fi
+          echo "build=$build" | tee -a "$GITHUB_OUTPUT"
+
+  flatpak:
+    needs: flatpak-changes
+    if: needs.flatpak-changes.outputs.build == 'true'
+    uses: ./.github/workflows/flatpak.yml
+
+  # The STEP helper with OpenCascade, which `checks` does not build, and
+  # the STEP tests that need it (the import and xtrude-convert): here they
+  # must not skip. OpenCascade compiles from source for about half an
+  # hour on a runner, so its installation (lib/ and include/) is cached
+  # on its own and handed to the build with XTRUDE_OCCT_DIR; a new
+  # occt-sys, C++ compiler or build script builds it again.
+  step-helper:
+    runs-on: ubuntu-24.04
+    env:
+      # occt-sys' CMake files predate CMake 4.
+      CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+      # OpenCascade's installation, cached on its own (below).
+      OCCT_CACHE: ${{ github.workspace }}/.occt-install
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: step-helper
+      - name: Name the OpenCascade build
+        id: occt
+        run: |
+          occt_sys="$(grep -A1 '^name = "occt-sys"$' Cargo.lock | sed -nE 's/^version = "(.*)"/\1/p')"
+          cxx="$(c++ --version | head -n1 | tr -c 'A-Za-z0-9.\n' -)"
+          echo "key=occt-$occt_sys-$cxx-${{ hashFiles('crates/xtrude-step/build.rs') }}" | tee -a "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: occt-cache
+        with:
+          path: ${{ env.OCCT_CACHE }}
+          key: ${{ steps.occt.outputs.key }}
+      - name: Use the cached OpenCascade
+        if: steps.occt-cache.outputs.cache-hit == 'true'
+        run: echo "XTRUDE_OCCT_DIR=$OCCT_CACHE" >>"$GITHUB_ENV"
+      - name: Build the helper with OpenCascade
+        run: cargo build --release --locked -p xtrude-step --features occt
+      # A cache miss built OpenCascade into target/OCCT: keep its
+      # installation for the next runs, saved right after the build, so
+      # that a failing lint or test does not throw the build away.
+      - name: Keep the OpenCascade build
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$OCCT_CACHE"
+          cp -a target/OCCT/lib target/OCCT/include "$OCCT_CACHE/"
+          du -sh "$OCCT_CACHE"
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: steps.occt-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.OCCT_CACHE }}
+          key: ${{ steps.occt.outputs.key }}
+      - name: Lint the helper with OpenCascade
+        run: cargo clippy --locked -p xtrude-step --features occt --all-targets -- -D warnings
+      - name: Run the STEP tests against it
+        env:
+          XTRUDE_STEP_HELPER: ${{ github.workspace }}/target/release/xtrude-step
+          XTRUDE_STEP_REQUIRED: "1"
+        run: cargo test --locked -p xtrude-io --test it -- test_step test_convert_step

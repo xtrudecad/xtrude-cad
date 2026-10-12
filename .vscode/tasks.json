@@ -1,0 +1,231 @@
+{
+    // Ctrl+Shift+B builds, "Tasks: Run Test Task" runs the workspace tests;
+    // everything else is under "Tasks: Run Task".
+    "version": "2.0.0",
+    "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": { "executable": "/bin/bash", "args": ["-c"] },
+        "env": { "RUST_BACKTRACE": "1" }
+    },
+    "presentation": { "clear": true, "showReuseMessage": false },
+    "tasks": [
+        // ── Build ────────────────────────────────────────────────────────
+        {
+            "label": "cargo: build",
+            "type": "shell",
+            "command": "cargo build --workspace",
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "cargo: build xtrude",
+            "type": "shell",
+            "command": "cargo build -p xtrude-app --bin xtrude",
+            "group": "build",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "cargo: build release",
+            "type": "shell",
+            "command": "cargo build --release -p xtrude-app --bin xtrude",
+            "group": "build",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "cargo: clippy (CI lints)",
+            "type": "shell",
+            "command": "cargo clippy --workspace --all-targets -- -D warnings",
+            "group": "build",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "cargo: fmt",
+            "type": "shell",
+            "command": "cargo fmt --all",
+            "problemMatcher": []
+        },
+        {
+            "label": "cargo: doc (open)",
+            "type": "shell",
+            "command": "cargo doc --workspace --no-deps --open",
+            "problemMatcher": ["$rustc"]
+        },
+
+        // ── Run ──────────────────────────────────────────────────────────
+        {
+            "label": "xtrude: run",
+            "type": "shell",
+            "command": "cargo run -p xtrude-app --bin xtrude",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "xtrude: run (sandboxed settings)",
+            "detail": "Settings in target/vscode-config instead of ~/.config/xtrude",
+            "type": "shell",
+            "command": "mkdir -p target/vscode-config && XDG_CONFIG_HOME=$PWD/target/vscode-config cargo run -p xtrude-app --bin xtrude",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "xtrude: open a model…",
+            "type": "shell",
+            "command": "cargo run -p xtrude-app --bin xtrude -- '${input:modelFile}'",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "xtrude: run under X11 (XTRUDE_PLATFORM=xcb)",
+            "type": "shell",
+            "command": "XTRUDE_PLATFORM=xcb cargo run -p xtrude-app --bin xtrude",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "xtrude: self-check (--check)",
+            "type": "shell",
+            "command": "cargo run -q -p xtrude-app --bin xtrude -- --check",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "xtrude: run on Xvfb :77 (headless)",
+            "detail": "Virtual display, sandboxed settings; stop the task to quit",
+            "type": "shell",
+            "command": "cargo build -p xtrude-app --bin xtrude || exit 1; mkdir -p target/xvfb/conf; Xvfb :77 -screen 0 1400x900x24 & XP=$!; trap 'kill $XP' EXIT; sleep 1; DISPLAY=:77 WAYLAND_DISPLAY= XDG_CONFIG_HOME=$PWD/target/xvfb/conf ./target/debug/xtrude",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "xtrude: screenshot Xvfb :77",
+            "type": "shell",
+            "command": "mkdir -p target/xvfb && f=target/xvfb/shot-$(date +%Y%m%d-%H%M%S).png && import -window root -display :77 \"$f\" && echo \"$f\" && code \"$f\"",
+            "problemMatcher": []
+        },
+        {
+            "label": "example: icon sheet",
+            "type": "shell",
+            "command": "cargo run -p xtrude-app --example icon_sheet -- target/icon_sheet.png && code target/icon_sheet.png",
+            "problemMatcher": ["$rustc"]
+        },
+        {
+            "label": "example: openskp dump…",
+            "type": "shell",
+            "command": "cargo run -q -p openskp --example openskp_dump -- ${input:skpFile}",
+            "problemMatcher": ["$rustc"]
+        },
+
+        // ── Test ─────────────────────────────────────────────────────────
+        {
+            "label": "test: workspace",
+            "detail": "~1700 tests, several minutes",
+            "type": "shell",
+            "command": "cargo test --workspace",
+            "group": { "kind": "test", "isDefault": true },
+            "problemMatcher": ["$rustc", "$rust-panic"]
+        },
+        {
+            "label": "test: current file",
+            "detail": "tests/it/<x>.rs → --test it <x>::; tests/<x>.rs → --test <x>; a src/ file → the crate's unit tests",
+            "type": "shell",
+            "command": "case '${relativeFile}' in crates/*/tests/it/main.rs|crates/*/tests/it/*/*) cargo test --test it;; crates/*/tests/it/*.rs) cargo test --test it '${fileBasenameNoExtension}::';; crates/*/tests/*/*) echo 'not a test target: ${relativeFile}'; exit 1;; crates/*/tests/*.rs) cargo test --test '${fileBasenameNoExtension}';; crates/*/src/*|crates/*/benches/*) cargo test --lib;; *) echo 'not in a crate: ${relativeFile}'; exit 1;; esac",
+            "options": { "cwd": "${fileDirname}" },
+            "group": "test",
+            "problemMatcher": ["$rustc", "$rust-panic"]
+        },
+        {
+            "label": "test: current file, filtered…",
+            "type": "shell",
+            "command": "case '${relativeFile}' in crates/*/tests/it/main.rs|crates/*/tests/it/*/*) cargo test --test it -- '${input:testFilter}' --nocapture;; crates/*/tests/it/*.rs) cargo test --test it -- '${fileBasenameNoExtension}::${input:testFilter}' --nocapture;; crates/*/tests/*/*) echo 'not a test target: ${relativeFile}'; exit 1;; crates/*/tests/*.rs) cargo test --test '${fileBasenameNoExtension}' -- '${input:testFilter}' --nocapture;; crates/*/src/*) cargo test --lib -- '${input:testFilter}' --nocapture;; *) echo 'not in a crate: ${relativeFile}'; exit 1;; esac",
+            "options": { "cwd": "${fileDirname}" },
+            "group": "test",
+            "problemMatcher": ["$rustc", "$rust-panic"]
+        },
+        {
+            "label": "test: crate…",
+            "type": "shell",
+            "command": "cargo test -p ${input:crate}",
+            "group": "test",
+            "problemMatcher": ["$rustc", "$rust-panic"]
+        },
+        {
+            "label": "test: GPU frame (headless wgpu)",
+            "type": "shell",
+            "command": "cargo test -p xtrude-render --test it -- test_gpu_frame:: test_guides_behind_geometry:: && cargo test -p xtrude-app --test it test_mirrored_instances_draw::",
+            "group": "test",
+            "problemMatcher": ["$rustc", "$rust-panic"]
+        },
+        {
+            "label": "bench…",
+            "type": "shell",
+            "command": "cargo bench ${input:bench}",
+            "problemMatcher": ["$rustc"]
+        },
+
+        // ── Checks (what CI runs) ────────────────────────────────────────
+        {
+            "label": "check: all (scripts/check.sh)",
+            "detail": "fmt, clippy, tests, cargo-deny, SPDX, reuse lint",
+            "type": "shell",
+            "command": "scripts/check.sh",
+            "problemMatcher": ["$rustc", "$rust-panic"]
+        },
+        {
+            "label": "check: SPDX headers",
+            "type": "shell",
+            "command": "scripts/spdx_check.sh && echo 'SPDX headers OK'",
+            "problemMatcher": {
+                "owner": "spdx",
+                "fileLocation": ["relative", "${workspaceFolder}"],
+                "pattern": {
+                    "regexp": "^(missing SPDX header): (.*)$",
+                    "message": 1,
+                    "file": 2
+                }
+            }
+        },
+        {
+            "label": "check: cargo deny",
+            "type": "shell",
+            "command": "cargo deny check licenses bans sources",
+            "problemMatcher": []
+        },
+        {
+            "label": "check: reuse lint",
+            "type": "shell",
+            "command": "if command -v reuse >/dev/null; then reuse lint; else uvx reuse lint; fi",
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "crate",
+            "type": "pickString",
+            "description": "Crate",
+            "options": ["xtrude-core", "xtrude-model", "xtrude-io", "xtrude-render", "xtrude-app", "openskp"],
+            "default": "xtrude-app"
+        },
+        {
+            "id": "testFilter",
+            "type": "promptString",
+            "description": "Test name filter (substring; in tests/it, the start of the test's name)"
+        },
+        {
+            "id": "modelFile",
+            "type": "promptString",
+            "description": "Model to open (.igz, relative to the workspace or absolute)",
+            "default": "tests/golden/box.igz"
+        },
+        {
+            "id": "skpFile",
+            "type": "promptString",
+            "description": ".skp file [expected.json]"
+        },
+        {
+            "id": "bench",
+            "type": "pickString",
+            "description": "Benchmark",
+            "options": [
+                "-p xtrude-model --bench pushpull",
+                "-p xtrude-io --bench stl_import",
+                "-p xtrude-app --bench picking",
+                "-p xtrude-app --bench frame",
+                "-p openskp --bench parse"
+            ]
+        }
+    ]
+}

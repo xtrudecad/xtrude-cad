@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+[package]
+name = "xtrude-app"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "Xtrude CAD, push/pull 3D modelling for 3D-printable parts: the application"
+publish = false
+
+[[bin]]
+name = "xtrude"
+path = "src/main.rs"
+
+[dependencies]
+pollster.workspace = true
+xtrude-core.workspace = true
+xtrude-model.workspace = true
+xtrude-io.workspace = true
+xtrude-render.workspace = true
+xtrude-ext.workspace = true
+glam.workspace = true
+eframe.workspace = true
+egui.workspace = true
+rfd.workspace = true
+arboard.workspace = true
+base64.workspace = true
+tiny-skia.workspace = true
+wgpu.workspace = true
+serde_json.workspace = true
+regex = "1"
+indexmap.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+roxmltree = "0.20"
+skrifa = "0.44"
+
+[[bench]]
+name = "picking"
+harness = false
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+winit = { version = "0.30", default-features = false, features = ["x11", "wayland"] }
+
+[[bench]]
+name = "frame"
+harness = false

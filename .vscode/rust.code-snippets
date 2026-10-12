@@ -1,0 +1,53 @@
+{
+    // Licence headers (CONTRIBUTING.md); scripts/spdx_check.sh checks them.
+    // REUSE-IgnoreStart
+    "SPDX header (GPL)": {
+        "scope": "rust,wgsl",
+        "prefix": "spdx",
+        "body": [
+            "// SPDX-License-Identifier: GPL-3.0-or-later",
+            "// SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)",
+            "$0"
+        ],
+        "description": "GPL-3.0-or-later SPDX header for an Xtrude CAD source file"
+    },
+    "SPDX header (MIT, openskp)": {
+        "scope": "rust",
+        "prefix": "spdx-mit",
+        "body": [
+            "// SPDX-License-Identifier: MIT",
+            "// SPDX-FileCopyrightText: 2024-2026 Ahsan Mehmood",
+            "// SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)",
+            "$0"
+        ],
+        "description": "MIT SPDX header for crates/openskp"
+    },
+    "SPDX header (script/TOML)": {
+        "scope": "shellscript,toml",
+        "prefix": "spdx",
+        "body": [
+            "# SPDX-License-Identifier: GPL-3.0-or-later",
+            "# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)",
+            "$0"
+        ],
+        "description": "GPL-3.0-or-later SPDX header for a script or TOML file"
+    },
+    "Integration test file": {
+        "scope": "rust",
+        "prefix": "testfile",
+        "body": [
+            "// SPDX-License-Identifier: GPL-3.0-or-later",
+            "// SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)",
+            "//! ${1:What this file tests}.",
+            "",
+            "${3:use crate::common;}",
+            "",
+            "#[test]",
+            "fn ${2:test_name}() {",
+            "    $0",
+            "}"
+        ],
+        "description": "New integration test file (in tests/it/; add its mod line to main.rs)"
+    }
+    // REUSE-IgnoreEnd
+}

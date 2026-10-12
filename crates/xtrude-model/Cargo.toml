@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+[package]
+name = "xtrude-model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "Xtrude CAD document model: scene, groups and components, commands, undo, push/pull, settings"
+publish = false
+
+[dependencies]
+xtrude-core.workspace = true
+serde_json.workspace = true
+indexmap.workspace = true
+thiserror.workspace = true
+sha1 = "0.10"
+
+[lints]
+workspace = true
+
+[dev-dependencies.criterion]
+workspace = true
+
+[[bench]]
+name = "pushpull"
+harness = false

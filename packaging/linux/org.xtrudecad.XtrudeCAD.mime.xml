@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-License-Identifier: GPL-3.0-or-later
+  SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+
+  The .igz document type. IngeTrazo registers the same type name, so both
+  apps open the same files. Matched by name only: an .igz is a zip, and
+  zip magic would claim every zip.
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-ingetrazo">
+    <comment>IngeTrazo / Xtrude CAD document</comment>
+    <glob pattern="*.igz"/>
+  </mime-type>
+</mime-info>

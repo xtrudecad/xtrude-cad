@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+name: Feature request
+description: Propose a new tool, option or file format.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Xtrude CAD is a direct push/pull modeller for 3D-printable parts, on a
+        mesh kernel. A feature tree, a constraint solver, exact-surface (B-rep)
+        editing and STEP export are out of scope. For a loose idea, a
+        [discussion](https://github.com/xtrudecad/xtrude-cad/discussions) is
+        a better start.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: The part you are modelling and where the current tools get in the way.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+      description: How the tool or option would work, step by step.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds
+      description: How you do it today, if at all.

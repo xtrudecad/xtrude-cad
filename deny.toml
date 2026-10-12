@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+# cargo-deny: every dependency must be GPL-3.0-or-later compatible.
+[graph]
+all-features = true
+
+[licenses]
+confidence-threshold = 0.9
+allow = [
+    "GPL-3.0-or-later",
+    "LGPL-2.1-or-later",
+    # OpenCascade (occt-sys, clarified below), linked into the STEP helper
+    # only; GPL-3.0 compatible through LGPL-2.1 section 3.
+    "LGPL-2.1-only WITH OCCT-exception-1.0",
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "BSL-1.0",
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
+]
+
+# occt-sys declares the deprecated `LGPL-2.1`; OpenCascade's own terms
+# are the LGPL 2.1 with its exception (OCCT/OCCT_LGPL_EXCEPTION.txt).
+[[licenses.clarify]]
+crate = "occt-sys"
+expression = "LGPL-2.1-only WITH OCCT-exception-1.0"
+license-files = [{ path = "OCCT/LICENSE_LGPL_21.txt", hash = 0x2436c1a4 }]
+
+[licenses.private]
+ignore = false
+
+[bans]
+multiple-versions = "allow"
+
+[advisories]
+# Unmaintained, not vulnerable: rustybuzz shapes the 3D Text glyphs and
+# ttf-parser (under rustybuzz and fontdb) reads the fonts. Replacing them
+# is a change of its own; remove these when the font stack moves on.
+ignore = [
+    { id = "RUSTSEC-2026-0206", reason = "rustybuzz unmaintained; 3D Text shaping, to be replaced" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser unmaintained; font reading, to be replaced" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

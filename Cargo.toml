@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+[workspace]
+resolver = "2"
+members = [
+    "crates/xtrude-core",
+    "crates/xtrude-model",
+    "crates/xtrude-io",
+    "crates/xtrude-render",
+    "crates/xtrude-app",
+    "crates/xtrude-ext",
+    "crates/openskp",
+    "crates/xtrude-step",
+]
+
+[workspace.package]
+version = "0.1.0-rc.1"
+edition = "2021"
+rust-version = "1.85"
+# The licence is set here once; every crate inherits it (see AUTHORS/LICENSE).
+license = "GPL-3.0-or-later"
+authors = [
+    "Marco Sumari Tellez and IngeTrazo contributors",
+    "Sebastien Baron",
+]
+homepage = "https://xtrudecad.org"
+repository = "https://github.com/xtrudecad/xtrude-cad"
+
+[workspace.dependencies]
+criterion = { version = "0.8", default-features = false, features = ["cargo_bench_support"] }
+glam = { version = "0.30", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order", "float_roundtrip"] }
+thiserror = "2"
+indexmap = "2"
+eframe = { version = "0.36", default-features = false, features = ["wgpu", "default_fonts", "x11", "wayland", "accesskit"] }
+egui = "0.36"
+bytemuck = { version = "1", features = ["derive"] }
+wgpu = "30"
+pollster = "0.4"
+rfd = "0.17"
+arboard = { version = "3.6", default-features = false }
+base64 = "0.22"
+tiny-skia = "0.12"
+zip = { version = "8", default-features = false, features = ["deflate-flate2-zlib-rs"] }
+mlua = { version = "0.12", features = ["lua54", "vendored", "serialize"] }
+openskp = { path = "crates/openskp" }
+xtrude-core = { path = "crates/xtrude-core" }
+xtrude-model = { path = "crates/xtrude-model" }
+xtrude-io = { path = "crates/xtrude-io" }
+xtrude-ext = { path = "crates/xtrude-ext" }
+xtrude-render = { path = "crates/xtrude-render" }
+
+[profile.dev]
+opt-level = 1
+
+# Dependencies keep only line tables: backtraces still name files and lines,
+# and each of the several hundred test binaries, which all link the GUI
+# stack, stays small enough to link and write quickly.
+[profile.dev.package."*"]
+opt-level = 2
+debug = "line-tables-only"
+
+[profile.test]
+opt-level = 1
+
+# Every crate inherits these (`[lints] workspace = true`); none are set yet.
+[workspace.lints.clippy]

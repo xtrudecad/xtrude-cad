@@ -1,0 +1,6 @@
+{
+    "org.xtrudecad.XtrudeCAD": {
+        "finish-args-home-filesystem-access": "Open Recent reopens files by path, and importers read files next to the chosen one (an OBJ's .mtl material library), which a portal grant for the single chosen file does not cover.",
+        "finish-args-contains-both-x11-and-wayland": "The user can choose X11 in a Wayland session (Preferences > Display > Graphics server), and the app restarts itself under X11 when Wayland gives no GPU context; fallback-x11 would hide the X11 socket in both cases."
+    }
+}

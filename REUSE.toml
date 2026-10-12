@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+#
+# Licence annotations for files that cannot carry a header (data, images,
+# fixtures, generated files, docs). Checked by `reuse lint` in scripts/check.sh.
+version = 1
+
+[[annotations]]
+path = [
+    "AUTHORS",
+    "**/*.md",
+    ".gitignore",
+    ".gitmessage",
+    ".vscode/**",
+    "Cargo.lock",
+    # Generated from Cargo.lock by scripts/release/update_cargo_sources.sh.
+    "packaging/flatpak/cargo-sources.json",
+    # Flathub build options (JSON has no comments).
+    "packaging/flatpak/flathub.json",
+    # The Flathub linter exceptions the manifest needs (see its comments).
+    "packaging/flatpak/lint-exceptions.json",
+    "packaging/screenshots/**",
+    "resources/**",
+    "tests/**",
+]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 The Xtrude CAD Authors (see AUTHORS)"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# Third-party data: RAL Classic codes, names and colours taken from
+# pixelbrackets/ral-color-chart (see resources/colors/SOURCES.md).
+[[annotations]]
+path = "resources/colors/ral.json"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "pixelbrackets/ral-color-chart contributors (https://github.com/pixelbrackets/ral-color-chart)",
+    "2026 The Xtrude CAD Authors (see AUTHORS)",
+]
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+# Documents written by IngeTrazo, with their textures (tests of the .igz
+# compatibility); IngeTrazo is GPL-3.0-or-later too.
+[[annotations]]
+path = "tests/data/*.igz"
+precedence = "override"
+SPDX-FileCopyrightText = "Marco Sumari Tellez and IngeTrazo contributors (https://github.com/ingelibre/ingetrazo)"
+SPDX-License-Identifier = "GPL-3.0-or-later"
+
+# The code of conduct is the Contributor Covenant 2.1, with our contact
+# address filled in.
+[[annotations]]
+path = "CODE_OF_CONDUCT.md"
+precedence = "override"
+SPDX-FileCopyrightText = "Contributor Covenant contributors (https://www.contributor-covenant.org)"
+SPDX-License-Identifier = "CC-BY-4.0"
+
+# crates/openskp is derived from OpenSKP (MIT) and keeps its licence; its
+# sources carry MIT headers, its docs are annotated here.
+[[annotations]]
+path = "crates/openskp/**/*.md"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2024-2026 Ahsan Mehmood",
+    "2026 The Xtrude CAD Authors (see AUTHORS)",
+]
+SPDX-License-Identifier = "MIT"
+
+# The upstream OpenSKP test fixtures (MIT) and their reference parses.
+[[annotations]]
+path = "crates/openskp/tests/fixtures/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+    "2024-2026 Ahsan Mehmood",
+    "2026 The Xtrude CAD Authors (see AUTHORS)",
+]
+SPDX-License-Identifier = "MIT"
+
+# STEP test files from the NIST MBE PMI Validation and Conformance Testing
+# Project (https://www.nist.gov/document/nist-pmi-step-files): works of
+# the US government, in the public domain (see tests/data/step/README.md).
+[[annotations]]
+path = "tests/data/step/nist_*.stp"
+precedence = "override"
+SPDX-FileCopyrightText = "National Institute of Standards and Technology (NIST)"
+SPDX-License-Identifier = "NIST-PD"

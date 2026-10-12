@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+[Desktop Entry]
+Type=Application
+Name=Xtrude CAD
+GenericName=3D Modeller
+Comment=Push/pull 3D modelling for 3D-printable parts
+Exec=xtrude %f
+Icon=org.xtrudecad.XtrudeCAD
+Terminal=false
+Categories=Graphics;3DGraphics;Engineering;
+Keywords=CAD;3D;modelling;printing;STL;
+MimeType=application/x-ingetrazo;image/vnd.dxf;
+StartupNotify=true
+StartupWMClass=org.xtrudecad.XtrudeCAD

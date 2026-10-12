@@ -1,0 +1,6 @@
+/target
+*.part
+# A local Flatpak build from the repository root (the manifest's comment)
+/.flatpak-builder/
+/build-dir/
+/repo/

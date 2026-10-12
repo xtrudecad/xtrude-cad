@@ -1,0 +1,171 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+# A version tag (`vX.Y.Z`) builds the release files and makes a draft
+# GitHub release of them; the maintainer reviews it and publishes it.
+# The tag must name the workspace version; the full checks run first.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  # The tag names the workspace version, so the files built below carry
+  # the version the tag says.
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+      - name: Check the tag against the workspace version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: scripts/release/check_tag.sh "$TAG"
+
+  checks:
+    needs: verify
+    uses: ./.github/workflows/checks.yml
+
+  # The portable tarball, built against glibc 2.28 (AlmaLinux 8) so it
+  # runs on every current distribution. The container setup is the one in
+  # build_tarball.sh's header.
+  tarball:
+    needs: verify
+    runs-on: ubuntu-24.04
+    container: almalinux:8
+    # bash, not the container's sh: `source` and the tests below need it.
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_HOME: /opt/cargo
+      RUSTUP_HOME: /opt/rustup
+    steps:
+      # git before the checkout, so it clones (build_tarball.sh dates the
+      # archive's files by the last commit) instead of downloading a
+      # snapshot. AlmaLinux 8's GCC 8 cannot build Manifold: the build
+      # uses gcc-toolset-14's, which targets the same glibc.
+      - name: Install the build tools
+        run: |
+          dnf install -y -q gcc-toolset-14-gcc gcc-toolset-14-gcc-c++ \
+              make cmake perl git binutils tar gzip findutils
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install rustup
+        run: |
+          curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal \
+              --default-toolchain none --no-modify-path
+          echo "$CARGO_HOME/bin" >>"$GITHUB_PATH"
+      # rustup installs the toolchain that rust-toolchain.toml pins.
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+      - name: Build the tarball
+        run: |
+          source /opt/rh/gcc-toolset-14/enable
+          tarball="$(scripts/release/build_tarball.sh dist | tail -n1)"
+          echo "TARBALL=$tarball" >>"$GITHUB_ENV"
+      - name: Check the glibc floor
+        run: |
+          scripts/release/check_glibc.sh target/release/xtrude 2.28
+          scripts/release/check_glibc.sh target/release/xtrude-step 2.28
+      # The runner has no display: `--version` prints and exits before
+      # any window would open.
+      - name: Smoke test the packed binary
+        run: |
+          mkdir -p "$RUNNER_TEMP/unpacked"
+          tar -xzf "$TARBALL" -C "$RUNNER_TEMP/unpacked"
+          root="$(echo "$RUNNER_TEMP"/unpacked/xtrude-cad-*)"
+          echo "UNPACKED=$root" >>"$GITHUB_ENV"
+          version="$("$root/bin/xtrude" --version)"
+          echo "$version"
+          expected="Xtrude CAD ${GITHUB_REF_NAME#v}"
+          if [[ "$version" != "$expected" ]]; then
+              echo "error: expected '$expected'" >&2
+              exit 1
+          fi
+      - name: Install and uninstall in a temporary prefix
+        run: |
+          prefix="$RUNNER_TEMP/prefix"
+          files="$(cd "$UNPACKED" && find bin share -type f | sort)"
+          PREFIX="$prefix" "$UNPACKED/install.sh"
+          for f in $files; do
+              [[ -f "$prefix/$f" ]] || { echo "error: $f not installed" >&2; exit 1; }
+          done
+          [[ -x "$prefix/bin/xtrude" && -x "$prefix/bin/xtrude-step" ]]
+          desktop="$prefix/share/applications/org.xtrudecad.XtrudeCAD.desktop"
+          grep -qE "^Exec=\"$prefix/bin/xtrude\"( |$)" "$desktop" ||
+              { echo "error: Exec not rewritten:" >&2; grep '^Exec=' "$desktop" >&2; exit 1; }
+          "$prefix/bin/xtrude" --version
+          PREFIX="$prefix" "$UNPACKED/install.sh" --uninstall
+          for f in $files; do
+              [[ ! -e "$prefix/$f" ]] || { echo "error: $f left after --uninstall" >&2; exit 1; }
+          done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tarball
+          path: ${{ env.TARBALL }}
+          if-no-files-found: error
+
+  # The Flatpak bundle, built and linted as in flatpak.yml; a final
+  # release must pass Flathub's lint with its screenshots.
+  flatpak:
+    needs: verify
+    uses: ./.github/workflows/flatpak.yml
+    with:
+      release-tag: ${{ github.ref_name }}
+
+  # The draft release: every file, its checksum and a build attestation.
+  release:
+    needs: [checks, tarball, flatpak]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: assets
+          merge-multiple: true
+      - name: Checksums
+        working-directory: assets
+        run: sha256sum -- * >SHA256SUMS && cat SHA256SUMS
+      # GitHub attests only for a public repository on the organisation's
+      # plan; a private one (a dry run in the private repository) makes
+      # its draft without attestations.
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        if: ${{ !github.event.repository.private }}
+        with:
+          subject-path: assets/*
+      - name: No attestations in a private repository
+        if: ${{ github.event.repository.private }}
+        run: |
+          echo "::warning::Private repository: the release files have no build attestations."
+      # The notes: the newest release's description in the metainfo, or
+      # GitHub's generated notes when it has none.
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          notes="$RUNNER_TEMP/notes.md"
+          scripts/release/release_notes.py \
+              packaging/linux/org.xtrudecad.XtrudeCAD.metainfo.xml >"$notes"
+          if [[ -s "$notes" ]]; then
+              notes_args=(--notes-file "$notes")
+          else
+              notes_args=(--generate-notes)
+          fi
+          gh release create "$TAG" --draft --verify-tag \
+              --title "Xtrude CAD ${TAG#v}" "${notes_args[@]}" assets/*

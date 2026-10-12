@@ -1,0 +1,16 @@
+{
+    "recommendations": [
+        // Rust language server: completion, inlay hints, clippy on save, test lenses.
+        "rust-lang.rust-analyzer",
+        // Native debugger for Rust (used by launch.json and rust-analyzer's "Debug" lens).
+        "vadimcn.vscode-lldb",
+        // Cargo.toml / deny.toml / REUSE.toml syntax and schema validation.
+        "tamasfe.even-better-toml",
+        // Crate version hints in Cargo.toml.
+        "fill-labs.dependi",
+        // WGSL shaders (crates/xtrude-render/src/*.wgsl).
+        "wgsl-analyzer.wgsl-analyzer",
+        // Errors and warnings inline at the end of the line.
+        "usernamehw.errorlens"
+    ]
+}

@@ -1,0 +1,129 @@
+{
+    // "lldb" configurations need CodeLLDB (vadimcn.vscode-lldb); they build
+    // the target themselves through cargo. The "(gdb)" one uses the C/C++
+    // extension and rust-gdb. To debug a single test, the "Debug" lens
+    // rust-analyzer shows above every #[test] is usually quickest.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "xtrude",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["build", "-p", "xtrude-app", "--bin", "xtrude"],
+                "filter": { "name": "xtrude", "kind": "bin" }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "env": { "RUST_BACKTRACE": "1" },
+            "sourceLanguages": ["rust"]
+        },
+        {
+            "name": "xtrude (sandboxed settings)",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["build", "-p", "xtrude-app", "--bin", "xtrude"],
+                "filter": { "name": "xtrude", "kind": "bin" }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            // Settings go to target/vscode-config/xtrude/settings.json.
+            "env": {
+                "RUST_BACKTRACE": "1",
+                "XDG_CONFIG_HOME": "${workspaceFolder}/target/vscode-config"
+            },
+            "sourceLanguages": ["rust"]
+        },
+        {
+            "name": "xtrude: open a model…",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["build", "-p", "xtrude-app", "--bin", "xtrude"],
+                "filter": { "name": "xtrude", "kind": "bin" }
+            },
+            "args": ["${input:modelFile}"],
+            "cwd": "${workspaceFolder}",
+            "env": { "RUST_BACKTRACE": "1" },
+            "sourceLanguages": ["rust"]
+        },
+        {
+            "name": "Tests in current file",
+            "type": "lldb",
+            "request": "launch",
+            // For a file in tests/it/, each crate's single integration-test
+            // binary; the file is the module the filter starts with. Run
+            // from the file's directory: cargo picks the crate it belongs to.
+            "cargo": {
+                "args": ["test", "--no-run", "--test", "it"],
+                "cwd": "${fileDirname}",
+                "filter": { "name": "it", "kind": "test" }
+            },
+            "args": ["${fileBasenameNoExtension}::${input:testFilter}", "--nocapture", "--test-threads=1"],
+            "cwd": "${workspaceFolder}",
+            "env": { "RUST_BACKTRACE": "1" },
+            "sourceLanguages": ["rust"]
+        },
+        {
+            "name": "Unit tests of current crate",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["test", "--no-run", "--lib"],
+                "cwd": "${fileDirname}",
+                "filter": { "kind": "lib" }
+            },
+            "args": ["${input:testFilter}", "--nocapture", "--test-threads=1"],
+            "cwd": "${workspaceFolder}",
+            "env": { "RUST_BACKTRACE": "1" },
+            "sourceLanguages": ["rust"]
+        },
+        {
+            "name": "openskp_dump…",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["build", "-p", "openskp", "--example", "openskp_dump"],
+                "filter": { "name": "openskp_dump", "kind": "example" }
+            },
+            "args": ["${input:skpFile}"],
+            "cwd": "${workspaceFolder}",
+            "sourceLanguages": ["rust"]
+        },
+        {
+            "name": "xtrude (gdb)",
+            "type": "cppdbg",
+            "request": "launch",
+            "preLaunchTask": "cargo: build xtrude",
+            "program": "${workspaceFolder}/target/debug/xtrude",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "environment": [{ "name": "RUST_BACKTRACE", "value": "1" }],
+            "MIMode": "gdb",
+            "miDebuggerPath": "rust-gdb",
+            "setupCommands": [
+                { "text": "-enable-pretty-printing", "ignoreFailures": true }
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "testFilter",
+            "type": "promptString",
+            "description": "Test name filter (substring; empty runs all; in tests/it, the start of the test's name)",
+            "default": ""
+        },
+        {
+            "id": "modelFile",
+            "type": "promptString",
+            "description": "Model to open (.igz, relative to the workspace or absolute)",
+            "default": "tests/golden/box.igz"
+        },
+        {
+            "id": "skpFile",
+            "type": "promptString",
+            "description": ".skp file"
+        }
+    ]
+}

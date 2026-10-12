@@ -1,0 +1,48 @@
+{
+    // rust-analyzer builds into target/rust-analyzer so it never holds the
+    // cargo lock while `cargo build`/`cargo test` run in a terminal or task.
+    "rust-analyzer.cargo.targetDir": true,
+    // Same lints as scripts/check.sh, shown on save.
+    "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.check.allTargets": true,
+    "rust-analyzer.testExplorer": true,
+    "rust-analyzer.debug.engine": "vadimcn.vscode-lldb",
+    "rust-analyzer.runnables.extraEnv": {
+        "RUST_BACKTRACE": "1"
+    },
+    "rust-analyzer.files.exclude": ["target"],
+
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "editor.formatOnSave": true,
+        // rustfmt.toml: max_width = 100
+        "editor.rulers": [100]
+    },
+    "[markdown]": {
+        "editor.rulers": [80],
+        "files.trimTrailingWhitespace": false
+    },
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+
+    "files.associations": {
+        "*.wgsl": "wgsl",
+        ".gitmessage": "git-commit"
+    },
+    "files.watcherExclude": {
+        "**/target/**": true
+    },
+    "search.exclude": {
+        "**/target": true,
+        "Cargo.lock": true,
+        "tests/golden/*.obj": true,
+        "tests/golden/*.stl": true,
+        "crates/openskp/tests/fixtures/**": true
+    },
+
+    // Every commit carries a human DCO sign-off (CONTRIBUTING.md).
+    "git.alwaysSignOff": true,
+
+    "evenBetterToml.formatter.reorderKeys": false,
+    "evenBetterToml.formatter.alignEntries": false
+}

@@ -1,0 +1,95 @@
+{
+  "_doc": "Golden models: <name>.igz/.stl/.obj/.mtl are snapshots of each recipe replayed by Xtrude CAD, written by XTRUDE_UPDATE_GOLDEN=1; crates/xtrude-io/tests/it/test_golden.rs replays each recipe on the engine and compares. Faces are picked by a point inside them, edges by a point on them. 'along' signs a push by a world direction.",
+  "recipes": [
+    {"name": "box", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[4,0,0],[4,3,0],[0,3,0]]},
+      {"op": "push", "face": [2,1.5,0], "dist": 2.5, "along": [0,0,1]}
+    ]},
+    {"name": "box_through_hole", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[4,0,0],[4,4,0],[0,4,0]]},
+      {"op": "push", "face": [2,2,0], "dist": 1.0, "along": [0,0,1]},
+      {"op": "rect", "pts": [[1.5,1.5,1],[2.5,1.5,1],[2.5,2.5,1],[1.5,2.5,1]]},
+      {"op": "push", "face": [2,2,1], "dist": 1.0, "along": [0,0,-1]}
+    ]},
+    {"name": "stacked_keep", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[2,0,0],[2,2,0],[0,2,0]]},
+      {"op": "push", "face": [1,1,0], "dist": 1.0, "along": [0,0,1]},
+      {"op": "push", "face": [1,1,1], "dist": 0.5, "along": [0,0,1], "keep": true}
+    ]},
+    {"name": "cylinder", "ops": [
+      {"op": "circle", "center": [0,0,0], "radius": 1.5, "segments": 24},
+      {"op": "push", "face": [0,0,0], "dist": 2.0, "along": [0,0,1]}
+    ]},
+    {"name": "side_chord_bump", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[4,0,0],[4,4,0],[0,4,0]]},
+      {"op": "push", "face": [2,2,0], "dist": 3.0, "along": [0,0,1]},
+      {"op": "line", "a": [0,0,1], "b": [4,0,2]},
+      {"op": "rect", "pts": [[1,0,0.2],[2,0,0.2],[2,0,0.8],[1,0,0.8]]},
+      {"op": "push", "face": [1.5,0,0.5], "dist": 0.5, "along": [0,-1,0]}
+    ]},
+    {"name": "taper_twist_scale", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[2,0,0],[2,2,0],[0,2,0]]},
+      {"op": "push", "face": [1,1,0], "dist": 2.0, "along": [0,0,1]},
+      {"op": "move", "face": [1,1,2], "delta": [0.3,0.2,0.5]},
+      {"op": "rotate", "face": [1.3,1.2,2.5], "center": [1.3,1.2,2.5], "axis": [0,0,1], "deg": 30},
+      {"op": "scale", "face": [1.3,1.2,2.5], "anchor": [1.3,1.2,2.5], "factor": [0.5,0.5,1.0]}
+    ]},
+    {"name": "fillet_edge", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[3,0,0],[3,2,0],[0,2,0]]},
+      {"op": "push", "face": [1.5,1,0], "dist": 2.0, "along": [0,0,1]},
+      {"op": "fillet", "edges": [[3,2,1]], "radius": 0.5, "segments": 6}
+    ]},
+    {"name": "sweep_frame", "ops": [
+      {"op": "polygon", "pts": [[0,0,0],[0.4,0,0],[0.4,0,0.3],[0,0,0.3]]},
+      {"op": "sweep", "face": [0.2,0,0.15], "path": [[0,0,0],[4,0,0],[4,3,0],[0,3,0]], "closed": true}
+    ]},
+    {"name": "solid_union", "ops": [
+      {"op": "box_group", "name": "A", "min": [0,0,0], "max": [2,2,2]},
+      {"op": "box_group", "name": "B", "min": [1,1,1], "max": [3,3,3]},
+      {"op": "solid", "kind": "union", "groups": ["A","B"]}
+    ]},
+    {"name": "solid_subtract", "ops": [
+      {"op": "box_group", "name": "A", "min": [0,0,0], "max": [2,2,2]},
+      {"op": "box_group", "name": "B", "min": [1,1,1], "max": [3,3,3]},
+      {"op": "solid", "kind": "subtract", "groups": ["A","B"]}
+    ]},
+    {"name": "solid_intersect", "ops": [
+      {"op": "box_group", "name": "A", "min": [0,0,0], "max": [2,2,2]},
+      {"op": "box_group", "name": "B", "min": [1,1,1], "max": [3,3,3]},
+      {"op": "solid", "kind": "intersect", "groups": ["A","B"]}
+    ]},
+    {"name": "groups_and_components", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[1,0,0],[1,1,0],[0,1,0]]},
+      {"op": "push", "face": [0.5,0.5,0], "dist": 1.0, "along": [0,0,1]},
+      {"op": "group", "name": "Peg", "component": true},
+      {"op": "copy_group", "name": "Peg", "delta": [3,0,0]},
+      {"op": "move_group", "name": "Peg", "index": 1, "delta": [0,2,0]},
+      {"op": "rect", "pts": [[5,0,0],[6,0,0],[6,1,0],[5,1,0]]},
+      {"op": "group", "name": "Plate", "component": false}
+    ]},
+    {"name": "paint_and_erase", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[3,0,0],[3,3,0],[0,3,0]]},
+      {"op": "push", "face": [1.5,1.5,0], "dist": 2.0, "along": [0,0,1]},
+      {"op": "paint", "face": [1.5,1.5,2], "color": [0.8,0.1,0.1]},
+      {"op": "paint", "face": [1.5,0,1], "color": [0.1,0.3,0.9]},
+      {"op": "line", "a": [0,0,2], "b": [3,3,2]},
+      {"op": "erase", "edges": [[1.5,1.5,2]]}
+    ]},
+    {"name": "intersect_groups", "ops": [
+      {"op": "box_group", "name": "A", "min": [0,0,0], "max": [2,2,2]},
+      {"op": "box_group", "name": "B", "min": [1,1,1], "max": [3,3,3]},
+      {"op": "intersect", "groups": ["A"], "mode": "model"}
+    ]},
+    {"name": "divided_plate", "ops": [
+      {"op": "rect", "pts": [[0,0,0],[4,0,0],[4,2,0],[0,2,0]]},
+      {"op": "divide", "edge": [2,0,0], "n": 4},
+      {"op": "line", "a": [1,0,0], "b": [1,2,0]},
+      {"op": "push", "face": [0.5,1,0], "dist": 1.0, "along": [0,0,1]}
+    ]},
+    {"name": "mirrored", "ops": [
+      {"op": "polygon", "pts": [[0,0,0],[3,0,0],[3,1,0],[1,2,0],[0,2,0]]},
+      {"op": "push", "face": [1,1,0], "dist": 1.0, "along": [0,0,1]},
+      {"op": "flip", "centre": [0,0,0], "axis": [1,0,0]}
+    ]}
+  ]
+}

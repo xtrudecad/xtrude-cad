@@ -1,0 +1,9 @@
+
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+# Subject: "<area>: <what>", e.g.
+#   app: reset toolbar layout action
+#
+# Keep the Co-Authored-By trailer only if an AI tool helped with the change,
+# and name that tool. Signed-off-by is the human DCO sign-off (git commit -s);
+# never put an AI tool in it.

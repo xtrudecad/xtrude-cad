@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: MIT
+# SPDX-FileCopyrightText: 2024-2026 Ahsan Mehmood
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+#
+# A Rust reader derived from the read path of OpenSKP (MIT), kept under OpenSKP's own
+# licence and free of xtrude-* dependencies so it can leave this workspace.
+[package]
+name = "openskp"
+version = "0.1.0"
+description = "SketchUp (.skp) reader derived from OpenSKP's parser"
+edition.workspace = true
+rust-version.workspace = true
+license = "MIT"
+authors = ["Ahsan Mehmood", "The Xtrude CAD Authors"]
+repository.workspace = true
+publish = false
+
+[dependencies]
+indexmap.workspace = true
+roxmltree = "0.20"
+thiserror.workspace = true
+zip.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[dev-dependencies.criterion]
+workspace = true
+
+[[bench]]
+name = "parse"
+harness = false

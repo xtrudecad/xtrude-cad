@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+# Publishing a release opens the update pull request on the app's Flathub
+# repository: the Flathub manifest's xtrude-cad source moves to the
+# release tag, with the tag's cargo-sources.json. The maintainer merges it
+# once Flathub's test build passes. A draft is never published, so it
+# never reaches Flathub, and a pre-release is skipped.
+#
+# The FLATHUB_TOKEN secret is a fine-grained token with contents and
+# pull-request write access to the Flathub repository only. Without it
+# (before the app is on Flathub) the job ends green with a notice.
+name: flathub-update
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-24.04
+    env:
+      FLATHUB_REPO: flathub/org.xtrudecad.XtrudeCAD
+      MANIFEST: org.xtrudecad.XtrudeCAD.yml
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Look for the Flathub token
+        id: token
+        env:
+          FLATHUB_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
+        run: |
+          if [[ -z "$FLATHUB_TOKEN" ]]; then
+              echo "::notice::No FLATHUB_TOKEN secret: no Flathub update PR for $TAG."
+              echo "enabled=false" >>"$GITHUB_OUTPUT"
+          else
+              echo "enabled=true" >>"$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.token.outputs.enabled == 'true'
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          path: source
+          persist-credentials: false
+      # Credentials kept: the branch is pushed with them below.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.token.outputs.enabled == 'true'
+        with:
+          repository: ${{ env.FLATHUB_REPO }}
+          token: ${{ secrets.FLATHUB_TOKEN }}
+          path: flathub
+      # Only the xtrude-cad module's git source changes: its `tag` and
+      # `commit` lines get the release's, and every other line (the
+      # comments, the manifold module's own git sources) stays as it is.
+      - name: Point the manifest at the release
+        if: steps.token.outputs.enabled == 'true'
+        run: |
+          commit="$(git -C source rev-parse HEAD)"
+          python3 - flathub/"$MANIFEST" "$TAG" "$commit" <<'PY'
+          import re
+          import sys
+
+          path, tag, commit = sys.argv[1:]
+          with open(path, encoding="utf-8") as f:
+              lines = f.read().splitlines(keepends=True)
+          module = None
+          changed = {"tag": 0, "commit": 0}
+          for i, line in enumerate(lines):
+              name = re.match(r"  - name: (\S+)\s*$", line)
+              if name:
+                  module = name.group(1)
+                  continue
+              key = re.match(r"(\s+)(tag|commit):\s", line)
+              if module == "xtrude-cad" and key:
+                  value = tag if key.group(2) == "tag" else commit
+                  lines[i] = f"{key.group(1)}{key.group(2)}: {value}\n"
+                  changed[key.group(2)] += 1
+          if changed != {"tag": 1, "commit": 1}:
+              sys.exit(f"error: {path}: expected one tag and one commit "
+                       f"in the xtrude-cad module, found {changed}")
+          with open(path, "w", encoding="utf-8") as f:
+              f.writelines(lines)
+          PY
+          cp source/packaging/flatpak/cargo-sources.json flathub/cargo-sources.json
+          git -C flathub diff --stat
+      - name: Open the pull request
+        if: steps.token.outputs.enabled == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+        run: |
+          version="${TAG#v}"
+          branch="update-$version"
+          cd flathub
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add "$MANIFEST" cargo-sources.json
+          git commit -m "Update to $version"
+          git push origin "$branch"
+          gh pr create --repo "$FLATHUB_REPO" --head "$branch" \
+              --title "Update to $version" \
+              --body "Xtrude CAD $version: $RELEASE_URL"

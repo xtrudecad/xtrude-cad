@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC0-1.0 -->
+<!-- SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS) -->
+<component type="desktop-application">
+  <id>org.xtrudecad.XtrudeCAD</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <update_contact>hello@xtrudecad.org</update_contact>
+
+  <name>Xtrude CAD</name>
+  <summary>Push/pull CAD for 3D-printed parts</summary>
+  <developer id="org.xtrudecad">
+    <name>The Xtrude CAD Authors</name>
+  </developer>
+
+  <description>
+    <p>
+      Xtrude CAD is a 3D modeller for precise technical parts that will be
+      3D-printed: robot parts, brackets, enclosures, PCB mounts, servo
+      horns. You draw a profile on a face and push or pull it into a solid,
+      typing exact lengths as you go.
+    </p>
+    <p>
+      Documents are in millimetres by default. Lines, rectangles, circles
+      and arcs snap to edges, midpoints and axes; offset, fillet, sweep,
+      move, rotate and scale shape the model; groups and components keep
+      repeated parts together, and measurements and dimensions check the
+      result.
+    </p>
+    <p>
+      Parts export to STL and OBJ for the slicer. STL, OBJ and DXF files
+      can be imported, and extensions written in Lua add commands that
+      build parametric geometry such as gears and boxes.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">org.xtrudecad.XtrudeCAD.desktop</launchable>
+  <provides>
+    <binary>xtrude</binary>
+    <mediatype>application/x-ingetrazo</mediatype>
+    <mediatype>image/vnd.dxf</mediatype>
+  </provides>
+
+  <url type="homepage">https://xtrudecad.org</url>
+  <url type="bugtracker">https://github.com/xtrudecad/xtrude-cad/issues</url>
+  <url type="vcs-browser">https://github.com/xtrudecad/xtrude-cad</url>
+  <url type="contact">https://xtrudecad.org/#contact</url>
+  <url type="contribute">https://github.com/xtrudecad/xtrude-cad/blob/main/CONTRIBUTING.md</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Pulling the face of a bracket, with through holes and a dimension</caption>
+      <image>https://raw.githubusercontent.com/xtrudecad/xtrude-cad/v0.1.0/packaging/screenshots/bracket-push-pull.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A hexapod robot assembly, its nested groups and components in the model tree</caption>
+      <image>https://raw.githubusercontent.com/xtrudecad/xtrude-cad/v0.1.0/packaging/screenshots/assembly-model-tree.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>A servo in an exploded view, with the size of each part</caption>
+      <image>https://raw.githubusercontent.com/xtrudecad/xtrude-cad/v0.1.0/packaging/screenshots/servo-exploded-parts.png</image>
+    </screenshot>
+  </screenshots>
+
+  <recommends>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </recommends>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="0.1.0-rc.1" date="2026-10-12" type="development">
+      <description>
+        <p>The first release of Xtrude CAD.</p>
+        <ul>
+          <li>Push/pull modelling with lengths typed as you draw, in millimetres by default.</li>
+          <li>Lines, rectangles, circles and arcs; offset, fillet, sweep, move, rotate and scale; groups and components; measurements and dimensions.</li>
+          <li>STL and OBJ export for the slicer; STEP, STL, OBJ and DXF import.</li>
+          <li>Opens and saves <code>.igz</code> documents, compatible with IngeTrazo.</li>
+          <li>Lua extensions, with gear and box examples.</li>
+          <li>A portable tarball for x86_64 Linux and a Flatpak bundle.</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+</component>

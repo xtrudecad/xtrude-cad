@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+[package]
+name = "xtrude-io"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+description = "Xtrude CAD file formats: .igz documents, STL, OBJ, DAE and GLB, and DXF and SKP import"
+publish = false
+
+[dependencies]
+xtrude-core.workspace = true
+xtrude-model.workspace = true
+openskp.workspace = true
+glam.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+indexmap.workspace = true
+zip.workspace = true
+roxmltree = "0.20"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+base64 = "0.22"
+
+[lints]
+workspace = true
+
+
+[dev-dependencies.criterion]
+workspace = true
+
+[[bench]]
+name = "stl_import"
+harness = false

@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+name: Bug report
+description: Something does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please check the
+        [open issues](https://github.com/xtrudecad/xtrude-cad/issues) first.
+        A security problem goes in a private report instead (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The tool, the clicks and the values you typed. Attach the `.igz` document or the imported file if you can.
+      placeholder: |
+        1. Draw a 20 × 10 mm rectangle
+        2. Pull it 5 mm
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Xtrude CAD version
+      description: The output of `xtrude --version`, or the commit you built.
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System
+      description: Operating system, distribution, and how you installed Xtrude CAD (release tarball, Flatpak, built from source).
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or crash report
+      description: Any error message, terminal output or crash log.
+      render: text

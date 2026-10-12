@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+#
+# Downcasting the active tool to its concrete type is for tests, which
+# inspect a tool's state (tests/it/main.rs allows it). The app asks the
+# `Tool` trait instead.
+disallowed-methods = [
+    { path = "xtrude_app::viewport::Viewport::tool", reason = "test-only downcast; use the Tool trait" },
+    { path = "xtrude_app::viewport::Viewport::tool_mut", reason = "test-only downcast; use the Tool trait" },
+    { path = "xtrude_app::tools::Tool::as_any", reason = "test-only downcast; use the Tool trait" },
+    { path = "xtrude_app::tools::Tool::as_any_mut", reason = "test-only downcast; use the Tool trait" },
+]

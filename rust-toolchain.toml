@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+# The compiler that CI, release builds and development use. Bumping it is
+# a commit of its own. `rust-version` in `Cargo.toml` is the minimum the
+# code needs, not this pin.
+#
+# The Flatpak cannot use rustup: it builds with the SDK extension
+# `org.freedesktop.Sdk.Extension.rust-stable`, which follows stable a
+# little behind. Keep this pin no newer than that extension's version on
+# the newest `org.freedesktop.Sdk` branch (26.08: 1.98.0), so code that
+# passes here also builds there.
+[toolchain]
+channel = "1.98.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

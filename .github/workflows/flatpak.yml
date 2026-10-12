@@ -1,0 +1,143 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+# The Flatpak bundle, written once: `ci.yml` and the release workflow call
+# it. It builds the in-tree manifest (the one Flathub gets, with a `dir`
+# source), lints the manifest and the built repository with Flathub's own
+# linter, and uploads the bundle `xtrude-cad-X.Y.Z-x86_64.flatpak` as the
+# workflow artifact `flatpak`.
+name: flatpak
+
+on:
+  workflow_call:
+    inputs:
+      # The release tag (`vX.Y.Z`), or empty outside a release. A final
+      # release (a tag without a pre-release part) must lint exactly as
+      # Flathub does, screenshots included.
+      release-tag:
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak:
+    runs-on: ubuntu-24.04
+    # Flathub's image for the manifest's runtime branch (runtime-version):
+    # flatpak-builder, flatpak-builder-lint and the Flathub remote.
+    # flatpak-builder's sandbox needs a privileged container. The volumes
+    # are the runner's largest preinstalled toolchains, which the job
+    # deletes to make room (see "Free disk space").
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-26.08
+      options: --privileged
+      volumes:
+        - /usr/local/lib/android:/host/android
+        - /usr/share/dotnet:/host/dotnet
+        - /opt/ghc:/host/ghc
+        - /usr/local/.ghcup:/host/ghcup
+        - /usr/share/swift:/host/swift
+        - /usr/local/share/boost:/host/boost
+    env:
+      MANIFEST: packaging/flatpak/org.xtrudecad.XtrudeCAD.yml
+      METAINFO: packaging/linux/org.xtrudecad.XtrudeCAD.metainfo.xml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The build (OpenCascade's build tree, the release target folder,
+      # flatpak-builder's copies) needs more than a runner's free space:
+      # delete what this job never uses, the toolchains mounted above and
+      # the hosted tool cache (/__t).
+      - name: Free disk space
+        run: |
+          df -h /
+          rm -rf /host/*/* /__t/*
+          df -h /
+      - name: Name the bundle
+        run: |
+          version="$(sed -nE '/^\[workspace\.package\]/,/^\[/ s/^version = "([^"]+)"/\1/p' Cargo.toml)"
+          [ -n "$version" ] || { echo "error: no workspace version in Cargo.toml" >&2; exit 1; }
+          echo "BUNDLE=xtrude-cad-$version-x86_64.flatpak" | tee -a "$GITHUB_ENV"
+      # The screenshots and the lint exceptions: mirrored and linted as
+      # on Flathub when their URLs resolve, accepted with a warning while
+      # their release tag is not public, an error for a final release
+      # (flatpak_lint_exceptions.py says why).
+      - name: Check the screenshot URLs
+        id: screenshots
+        env:
+          RELEASE_TAG: ${{ inputs.release-tag }}
+        run: |
+          exceptions="$RUNNER_TEMP/lint-exceptions.json"
+          out="$RUNNER_TEMP/screenshots.out"
+          if ! python3 scripts/release/flatpak_lint_exceptions.py "$METAINFO" \
+              packaging/flatpak/lint-exceptions.json "$exceptions" "$RELEASE_TAG" >"$out"; then
+              cat "$out"
+              exit 1
+          fi
+          cat "$out"
+          if grep -qx 'mirror=true' "$out"; then
+              echo "mirror=https://dl.flathub.org/media" >>"$GITHUB_OUTPUT"
+          fi
+          echo "EXCEPTIONS=$exceptions" >>"$GITHUB_ENV"
+      # flatpak-builder's own cache of built modules (.flatpak-builder/cache,
+      # an OSTree repository), so that Manifold and OpenCascade, which
+      # change only with the manifest, are not built again on every run.
+      # Not the action's `cache` option: that one adds a ccache and the
+      # downloads, several GB that would push the Rust caches of the
+      # other jobs out of the repository's cache quota, and it never
+      # refreshes its key. The key names the manifest and the SDK commits
+      # (the action installs the newest SDK; a new one builds every
+      # module again). A release builds from scratch.
+      - name: Name the module cache
+        id: modules
+        if: inputs.release-tag == ''
+        run: |
+          runtime="$(sed -nE 's/^runtime-version: "?([^"]+)"?$/\1/p' "$MANIFEST")"
+          # The Flathub remote of whichever installation has it.
+          commit() {
+              for where in "" --user --system; do
+                  flatpak remote-info $where --show-commit flathub "$1" 2>/dev/null && return
+              done
+              echo "::warning::no commit for $1 on flathub" >&2
+              echo unknown
+          }
+          sdk="$(commit "org.freedesktop.Sdk//$runtime")"
+          rust="$(commit "org.freedesktop.Sdk.Extension.rust-stable//$runtime")"
+          echo "key=flatpak-modules-${{ hashFiles(env.MANIFEST) }}-${sdk:0:12}-${rust:0:12}" | tee -a "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: modules-cache
+        if: inputs.release-tag == ''
+        with:
+          path: .flatpak-builder/cache
+          key: ${{ steps.modules.outputs.key }}
+      # build-dir is one the manifest's `dir` source skips.
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
+        with:
+          manifest-path: ${{ env.MANIFEST }}
+          bundle: ${{ env.BUNDLE }}
+          build-dir: build-dir
+          mirror-screenshots-url: ${{ steps.screenshots.outputs.mirror }}
+          cache: false
+          upload-artifact: false
+      # Saved right after the build, so that a failing lint does not
+      # throw it away.
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: inputs.release-tag == '' && steps.modules-cache.outputs.cache-hit != 'true'
+        with:
+          path: .flatpak-builder/cache
+          key: ${{ steps.modules.outputs.key }}
+      - name: Disk space after the build
+        if: always()
+        run: df -h /
+      # The two permission errors in lint-exceptions.json are the design's
+      # (their reasons are in the file); Flathub grants them at submission.
+      - name: Lint the manifest
+        run: flatpak-builder-lint --exceptions --user-exceptions "$EXCEPTIONS" manifest "$MANIFEST"
+      - name: Lint the repository
+        run: flatpak-builder-lint --exceptions --user-exceptions "$EXCEPTIONS" repo repo
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: flatpak
+          path: ${{ env.BUNDLE }}
+          if-no-files-found: error

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+# Issues are for bugs and feature requests, through the forms next to this
+# file; questions go to Discussions, security problems to a private report.
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/xtrudecad/xtrude-cad/discussions
+    about: Ask how to do something, suggest an idea or show what you made.
+  - name: Security problem
+    url: https://github.com/xtrudecad/xtrude-cad/security/advisories/new
+    about: Report a vulnerability privately (see SECURITY.md), never in a public issue.
