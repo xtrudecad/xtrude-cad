@@ -131,14 +131,49 @@ pub fn icon_texts(painter: &egui::Painter, rect: egui::Rect, texts: &[super::ico
         let c = egui::Color32::from_rgba_unmultiplied(t.color.0, t.color.1, t.color.2, t.color.3);
         let font = egui::FontId::proportional(t.px * k);
         let p = egui::pos2(rect.min.x + t.at.0 * k, rect.min.y + t.at.1 * k);
-        let align = if t.centered {
-            egui::Align2::CENTER_CENTER
+        let galley = painter.layout_no_wrap(t.text.clone(), font, c);
+        let origin = if t.centered {
+            p - galley.size() / 2.0
         } else {
-            egui::Align2::LEFT_BOTTOM
+            // the baseline on `p`, not the bottom of the line (which
+            // leaves room for descenders and lifts the text)
+            p - egui::vec2(0.0, baseline(&galley))
         };
-        painter.text(p, align, &t.text, font.clone(), c);
+        painter.galley(origin, galley.clone(), c);
         if t.bold {
-            painter.text(p + egui::vec2(0.4 * k, 0.0), align, &t.text, font, c);
+            painter.galley(origin + egui::vec2(0.4 * k, 0.0), galley, c);
         }
+    }
+}
+
+/// How far below its top a galley's first line has its baseline.
+fn baseline(galley: &egui::Galley) -> f32 {
+    galley
+        .rows
+        .first()
+        .and_then(|r| r.row.glyphs.first().map(|g| r.pos.y + g.pos.y))
+        .unwrap_or(galley.size().y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A text placed by its baseline has the baseline there: above the
+    /// bottom of its line box, by the font's descent.
+    #[test]
+    fn test_the_baseline_sits_inside_the_line_box() {
+        let ctx = egui::Context::default();
+        let mut out = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let galley = ui.painter().layout_no_wrap(
+                "A".into(),
+                egui::FontId::proportional(30.0),
+                egui::Color32::WHITE,
+            );
+            let b = baseline(&galley);
+            let h = galley.size().y;
+            assert!(b > 0.5 * h && b < h, "baseline {b} in a line {h} high");
+        });
+        out.textures_delta.clear(); // no GPU to take the font atlas
     }
 }
