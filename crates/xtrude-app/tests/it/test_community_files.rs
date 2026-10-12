@@ -49,7 +49,9 @@ fn issues_are_forms_and_questions_go_to_discussions() {
     let config = read(".github/ISSUE_TEMPLATE/config.yml");
     assert!(config.contains("blank_issues_enabled: false"));
     assert!(config.contains(&format!("url: {REPO}/discussions\n")));
-    assert!(config.contains(&format!("url: {REPO}/security/advisories/new\n")));
+    // GitHub lists its own private-report entry while private
+    // vulnerability reporting is on; a link of ours would repeat it.
+    assert!(!config.contains("/security/advisories/new"));
     for form in ["bug_report.yml", "feature_request.yml"] {
         let text = read(&format!(".github/ISSUE_TEMPLATE/{form}"));
         assert!(text.contains("\nbody:\n"), "{form} is not an issue form");
