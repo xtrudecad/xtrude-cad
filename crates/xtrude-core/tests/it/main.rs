@@ -12,6 +12,7 @@ mod test_camera_clip_depth;
 mod test_camera_orbit;
 mod test_camera_zoom;
 mod test_center_inference;
+mod test_chamfer;
 mod test_close_under_axis_lock;
 mod test_concave;
 mod test_edge_level_and_extension_inference;
