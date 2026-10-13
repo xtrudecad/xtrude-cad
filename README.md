@@ -25,14 +25,15 @@ documents became the default, and the Python/PySide6 application was
 rewritten in Rust (wgpu + egui).
 
 Xtrude CAD saves its documents in a format of its own, `.xtrude`. It still
-reads IngeTrazo's `.igz` documents: one opens as a new, unsaved Xtrude
+reads IngeTrazo's `.igz` documents, those of every release up to 0.5.8
+(large ones, with binary geometry, included): one opens as a new, unsaved Xtrude
 CAD document, which is saved as `.xtrude`, so the `.igz` is never
 overwritten.
 
 ## File formats
 
 - **Documents:** Xtrude CAD documents (`.xtrude`), open and save;
-  IngeTrazo documents (`.igz`), open and import.
+  IngeTrazo documents (`.igz`, up to IngeTrazo 0.5.8), open and import.
 - **Import:** STEP (`.step`, `.stp`; AP203, AP214, AP242), STL, Wavefront
   OBJ, glTF/GLB, COLLADA (`.dae`), DXF and `.skp`.
 - **Export:** STL (millimetres), 3MF (millimetres, one object per part,
