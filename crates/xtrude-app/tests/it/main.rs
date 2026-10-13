@@ -23,6 +23,7 @@ mod test_axis_magnet_on_shapes;
 mod test_back_edges;
 mod test_box_select;
 mod test_center_inference;
+mod test_centre_rectangle;
 mod test_chained_questions;
 mod test_chamfer_tool;
 mod test_chunk_stale_materials;

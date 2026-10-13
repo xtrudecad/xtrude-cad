@@ -78,6 +78,10 @@ fn hint_entry(key: &str) -> Option<Hint> {
             "Click the first corner. Arrows pick the plane; Ctrl = centre.",
             "Click the opposite corner, or type width;height and Enter.",
         ),
+        "rectangle_center" => Two(
+            "Click the centre. Arrows pick the plane; Ctrl = from a corner.",
+            "Click a corner, or type width;height and Enter.",
+        ),
         "rotated_rect" => Two(
             "Click the first corner of the base edge.",
             "Edge end, then width (or type them). Shift holds the direction.",
