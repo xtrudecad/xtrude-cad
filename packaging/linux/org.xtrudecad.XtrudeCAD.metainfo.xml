@@ -71,6 +71,23 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="0.1.0-rc.3" date="2026-10-13" type="development">
+      <description>
+        <p>The third release candidate of Xtrude CAD 0.1.0.</p>
+        <ul>
+          <li>New modelling tools: Chamfer, Shell (hollow a solid to a wall thickness), Hole (ISO 273 clearance holes from M2 to M8, through or blind, with a countersink or counterbore), Revolve, and Linear and Circular Pattern.</li>
+          <li>New drawing tools: Centre Rectangle and Slot.</li>
+          <li>Print materials (PLA, PETG, ABS, ASA, TPU, PA, PC or custom) for the document and for each group; Properties shows a part's mass at 100 % infill. Documents saved by this version do not open in 0.1.0-rc.2.</li>
+          <li>A left dock: the model tree on top, Properties below. The tree counts a component's copies and can show each part's size, face count and colour.</li>
+          <li>Properties measures parts: size, whether the part is a closed solid, volume and mass, with totals for several parts. Areas and volumes are in the document's units.</li>
+          <li>The Colors panel lists the colours as filament slots, in the 3MF export's order, and offers a Basic palette.</li>
+          <li>Model Info stays open while the part changes.</li>
+          <li>IngeTrazo 0.5.8 documents open, large ones included.</li>
+          <li>Orbiting turns about the centre of the view, so the model no longer drifts.</li>
+          <li>Parallel projection no longer shows hidden edges through thin plates; its toolbar button, and a new X-ray button, show when they are on.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.0-rc.2" date="2026-10-13" type="development">
       <description>
         <p>The second release candidate of Xtrude CAD 0.1.0.</p>
