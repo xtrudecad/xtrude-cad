@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The zoom and the orbit pivot read the point under the cursor from the depth
-//! of the frame on screen, not from the pick index. The frame is
-//! drawn headless through wgpu and its depth handed over as the shell does
+//! The zoom and the pan's grabbed point read the point under the cursor
+//! from the depth of the frame on screen, not from the pick index. The
+//! frame is drawn headless through wgpu and its depth handed over as the shell does
 //! before a wheel notch or a press; skipped where the machine offers no
 //! adapter.
 
@@ -48,11 +48,11 @@ fn test_the_zoom_finds_the_face_under_the_cursor_from_the_depth() {
 }
 
 #[test]
-fn test_the_orbit_pivot_too() {
+fn test_the_pan_grab_point_too() {
     let Some((mut vp, _gpu)) = win() else { return };
     let built = vp.pick_index_builds();
     let px = vp.world_to_pixel(v3(-0.5, -1.0, 0.5)).unwrap();
-    let p = vp.orbit_pivot_at(px.x, px.y);
+    let p = vp.grab_point_at(px.x, px.y);
     approx(p, v3(-0.5, -1.0, 0.5));
     assert_eq!(vp.pick_index_builds(), built);
 }
@@ -63,7 +63,7 @@ fn test_the_sky_does_not_build_the_index_either() {
     let built = vp.pick_index_builds();
     let px = vp.world_to_pixel(v3(2.8, -1.0, 2.8)).unwrap(); // beside the box
     vp.world_under_cursor(px.x, px.y);
-    vp.orbit_pivot_at(px.x, px.y);
+    vp.grab_point_at(px.x, px.y);
     assert_eq!(vp.pick_index_builds(), built);
 }
 

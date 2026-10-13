@@ -639,7 +639,7 @@ impl XtrudeApp {
             ))
         };
         for ev in inputs {
-            // the zoom and the orbit pivot read what the frame on screen shows
+            // the zoom and the pan read what the frame on screen shows
             if self.window.viewport.wants_depth_for(&ev) {
                 self.read_depth(frame);
             }

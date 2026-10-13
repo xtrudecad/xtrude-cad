@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The camera navigation state and the rubber-band boxes.
 
-use glam::{DMat4, DVec3};
+use glam::DMat4;
 
 use super::depth::DepthSnap;
 use super::events::ZoomFocus;
@@ -60,9 +60,9 @@ impl RubberBand {
 /// drag under way and its gesture, the look drag, the wheel's zoom
 /// target and the depth of the frame on screen.
 ///
-/// `orbit_pivot` belongs to the gesture of `camera_drag` and is cleared
-/// with it (`end_drag`); `zoom_box` is the rectangle of
-/// a Zoom Window drag, from its press to its release. `right_press` is
+/// `pan_depth` is the depth a pan of `camera_drag` slides at; `zoom_box`
+/// is the rectangle of a Zoom Window drag, from its press to its
+/// release. `right_press` is
 /// set from a right press until its release, unless it moved too far or
 /// joined a chord; `swallow_release` is the button a chord left held,
 /// whose release does nothing, until an event shows that release lost
@@ -73,7 +73,6 @@ pub struct Navigation {
     /// The camera navigation mode for a left drag (trackpads).
     pub mode: Option<NavMode>,
     pub(super) camera_drag: Option<CameraDrag>,
-    pub(super) orbit_pivot: Option<DVec3>,
     pub(super) pan_depth: Option<f64>,
     pub(super) zoom_box: Option<RubberBand>,
     pub(super) zoom_focus: Option<ZoomFocus>,
@@ -90,7 +89,6 @@ impl Navigation {
     /// The camera drag's gesture is over.
     pub(super) fn end_drag(&mut self) {
         self.camera_drag = None;
-        self.orbit_pivot = None;
         self.swallow_release = None;
     }
 

@@ -96,14 +96,7 @@ impl Viewport {
                     by: DragBy::Button(Button::Left),
                     action,
                 });
-                self.nav.orbit_pivot =
-                    (nav == NavMode::Orbit).then(|| self.orbit_pivot_at(ev.x, ev.y));
-                self.nav.pan_depth = if action == NavAction::Pan {
-                    let p = self.orbit_pivot_at(ev.x, ev.y);
-                    Some(self.depth_of(p))
-                } else {
-                    None
-                };
+                self.nav.pan_depth = self.pan_depth_for(action, ev);
                 return;
             }
             if self.active_tool().is_none() {
@@ -125,8 +118,8 @@ impl Viewport {
         }
     }
 
-    /// Start a camera drag of the style's: orbit about the point under
-    /// the pointer, or pan or zoom at its depth.
+    /// Start a camera drag of the style's: orbit about the view centre,
+    /// pan at the depth of the point under the pointer, or zoom.
     fn start_camera_drag(&mut self, ev: &MouseEvent, by: DragBy, action: NavAction) {
         if by == DragBy::Move {
             // the Alt held for an Alt + move drag is not a tap
@@ -138,9 +131,7 @@ impl Viewport {
             by,
             action,
         });
-        let pivot = self.orbit_pivot_at(ev.x, ev.y);
-        self.nav.orbit_pivot = Some(pivot);
-        self.nav.pan_depth = Some(self.depth_of(pivot));
+        self.nav.pan_depth = self.pan_depth_for(action, ev);
         self.outbox.cursor = Some(match action {
             NavAction::Orbit => Cursor::Orbit,
             NavAction::Pan => Cursor::Pan,
@@ -330,10 +321,7 @@ impl Viewport {
                 self.camera.pan(dx, dy, h, self.nav.pan_depth);
             } else {
                 let ody = if self.prefs.invert_orbit_y { -dy } else { dy };
-                match self.nav.orbit_pivot {
-                    Some(pivot) => self.camera.orbit_about(pivot, dx, ody, h),
-                    None => self.camera.orbit(dx, ody, h),
-                }
+                self.camera.orbit(dx, ody, h);
             }
             self.update();
             return;
@@ -375,6 +363,16 @@ impl Viewport {
     /// How far `point` lies in front of the eye along the view.
     pub fn depth_of(&self, point: DVec3) -> f64 {
         (point - self.camera.eye()).dot(self.camera.forward())
+    }
+
+    /// The depth a pan starting at `ev` slides at, so the grabbed point
+    /// stays under the cursor; `None` for an orbit or a zoom, which need
+    /// no point (an orbit turns about the target).
+    fn pan_depth_for(&mut self, action: NavAction, ev: &MouseEvent) -> Option<f64> {
+        (action == NavAction::Pan).then(|| {
+            let p = self.grab_point_at(ev.x, ev.y);
+            self.depth_of(p)
+        })
     }
 
     /// A hover at `(x, y)`: the hovered edge, the centre reference, the

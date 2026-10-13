@@ -8,7 +8,7 @@
 //! are supported. Matrices are right-handed and act on column vectors; the
 //! projections map to OpenGL clip space (z in [-1, 1]).
 
-use glam::{DMat4, DQuat, DVec3, DVec4};
+use glam::{DMat4, DVec3, DVec4};
 
 /// How close the camera may get to what it is looking at (2 cm: close
 /// enough for the face of a figure or the rim of a wheel).
@@ -204,35 +204,13 @@ impl OrbitCamera {
 
     // ---- Navigation ---------------------------------------------------------
 
-    /// Turn the model under the cursor, Blender style: both axes grab the
-    /// model (drag down and it tips down — you come up over it), the same
-    /// gesture as [`Self::pan`].
+    /// Turn the view about the target, the centre of the view, Blender
+    /// style: both axes grab the model (drag down and it tips down — you
+    /// come up over it), the same gesture as [`Self::pan`].
     pub fn orbit(&mut self, dx_pixels: f64, dy_pixels: f64, viewport_h: i32) {
         let scale = std::f64::consts::PI / viewport_h.max(1) as f64;
         self.yaw -= dx_pixels * scale;
         self.pitch = clamp_pitch(self.pitch + dy_pixels * scale);
-    }
-
-    /// [`Self::orbit`] around `pivot` instead of the target: eye and target
-    /// turn rigidly about it, so the grabbed model point stays put.
-    pub fn orbit_about(&mut self, pivot: DVec3, dx_pixels: f64, dy_pixels: f64, viewport_h: i32) {
-        let (old_yaw, old_pitch) = (self.yaw, self.pitch);
-        self.orbit(dx_pixels, dy_pixels, viewport_h);
-        let d_yaw = self.yaw - old_yaw;
-        let d_pitch = self.pitch - old_pitch;
-        if d_yaw.abs() < 1e-12 && d_pitch.abs() < 1e-12 {
-            return;
-        }
-        let rot_yaw = DQuat::from_axis_angle(DVec3::Z, d_yaw);
-        let cp = old_pitch.cos();
-        let offset = DVec3::new(cp * self.yaw.cos(), cp * self.yaw.sin(), old_pitch.sin());
-        let axis = offset.cross(DVec3::Z);
-        let rot = if axis.length() < 1e-9 {
-            rot_yaw
-        } else {
-            DQuat::from_axis_angle(axis.normalize(), d_pitch) * rot_yaw
-        };
-        self.target = pivot + rot * (self.target - pivot);
     }
 
     /// Slide the view by a drag of `(dx, dy)` pixels. `depth` is how far in

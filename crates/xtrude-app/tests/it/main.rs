@@ -132,7 +132,7 @@ mod test_offset_edges;
 mod test_offset_keeps_paint;
 mod test_offset_regions;
 mod test_orbit_never_sticks;
-mod test_orbit_pivot;
+mod test_orbit_view_centre;
 mod test_orient_keeps_paint_by_side;
 mod test_origin_beats_linear_inferences;
 mod test_overlay_annotations;
