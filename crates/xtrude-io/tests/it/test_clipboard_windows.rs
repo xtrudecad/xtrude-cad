@@ -95,3 +95,42 @@ fn test_the_scene_travels_as_a_document() {
     xtrude_io::document::load_bytes(&mut s, &doc, "scene.xtrude", None).unwrap();
     assert_eq!(s.mesh().faces.len(), 1);
 }
+
+#[test]
+fn test_a_clipboard_from_an_older_build_is_not_pasted() {
+    // format 1 carried the scene as `scene.igz`: a paste of it gives
+    // nothing rather than a half-read scene
+    use std::io::{Read, Write};
+    let bytes = encode(&clip_data()).unwrap();
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    let mut head = String::new();
+    z.by_name("clip.json")
+        .unwrap()
+        .read_to_string(&mut head)
+        .unwrap();
+    let mut head: serde_json::Value = serde_json::from_str(&head).unwrap();
+    head["format"] = 1.into();
+    let mut doc = Vec::new();
+    z.by_name("scene.xtrude")
+        .unwrap()
+        .read_to_end(&mut doc)
+        .unwrap();
+    let mut s = xtrude_model::scene::Scene::new();
+    xtrude_io::document::load_bytes(&mut s, &doc, "scene.xtrude", None).unwrap();
+    let old_scene = serde_json::json!({
+        "igz_format": 1,
+        "app_version": "0.1.0",
+        "scene": xtrude_io::document::scene_json(&s)["scene"],
+    });
+    let mut out = std::io::Cursor::new(Vec::new());
+    {
+        let mut w = zip::ZipWriter::new(&mut out);
+        let opts = zip::write::SimpleFileOptions::default();
+        w.start_file("clip.json", opts).unwrap();
+        w.write_all(head.to_string().as_bytes()).unwrap();
+        w.start_file("scene.igz", opts).unwrap();
+        w.write_all(old_scene.to_string().as_bytes()).unwrap();
+        w.finish().unwrap();
+    }
+    assert!(decode(&out.into_inner()).is_none());
+}
