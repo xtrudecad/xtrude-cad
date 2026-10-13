@@ -149,6 +149,8 @@ pub enum Asker {
     Tray(TrayAction),
     /// The name of a section plane just placed with the mouse.
     SectionName(ObjId),
+    /// The Hole tool's form.
+    HoleSpec,
 }
 
 impl Asker {
@@ -160,6 +162,7 @@ impl Asker {
             }
             Asker::Tray(action) => tray.run(w, action),
             Asker::SectionName(id) => w.name_section_plane(id),
+            Asker::HoleSpec => w.prompt_hole_spec(),
         }
         w.pump_events();
     }

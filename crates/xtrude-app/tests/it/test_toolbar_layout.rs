@@ -699,6 +699,7 @@ fn test_the_bars_hold_the_parts_tools_in_the_order_of_the_work() {
                 "Model",
                 vec![
                     "pushpull",
+                    "hole",
                     "sweep",
                     "offset",
                     "stack:edges",

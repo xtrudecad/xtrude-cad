@@ -626,6 +626,14 @@ impl Viewport {
         if !is_modifier_key(ev.key) {
             self.input.ctrl_alone = false;
         }
+        // `M3` starts with the letter of a shortcut.
+        if self.value_box.buffer.is_empty()
+            && !is_chord(ev.modifiers)
+            && ev.text.eq_ignore_ascii_case("m")
+            && self.value_spec().screw_sizes
+        {
+            return true;
+        }
         if !self.value_box.buffer.is_empty() && !is_chord(ev.modifiers) {
             let t = ev.text.to_lowercase();
             if !t.is_empty()
@@ -949,6 +957,12 @@ impl Viewport {
                 Some(Entry::Radius(r)) => {
                     if spec.radius {
                         let v = ToolValue::Radius(r);
+                        self.with_tool(|t, vp| t.on_value(vp, &v));
+                    }
+                }
+                Some(Entry::Screw { nominal, close }) => {
+                    if spec.screw_sizes {
+                        let v = ToolValue::Screw { nominal, close };
                         self.with_tool(|t, vp| t.on_value(vp, &v));
                     }
                 }

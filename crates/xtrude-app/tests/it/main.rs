@@ -81,6 +81,7 @@ mod test_hidden_things_are_clickable;
 mod test_hidden_view_selection;
 mod test_hide_edges;
 mod test_hide_objects;
+mod test_hole_tool;
 mod test_hull_prefilter_is_exact;
 mod test_icons_distinct;
 mod test_idle_frame;

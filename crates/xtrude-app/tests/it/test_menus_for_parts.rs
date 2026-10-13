@@ -194,6 +194,7 @@ fn test_the_model_menu() {
         menu(&w, "Model"),
         [
             "pushpull",
+            "hole",
             "sweep",
             "offset",
             "fillet",

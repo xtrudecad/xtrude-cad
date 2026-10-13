@@ -160,6 +160,7 @@ fn hint_entry(key: &str) -> Option<Hint> {
                 "Move to set the distance along the faces, or type it and Enter; click to chamfer.",
             ),
         ]),
+        "hole" => Always("Click a face to drill. Type M3, M3c, Ø or Ø;depth; Tab = head."),
         "shell" => Phases(&[
             ("idle", "Click a solid to hollow it (or select its open faces first)."),
             (
