@@ -562,6 +562,15 @@ fn rectangle_center(p: &mut Painter, ink: Rgba) {
     dot(p, 37.0, 14.0, 2.9, None);
 }
 
+/// An obround and the segment between its two centres.
+fn slot(p: &mut Painter, ink: Rgba) {
+    p.no_brush();
+    p.draw_rounded_rect(7.0, 16.0, 34.0, 16.0, 8.0, 8.0);
+    guide(p, ink, (15.0, 24.0), (33.0, 24.0), true);
+    dot(p, 15.0, 24.0, 2.9, None);
+    dot(p, 33.0, 24.0, 2.9, None);
+}
+
 fn rotated_rect(p: &mut Painter, _ink: Rgba) {
     let pp = (10.0f32, 38.0f32);
     let ang = 28f32.to_radians();
@@ -1541,6 +1550,7 @@ pub const KEYS: &[&str] = &[
     "rotated_rect",
     "circle",
     "polygon",
+    "slot",
     "arc",
     "arc3",
     "center_arc",
@@ -1606,6 +1616,7 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "rotated_rect" => rotated_rect,
         "circle" => circle,
         "polygon" => polygon,
+        "slot" => slot,
         "arc" => arc,
         "arc3" => arc3,
         "center_arc" => center_arc,
@@ -1715,6 +1726,7 @@ fn pencil_badge(key: &str) -> Option<Option<&'static str>> {
         "rotated_rect" => Some("rotated_rect"),
         "circle" => Some("circle"),
         "polygon" => Some("polygon"),
+        "slot" => Some("slot"),
         "arc" => Some("arc"),
         "arc3" => Some("arc3"),
         "center_arc" => Some("center_arc"),

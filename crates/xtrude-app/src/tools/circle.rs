@@ -51,25 +51,38 @@ pub fn busy_plane(scene: &Scene, new_points: &[DVec3]) -> Option<(DVec3, DVec3)>
 /// Commit a closed curve loop (circle, polygon): its edges, its face and
 /// its curve tag, through the planar arrangement where the plane needs it.
 pub fn commit_curve_loop(vp: &mut Viewport, pts: &[DVec3]) {
+    commit_loop(vp, pts, &[(pts.to_vec(), true)]);
+}
+
+/// Commit a closed loop: its edges, its face, and the runs of it that are
+/// curves (`(points, closed)`, a slot's two arcs), through the planar
+/// arrangement where the plane needs it.
+pub fn commit_loop(vp: &mut Viewport, pts: &[DVec3], curves: &[(Vec<DVec3>, bool)]) {
     let n = pts.len();
     let segs: Vec<(DVec3, DVec3)> = (0..n).map(|i| (pts[i], pts[(i + 1) % n])).collect();
-    let tag = || -> Box<dyn Command> {
-        Box::new(TagCurveCommand {
-            pts: pts.to_vec(),
-            closed: true,
-        })
+    let tags = || -> Vec<Box<dyn Command>> {
+        curves
+            .iter()
+            .map(|(c, closed)| -> Box<dyn Command> {
+                Box::new(TagCurveCommand {
+                    pts: c.clone(),
+                    closed: *closed,
+                })
+            })
+            .collect()
     };
-    let extra: Vec<Box<dyn Command>> = if flat_drawing(&vp.scene, pts) {
-        vec![tag(), Box::new(RebuildPlanarFacesCommand::new())]
+    let mut extra: Vec<Box<dyn Command>> = Vec::new();
+    if flat_drawing(&vp.scene, pts) {
+        extra.extend(tags());
+        extra.push(Box::new(RebuildPlanarFacesCommand::new()));
     } else if let Some((o, nrm)) = busy_plane(&vp.scene, pts) {
-        vec![
-            Box::new(AddFaceCommand::new(pts.to_vec())),
-            tag(),
-            Box::new(RebuildPlaneFacesCommand::new(o, nrm)),
-        ]
+        extra.push(Box::new(AddFaceCommand::new(pts.to_vec())));
+        extra.extend(tags());
+        extra.push(Box::new(RebuildPlaneFacesCommand::new(o, nrm)));
     } else {
-        vec![Box::new(AddFaceCommand::new(pts.to_vec())), tag()]
-    };
+        extra.push(Box::new(AddFaceCommand::new(pts.to_vec())));
+        extra.extend(tags());
+    }
     let cmd = build_add_edges(&vp.scene, &segs, false, extra, None);
     vp.execute_boxed(cmd);
 }

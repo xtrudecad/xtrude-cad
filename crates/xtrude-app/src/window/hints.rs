@@ -90,6 +90,11 @@ fn hint_entry(key: &str) -> Option<Hint> {
             "Click the centre. Arrows pick the plane, Down = perpendicular to an edge. Type the sides first.",
             "Click the radius, or type it and Enter.",
         ),
+        "slot" => Phases(&[
+            ("idle", "Click the first centre. Arrows pick the plane. Type the sides first."),
+            ("started", "Click the second centre, or type length;width and Enter."),
+            ("width", "Click to set the width, or type it and Enter."),
+        ]),
         "arc" => Phases(&[
             ("idle", "Click the start point — on an edge to draw a tangent arc."),
             ("end", "End point. Magenta = same distance; double-click rounds."),

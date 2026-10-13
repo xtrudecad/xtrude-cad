@@ -30,7 +30,11 @@ pub const TOOLBAR_STACKS: [(&str, &str, &[&str]); 9] = [
         "Rectangles",
         &["rectangle", "rectangle_center", "rotated_rect"],
     ),
-    ("circles", "Circles and Polygons", &["circle", "polygon"]),
+    (
+        "circles",
+        "Circles, Polygons and Slots",
+        &["circle", "polygon", "slot"],
+    ),
     ("arcs", "Arcs", &["arc", "arc3", "center_arc", "sector"]),
     ("edges", "Fillet and Chamfer", &["fillet", "chamfer"]),
     (
