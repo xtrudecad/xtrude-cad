@@ -81,3 +81,142 @@ fn test_damaged_igz_files_are_errors() {
         }
     }
 }
+
+#[test]
+fn test_a_format_4_document_is_refused() {
+    let tmp = TmpDir::new();
+    let path = tmp.join("next.igz");
+    let doc = serde_json::json!({"igz_format": 4, "app_version": "0.6.0", "scene": {}});
+    std::fs::write(
+        &path,
+        zip_with(&[("document.json", doc.to_string().as_bytes())]),
+    )
+    .unwrap();
+    let err = load(&path).expect_err("refused");
+    assert_eq!(
+        err.to_string(),
+        "IngeTrazo document format v4 is newer than this build reads (v3)."
+    );
+}
+
+/// The format-3 fixture's entries, `geom/0.bin` (the loose mesh's block)
+/// changed by `edit` (`None`: left out).
+fn format3_with(edit: impl Fn(&[u8]) -> Option<Vec<u8>>) -> Vec<u8> {
+    let raw = std::fs::read(data("ingetrazo-0.5.8-format3.igz")).unwrap();
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(raw)).unwrap();
+    let mut entries: Vec<(String, Vec<u8>)> = Vec::new();
+    for i in 0..z.len() {
+        let mut f = z.by_index(i).unwrap();
+        let mut bytes = Vec::new();
+        std::io::Read::read_to_end(&mut f, &mut bytes).unwrap();
+        let name = f.name().to_string();
+        if name == "geom/0.bin" {
+            match edit(&bytes) {
+                Some(b) => entries.push((name, b)),
+                None => continue,
+            }
+        } else {
+            entries.push((name, bytes));
+        }
+    }
+    let refs: Vec<(&str, &[u8])> = entries.iter().map(|(n, b)| (n.as_str(), &b[..])).collect();
+    zip_with(&refs)
+}
+
+#[test]
+fn test_a_damaged_geometry_block_is_an_error_and_leaves_the_scene() {
+    let tmp = TmpDir::new();
+    let cases: [(&str, Vec<u8>, &str); 3] = [
+        (
+            "truncated",
+            format3_with(|b| Some(b[..b.len() / 2].to_vec())),
+            "damaged geometry block (",
+        ),
+        (
+            "out_of_range",
+            // the first edge's first end, an index into the points, set far past them
+            format3_with(|b| {
+                let mut b = b.to_vec();
+                let at = 3733 * 12 + 4; // after the points, padded to 8 bytes
+                b[at..at + 4].copy_from_slice(&1_000_000i32.to_le_bytes());
+                Some(b)
+            }),
+            "damaged geometry block (edges)",
+        ),
+        (
+            "missing",
+            format3_with(|_| None),
+            "the document lost its geometry block geom/0.bin",
+        ),
+    ];
+    for (name, bytes, why) in cases {
+        let path = tmp.join(&format!("{name}.igz"));
+        std::fs::write(&path, bytes).unwrap();
+        let mut s = Scene::new();
+        let mut m = xtrude_core::Mesh::new();
+        quad(&mut m, 0., 1., 0., 1., 0.);
+        s.doc
+            .meshes
+            .insert(xtrude_model::ids::MeshId::LOOSE, std::sync::Arc::new(m));
+        match igz::load_into(&mut s, &path, None) {
+            Err(IgzError::Corrupt(file, msg)) => {
+                assert_eq!(file, format!("{name}.igz"));
+                assert!(msg.starts_with(why), "{name}: {msg}");
+            }
+            other => panic!("{name}: {other:?}"),
+        }
+        assert_eq!(
+            s.mesh().faces.len(),
+            1,
+            "{name}: the scene is left as it was"
+        );
+    }
+}
+
+/// The format-3 fixture with its `document.json` changed by `edit`.
+fn format3_with_document(edit: impl Fn(&mut serde_json::Value)) -> Vec<u8> {
+    let raw = std::fs::read(data("ingetrazo-0.5.8-format3.igz")).unwrap();
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(raw)).unwrap();
+    let mut entries: Vec<(String, Vec<u8>)> = Vec::new();
+    for i in 0..z.len() {
+        let mut f = z.by_index(i).unwrap();
+        let mut bytes = Vec::new();
+        std::io::Read::read_to_end(&mut f, &mut bytes).unwrap();
+        if f.name() == "document.json" {
+            let mut doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+            edit(&mut doc);
+            bytes = doc.to_string().into_bytes();
+        }
+        entries.push((f.name().to_string(), bytes));
+    }
+    let refs: Vec<(&str, &[u8])> = entries.iter().map(|(n, b)| (n.as_str(), &b[..])).collect();
+    zip_with(&refs)
+}
+
+#[test]
+fn test_one_geometry_block_may_be_used_twice_with_one_layout() {
+    let tmp = TmpDir::new();
+    let same = tmp.join("same.igz");
+    std::fs::write(
+        &same,
+        format3_with_document(|d| d["scene"]["groups"][0]["geom"] = d["scene"]["geom"].clone()),
+    )
+    .unwrap();
+    let mut s = Scene::new();
+    igz::load_into(&mut s, &same, None).expect("opens");
+    let plate = s.doc.mesh(s.doc.groups[0].mesh);
+    assert_eq!(plate.faces.len(), s.mesh().faces.len());
+
+    let other = tmp.join("other.igz");
+    std::fs::write(
+        &other,
+        format3_with_document(|d| {
+            d["scene"]["groups"][0]["geom"]["member"] = d["scene"]["geom"]["member"].clone()
+        }),
+    )
+    .unwrap();
+    match load(&other) {
+        Err(IgzError::Corrupt(_, msg)) => assert_eq!(msg, "damaged geometry block (shared member)"),
+        r => panic!("{r:?}"),
+    }
+}

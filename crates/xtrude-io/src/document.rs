@@ -33,7 +33,7 @@ use serde_json::{json, Value};
 use xtrude_model::scene::Scene;
 
 pub use crate::schema::Progress;
-use crate::schema::{non_finite_where, read_payload, scene_payload};
+use crate::schema::{non_finite_where, read_payload, scene_payload, GeomBlocks};
 
 /// The document's file extension, without the dot.
 pub const EXTENSION: &str = "xtrude";
@@ -165,6 +165,6 @@ pub fn load_bytes(
     let Some(payload) = data.get("scene").filter(|p| p.is_object()) else {
         return Err(corrupt(&"no scene"));
     };
-    read_payload(scene, payload, &mut tick);
+    read_payload(scene, payload, &GeomBlocks::new(), &mut tick);
     Ok(())
 }

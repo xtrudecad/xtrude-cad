@@ -17,6 +17,11 @@
 //! A print material (the document's, and a group's own) is its name and
 //! its density in kg/m³; one that is missing or not valid reads as none
 //! (the document's: PLA).
+//!
+//! A mesh block may instead be `{"geom": {"member": ...}}`, a reference to
+//! a binary block of an IngeTrazo format-3 document: [`crate::igz`] reads
+//! and checks those blocks before the payload is read, and hands them over
+//! as [`GeomBlocks`]. The native document has none.
 
 use std::collections::HashMap;
 
@@ -479,7 +484,7 @@ fn coords(v: Option<&Value>) -> Option<Vec<DVec3>> {
     v.and_then(Value::as_array)?.iter().map(coord).collect()
 }
 
-fn face_attrs_from_json(raw: &Value) -> Option<FaceAttrs> {
+pub(crate) fn face_attrs_from_json(raw: &Value) -> Option<FaceAttrs> {
     let mut a = FaceAttrs::default();
     a.paint.color = raw.get("color").and_then(rgb_of);
     if let Some(l) = raw
@@ -526,13 +531,28 @@ fn truthy(v: &Value) -> bool {
     }
 }
 
-struct LoadState {
+struct LoadState<'a> {
     dropped: usize,
+    geom: &'a GeomBlocks,
 }
 
-/// One face record: outer ring, holes, attrs — `None` when a coordinate is
-/// not a number (the face is left out).
-type FaceRec = (Vec<DVec3>, Vec<Vec<DVec3>>, Option<FaceAttrs>);
+/// One face record: outer ring, holes, attrs.
+pub(crate) type FaceRec = (Vec<DVec3>, Vec<Vec<DVec3>>, Option<FaceAttrs>);
+
+/// One edge record: its two ends and its flags.
+pub(crate) type EdgeRec = (DVec3, DVec3, EdgeFlags);
+
+/// A mesh block's records read from a binary geometry block, and how many
+/// of its edges and faces were left out (a coordinate not a number).
+#[derive(Debug, Default)]
+pub(crate) struct MeshRecords {
+    pub edges: Vec<EdgeRec>,
+    pub faces: Vec<FaceRec>,
+    pub dropped: usize,
+}
+
+/// The binary geometry blocks of a document, by member name.
+pub(crate) type GeomBlocks = HashMap<String, MeshRecords>;
 
 fn read_faces(payload: &Value, st: &mut LoadState) -> Vec<FaceRec> {
     let mut out = Vec::new();
@@ -554,8 +574,6 @@ fn read_faces(payload: &Value, st: &mut LoadState) -> Vec<FaceRec> {
     }
     out
 }
-
-type EdgeRec = (DVec3, DVec3, EdgeFlags);
 
 fn read_edges(payload: &Value, st: &mut LoadState) -> Vec<EdgeRec> {
     let mut out = Vec::new();
@@ -587,8 +605,22 @@ fn read_edges(payload: &Value, st: &mut LoadState) -> Vec<EdgeRec> {
 
 /// Rebuild a mesh from its JSON block. Small blocks take the plain
 /// per-entity walk, big ones the bulk weld; the two paths create the edges
-/// in different orders.
+/// in different orders. A binary geometry block always takes the bulk weld,
+/// fed the points in the order the JSON lists them, so it rebuilds the same
+/// vertices as the same mesh stored as JSON.
 fn load_mesh(mesh: &mut Mesh, payload: &Value, st: &mut LoadState) {
+    if let Some(geom) = payload.get("geom") {
+        let member = geom.get("member").and_then(Value::as_str);
+        match member.and_then(|m| st.geom.get(m)) {
+            Some(rec) => {
+                st.dropped += rec.dropped;
+                weld_bulk(mesh, &rec.edges, &rec.faces);
+            }
+            // a block the document's reader did not hand over
+            None => st.dropped += 1,
+        }
+        return;
+    }
     let edges = read_edges(payload, st);
     let faces = read_faces(payload, st);
     if edges.len() + faces.len() * 4 < 1024 {
@@ -619,8 +651,14 @@ fn load_mesh(mesh: &mut Mesh, payload: &Value, st: &mut LoadState) {
         }
         return;
     }
+    weld_bulk(mesh, &edges, &faces);
+}
+
+/// The bulk weld: every edge end, then every face's outer ring and holes,
+/// welded in that order; holes nested in a bigger hole are left out.
+fn weld_bulk(mesh: &mut Mesh, edges: &[EdgeRec], faces: &[FaceRec]) {
     let mut flat: Vec<DVec3> = Vec::new();
-    for (a, b, _) in &edges {
+    for (a, b, _) in edges {
         flat.push(*a);
         flat.push(*b);
     }
@@ -628,7 +666,7 @@ fn load_mesh(mesh: &mut Mesh, payload: &Value, st: &mut LoadState) {
     let mut ring_sizes = Vec::new();
     let mut ring_counts = Vec::new();
     let mut attrs = Vec::new();
-    for (outer, holes, a) in &faces {
+    for (outer, holes, a) in faces {
         let holes = if holes.len() > 1 {
             maximal_holes(holes)
         } else {
@@ -673,13 +711,23 @@ fn matrix_of(v: &Value) -> Option<DMat4> {
     Some(DMat4::from_data(&vals))
 }
 
+/// How deep groups nest at most when read: deeper ones are left out, so
+/// a damaged document cannot nest without end.
+pub(crate) const MAX_GROUP_DEPTH: usize = 32;
+
 /// Progress callback: `(fraction, text)`.
 pub type Progress<'a> = &'a mut dyn FnMut(f64, &str);
 
 /// Replace `scene`'s contents with the document's `scene` object
-/// (`payload`). `tick` reports progress as `(fraction, text)`.
-pub(crate) fn read_payload(scene: &mut Scene, payload: &Value, tick: &mut dyn FnMut(f64, &str)) {
-    let mut st = LoadState { dropped: 0 };
+/// (`payload`), whose binary geometry blocks are `geom`. `tick` reports
+/// progress as `(fraction, text)`.
+pub(crate) fn read_payload(
+    scene: &mut Scene,
+    payload: &Value,
+    geom: &GeomBlocks,
+    tick: &mut dyn FnMut(f64, &str),
+) {
+    let mut st = LoadState { dropped: 0, geom };
 
     // A fresh document state, so a document opened after another inherits
     // none of its dimensions, layers or section planes.
@@ -758,6 +806,13 @@ pub(crate) fn read_payload(scene: &mut Scene, payload: &Value, tick: &mut dyn Fn
     // Copies of one prototype whose contents differ (edited apart before
     // the editor shared contents) become separate components.
     split_divergent_copies(&mut scene.doc.meshes, &mut scene.doc.groups);
+    // A prototype no group places (an IngeTrazo definition kept with no
+    // copy) is not kept: the document has no such definitions.
+    let placed: std::collections::HashSet<MeshId> =
+        scene.doc.all_groups().iter().map(|g| g.mesh).collect();
+    for id in proto_ids.iter().filter(|id| !placed.contains(id)) {
+        scene.doc.meshes.remove(id);
+    }
     tick(0.96, "Finishing…");
     if !names.is_empty() {
         reserve_group_names(names.iter().map(String::as_str));
@@ -957,7 +1012,7 @@ fn group_from(
         .and_then(Value::as_array)
         .map(|a| a.iter().collect())
         .unwrap_or_default();
-    if depth < 32 {
+    if depth < MAX_GROUP_DEPTH {
         let kids: Vec<Group> = kids_raw
             .iter()
             .map(|c| group_from(scene, c, protos, names, st, depth + 1))
