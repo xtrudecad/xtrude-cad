@@ -21,6 +21,7 @@ mod test_axis_lock_reads_the_hovered_reference;
 mod test_axis_lock_released_after_operation;
 mod test_axis_magnet_on_shapes;
 mod test_back_edges;
+mod test_basic_palette;
 mod test_box_select;
 mod test_center_inference;
 mod test_centre_rectangle;

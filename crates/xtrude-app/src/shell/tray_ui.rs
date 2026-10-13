@@ -6,6 +6,7 @@
 use xtrude_model::i18n::tr;
 use xtrude_model::ids::GroupId;
 
+use crate::tray::colors::basic_colors;
 use crate::tray::components::Components;
 use crate::tray::exploded::EXPLODE_MODES;
 use crate::tray::model_tree::{shown_columns, Row, COLUMNS};
@@ -917,6 +918,23 @@ impl TrayUi {
                 }
             });
         ui.label(egui::RichText::new(tr("Library", &[])).weak().small());
+        let open = p.basic_open;
+        let r = egui::CollapsingHeader::new(p.basic_title())
+            .id_salt("basic-colors")
+            .open(Some(open))
+            .show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
+                    for s in basic_colors() {
+                        if swatch(ui, rgb32(s.rgb), &s.tip, 30.0).clicked() {
+                            apply = Some((s.rgb, s.name.clone()));
+                        }
+                    }
+                });
+            });
+        if r.header_response.clicked() {
+            p.basic_open = !open;
+        }
         let open = p.library_open;
         let r = egui::CollapsingHeader::new(p.library_title())
             .id_salt("ral")
