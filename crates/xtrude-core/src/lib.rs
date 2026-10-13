@@ -21,6 +21,7 @@ pub mod mt19937;
 pub mod offset;
 pub mod orient;
 pub mod orient_faces;
+pub mod shell;
 pub mod snap;
 pub mod solids;
 pub mod stable_json;
