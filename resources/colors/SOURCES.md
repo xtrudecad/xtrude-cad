@@ -27,3 +27,8 @@
   standard's own words in the standard's own languages; putting "Beige" or
   "Cream" into the UI translations would collide with strings that mean
   something else entirely.
+
+- `basic.json` — the **Basic** palette: 16 plain colours (white, greys,
+  black, the primaries and secondaries, and a few common filament shades
+  such as natural), with plain names and approximate sRGB values chosen
+  by the Xtrude CAD authors. No brand's names or colours.

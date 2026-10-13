@@ -25,6 +25,36 @@ pub struct Swatch {
     pub tip: String,
 }
 
+/// The Basic library (resources/colors/basic.json): plain colours, each
+/// painting under its plain name.
+pub fn basic_colors() -> &'static [Swatch] {
+    static BASIC: OnceLock<Vec<Swatch>> = OnceLock::new();
+    BASIC.get_or_init(|| {
+        let raw: Value =
+            serde_json::from_str(include_str!("../../../../resources/colors/basic.json"))
+                .unwrap_or(Value::Null);
+        raw.get("colors")
+            .and_then(|c| c.as_array())
+            .into_iter()
+            .flatten()
+            .filter_map(|c| {
+                let name = c.get("name").and_then(|v| v.as_str())?;
+                let rgb: Vec<f64> = c
+                    .get("rgb")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.iter().filter_map(|x| x.as_f64()).collect())
+                    .unwrap_or_default();
+                let [r, g, b] = rgb[..] else { return None };
+                Some(Swatch {
+                    rgb: [r, g, b],
+                    name: Some(name.to_string()),
+                    tip: name.to_string(),
+                })
+            })
+            .collect()
+    })
+}
+
 /// The RAL Classic library (resources/colors/ral.json), in code order.
 pub fn ral_colors() -> &'static [Swatch] {
     static RAL: OnceLock<Vec<Swatch>> = OnceLock::new();
@@ -84,18 +114,35 @@ impl Slot {
     }
 }
 
-#[derive(Default)]
 pub struct Colors {
     /// The model's colours as filament slots, slot 1 first.
     pub slots: Vec<Slot>,
-    /// The library section is open.
+    /// The Basic library section is open (it starts open).
+    pub basic_open: bool,
+    /// The RAL Classic library section is open (it starts closed).
     pub library_open: bool,
-    /// The library's swatches: built the first time the section is
+    /// The RAL Classic swatches: built the first time the section is
     /// OPENED, so a closed panel costs nothing.
     pub library: Vec<Swatch>,
 }
 
+impl Default for Colors {
+    fn default() -> Self {
+        Colors {
+            slots: Vec::new(),
+            basic_open: true,
+            library_open: false,
+            library: Vec::new(),
+        }
+    }
+}
+
 impl Colors {
+    /// The Basic library's section, «Basic  (16)».
+    pub fn basic_title(&self) -> String {
+        format!("{}  ({})", tr("Basic", &[]), basic_colors().len())
+    }
+
     /// The library's one section, «RAL Classic  (213)»: the palette in
     /// code order, without a heading per family. Named after the palette,
     /// not «Colors», which is the panel's own title.
