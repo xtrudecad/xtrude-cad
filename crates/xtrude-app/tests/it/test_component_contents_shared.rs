@@ -558,10 +558,10 @@ fn test_shared_copies_stay_one_component_through_a_save() {
     vp.end_group_edit();
     let dir = std::env::temp_dir().join(format!("xtrude-legs-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("legs.igz");
-    xtrude_io::igz::save_scene(&vp.scene, &path).unwrap();
+    let path = dir.join("legs.xtr");
+    xtrude_io::document::save_scene(&vp.scene, &path).unwrap();
     let mut back = xtrude_model::scene::Scene::new();
-    xtrude_io::igz::load_into(&mut back, &path, None).unwrap();
+    xtrude_io::document::load_into(&mut back, &path, None).unwrap();
     std::fs::remove_dir_all(&dir).ok();
     let meshes: std::collections::HashSet<MeshId> =
         back.doc.groups.iter().map(|l| l.mesh).collect();

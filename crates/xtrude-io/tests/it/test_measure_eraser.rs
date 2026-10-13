@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Guides through .igz.
+//! Guides through the document.
 
 use crate::common;
 use common::*;
@@ -8,7 +8,7 @@ use xtrude_model::guide::Guide;
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_guides_igz_round_trip() {
+fn test_guides_document_round_trip() {
     let mut s = Scene::new();
     s.doc
         .guides

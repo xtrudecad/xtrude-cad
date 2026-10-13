@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Visibility, locking, assignment, the annotations' layers and the picks that
-//! honour them. The .igz round trip lives in crates/xtrude-io.
+//! honour them. The document round trip lives in crates/xtrude-io.
 
 use crate::common;
 use crate::common::FakeProbe;

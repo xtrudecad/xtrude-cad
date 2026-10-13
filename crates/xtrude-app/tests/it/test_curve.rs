@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! A drawn circle/arc's segments share a curve id, so selecting one selects
 //! the whole curve; crossings split it into contours; it survives undo/redo,
-//! paste and offset. The .igz test lives in crates/xtrude-io.
+//! paste and offset. The document test lives in crates/xtrude-io.
 
 use crate::common;
 

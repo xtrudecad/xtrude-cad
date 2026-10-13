@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Group materials through .igz.
+//! Group materials through the document.
 
 use crate::common;
 use common::*;
@@ -10,7 +10,7 @@ use xtrude_model::group::{add_mesh, Group};
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_the_group_material_survives_the_igz() {
+fn test_the_group_material_survives_the_document() {
     let mut s = Scene::new();
     let mut m = Mesh::new();
     quad(&mut m, 0., 1., 0., 1., 0.);

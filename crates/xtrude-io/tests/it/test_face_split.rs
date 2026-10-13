@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Faces with holes through .igz.
+//! Faces with holes through the document.
 
 use crate::common;
 use common::*;
@@ -9,7 +9,7 @@ use xtrude_model::history::History;
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_igz_roundtrip_preserves_holes() {
+fn test_document_roundtrip_preserves_holes() {
     let mut s = Scene::new();
     let mut h = History::new();
     let sq = vec![

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Styles: the document half (the .igz and saved view tests live in
+//! Styles: the document half (the document and saved view tests live in
 //! xtrude-io).
 
 use serde_json::json;

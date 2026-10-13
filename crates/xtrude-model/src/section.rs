@@ -58,7 +58,7 @@ pub struct SectionPlane {
     pub name: String,
     pub symbol: String,
     pub active: bool,
-    /// Stable identity for saved views (.igz SavedView references).
+    /// Stable identity for saved views (the document's saved view references).
     pub uid: i64,
 }
 

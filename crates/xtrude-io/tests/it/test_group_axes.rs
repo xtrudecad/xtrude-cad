@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Group axes through .igz and .skp.
+//! Group axes through the document and .skp.
 
 use crate::common;
 use common::*;
@@ -10,7 +10,7 @@ use xtrude_model::group::{add_mesh, Group};
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_the_axes_survive_the_igz() {
+fn test_the_axes_survive_the_document() {
     let mut s = Scene::new();
     let mut m = Mesh::new();
     quad(&mut m, 0., 2., 0., 1., 0.);

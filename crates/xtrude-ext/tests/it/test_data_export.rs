@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use mlua::Value;
 use serde_json::json;
 use xtrude_ext::ScriptCommand;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::EntityRef;
 
 use crate::common::{self, Fixture, TmpDir};
@@ -41,7 +41,7 @@ const SQUARE: &str = "doc:add_face({ xtrude.vec(0, 0), xtrude.vec(10, 0), \
                       xtrude.vec(10, 10), xtrude.vec(0, 10) })";
 
 #[test]
-fn data_round_trips_through_an_igz_file() {
+fn data_round_trips_through_a_document_file() {
     let mut fx = common::fixture();
     let dir = TmpDir::new();
     assert!(fx.run(
@@ -55,10 +55,10 @@ fn data_round_trips_through_an_igz_file() {
             &json!({ "name": "spur", "nested": { "a": "b" }, "on": true, "sizes": [1.5, 2], "teeth": 20 })
         )
     );
-    let path = dir.0.join("data.igz");
-    igz::save_scene(&fx.scene, &path).expect("saves");
+    let path = dir.0.join("data.xtr");
+    document::save_scene(&fx.scene, &path).expect("saves");
     let mut back = common::fixture();
-    igz::load_into(&mut back.scene, &path, None).expect("loads");
+    document::load_into(&mut back.scene, &path, None).expect("loads");
     assert!(back.run(
         "Read",
         "local doc = ...\nlocal d = doc:data()\n\

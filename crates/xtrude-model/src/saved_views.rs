@@ -7,7 +7,7 @@ use serde_json::{json, Map, Value};
 
 use crate::ids::{next_id, ObjId};
 
-/// The camera a document opens with: the `.igz` `"camera"` object. Every
+/// The camera a document opens with: the document's `"camera"` object. Every
 /// field is optional, and a missing or unreadable one leaves the camera as
 /// it is. Keys this version does not know are kept in `extra`.
 #[derive(Clone, Debug, Default, PartialEq)]

@@ -75,10 +75,10 @@ fn test_groups_in_a_moved_group_stay_groups_through_a_save() {
     w.viewport.begin_group_edit(outer);
     w.viewport.end_group_edit();
     let dir = common::TmpDir::new();
-    let path = dir.join("box.igz");
-    xtrude_io::igz::save_scene(&w.viewport.scene, &path).expect("save");
+    let path = dir.join("box.xtr");
+    xtrude_io::document::save_scene(&w.viewport.scene, &path).expect("save");
     let mut back = common::stub();
-    xtrude_io::igz::load_into(&mut back.scene, &path, None).expect("load");
+    xtrude_io::document::load_into(&mut back.scene, &path, None).expect("load");
     let reloaded = &back.scene.doc.groups[0];
     assert_eq!(reloaded.children.len(), 2);
     assert!(reloaded.children.iter().all(|c| !c.is_component()));

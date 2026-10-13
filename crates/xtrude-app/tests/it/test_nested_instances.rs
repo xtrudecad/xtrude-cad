@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Components that place other components — one prototype mesh, a matrix per
 //! placement — through queries, copies, the edit stack, Explode and the
-//! viewport's placement expansion. The .igz test lives in crates/xtrude-io.
+//! viewport's placement expansion. The document test lives in crates/xtrude-io.
 
 use crate::common;
 use crate::common::FakeProbe;

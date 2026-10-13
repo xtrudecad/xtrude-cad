@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The mesh through .igz.
+//! The mesh through the document.
 
 use crate::common;
 use common::*;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::ids::MeshId;
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_mesh_is_read_compatible_with_igz_save() {
+fn test_mesh_is_read_compatible_with_document_save() {
     let mut s = Scene::new();
     let m = s.doc.mesh_mut(MeshId::LOOSE);
     m.add_face(
@@ -28,10 +28,9 @@ fn test_mesh_is_read_compatible_with_igz_save() {
     );
     m.add_edge(v3(0., 0., 0.), v3(0., 5., 0.)).unwrap();
     let tmp = TmpDir::new();
-    let out = tmp.join("mesh.igz");
-    igz::save_scene(&s, &out).unwrap();
-    let data: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&out).unwrap()).unwrap();
+    let out = tmp.join("mesh.xtr");
+    document::save_scene(&s, &out).unwrap();
+    let data = document_json(&out);
     assert_eq!(
         data["scene"]["faces"][0]["vertices"][0],
         serde_json::json!([0.0, 0.0, 0.0])

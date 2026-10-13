@@ -130,21 +130,21 @@ fn test_turning_backups_off_stops_the_bak_copy() {
     dlg.backup = false;
     dlg.accept(&mut win);
     let dir = common::TmpDir::new();
-    let path = dir.path().join("doc.igz");
+    let path = dir.path().join("doc.xtr");
     win.do_save(&path);
     win.do_save(&path); // the second save finds a file to back up
     assert!(path.is_file());
-    assert!(!dir.path().join("doc.igz.bak").exists());
+    assert!(!dir.path().join("doc.xtr.bak").exists());
 }
 
 #[test]
 fn test_backups_are_on_by_default() {
     let mut win = common::window();
     let dir = common::TmpDir::new();
-    let path = dir.path().join("doc.igz");
+    let path = dir.path().join("doc.xtr");
     win.do_save(&path);
     win.do_save(&path);
-    assert!(dir.path().join("doc.igz.bak").is_file());
+    assert!(dir.path().join("doc.xtr.bak").is_file());
 }
 
 #[test]

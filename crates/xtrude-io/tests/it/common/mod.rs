@@ -43,23 +43,59 @@ impl Drop for TmpDir {
     }
 }
 
-/// The `scene` block of a document (plain or ZIP container).
-pub fn payload(path: &Path) -> Value {
+/// A document's JSON text: a native document (gzip) or an IngeTrazo one
+/// (plain or ZIP container).
+pub fn document_text(path: &Path) -> String {
     use std::io::Read;
     let raw = std::fs::read(path).expect("readable");
-    let text = if raw.starts_with(b"PK\x03\x04") {
+    let mut text = String::new();
+    if raw.starts_with(b"PK\x03\x04") {
         let mut z = zip::ZipArchive::new(std::io::Cursor::new(raw)).expect("zip");
-        let mut s = String::new();
         z.by_name("document.json")
             .expect("entry")
-            .read_to_string(&mut s)
+            .read_to_string(&mut text)
             .expect("utf-8");
-        s
+    } else if raw.starts_with(b"\x1f\x8b") {
+        flate2::read::GzDecoder::new(&raw[..])
+            .read_to_string(&mut text)
+            .expect("gzip");
     } else {
-        String::from_utf8(raw).expect("utf-8")
-    };
-    let v: Value = serde_json::from_str(&text).expect("json");
-    v["scene"].clone()
+        text = String::from_utf8(raw).expect("utf-8");
+    }
+    text
+}
+
+/// A document's whole JSON (see [`document_text`]).
+pub fn document_json(path: &Path) -> Value {
+    serde_json::from_str(&document_text(path)).expect("json")
+}
+
+/// The `scene` block of a document.
+pub fn payload(path: &Path) -> Value {
+    document_json(path)["scene"].clone()
+}
+
+/// Write `doc` as a native document's file (gzipped JSON).
+pub fn write_document_json(path: &Path, doc: &Value) {
+    use std::io::Write;
+    let mut z = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+    z.write_all(doc.to_string().as_bytes()).expect("gzip");
+    std::fs::write(path, z.finish().expect("gzip")).expect("write");
+}
+
+/// `scene` as an IngeTrazo `.igz` document (format 1, plain JSON): the
+/// scene object Xtrude CAD writes, in IngeTrazo's envelope.
+pub fn igz_json(scene: &xtrude_model::scene::Scene) -> Value {
+    serde_json::json!({
+        "igz_format": 1,
+        "app_version": "0.5.7",
+        "scene": xtrude_io::document::scene_json(scene)["scene"].clone(),
+    })
+}
+
+/// Write `scene` at `path` as an IngeTrazo `.igz` document.
+pub fn write_igz(path: &Path, scene: &xtrude_model::scene::Scene) {
+    std::fs::write(path, igz_json(scene).to_string()).expect("write");
 }
 
 pub fn v3(x: f64, y: f64, z: f64) -> xtrude_core::DVec3 {
@@ -69,10 +105,10 @@ pub fn v3(x: f64, y: f64, z: f64) -> xtrude_core::DVec3 {
 /// Save `scene` to a scratch file and load it into a fresh scene.
 pub fn roundtrip(scene: &xtrude_model::scene::Scene) -> xtrude_model::scene::Scene {
     let tmp = TmpDir::new();
-    let path = tmp.join("doc.igz");
-    xtrude_io::igz::save_scene(scene, &path).expect("save");
+    let path = tmp.join("doc.xtr");
+    xtrude_io::document::save_scene(scene, &path).expect("save");
     let mut back = xtrude_model::scene::Scene::new();
-    xtrude_io::igz::load_into(&mut back, &path, None).expect("load");
+    xtrude_io::document::load_into(&mut back, &path, None).expect("load");
     back
 }
 

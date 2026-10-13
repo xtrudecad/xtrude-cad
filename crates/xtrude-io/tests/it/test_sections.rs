@@ -120,7 +120,7 @@ fn test_place_activates_and_keeps_one_active() {
 }
 
 #[test]
-fn test_igz_roundtrip_and_scene_recall() {
+fn test_document_roundtrip_and_scene_recall() {
     let mut s = Scene::new();
     s.mesh_mut()
         .add_edge(v3(0., 0., 0.), v3(1., 0., 0.))

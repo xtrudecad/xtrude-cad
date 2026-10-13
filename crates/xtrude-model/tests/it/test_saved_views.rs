@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Saved views: the document half (the .igz round trip lives in xtrude-io).
+//! Saved views: the document half (the document round trip lives in xtrude-io).
 
 use xtrude_core::camera::OrbitCamera;
 use xtrude_core::DVec3;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Insert an .igz as a component without the file dialog — placed at a point
+//! Insert a document as a component without the file dialog — placed at a point
 //! in one undo step, or waiting for the click; an unreadable file changes
 //! nothing.
 
@@ -11,12 +11,12 @@ use glam::DVec3;
 use std::path::PathBuf;
 use xtrude_app::tools::place_group::PlaceGroupTool;
 use xtrude_app::window::MainWindow;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::group::world_mesh;
 use xtrude_model::ids::GroupId;
 use xtrude_model::scene::Scene;
 
-/// A 1 × 1 × 0.5 box drawn from the origin, saved as block.igz.
+/// A 1 × 1 × 0.5 box drawn from the origin, saved as block.xtr.
 fn block(dir: &TmpDir) -> PathBuf {
     let mut s = Scene::new();
     let p = [
@@ -39,8 +39,8 @@ fn block(dir: &TmpDir) -> PathBuf {
     ] {
         s.mesh_mut().add_face(&q.map(|i| p[i]), &[]);
     }
-    let path = dir.path().join("block.igz");
-    igz::save_scene(&s, &path).unwrap();
+    let path = dir.path().join("block.xtr");
+    document::save_scene(&s, &path).unwrap();
     path
 }
 
@@ -66,7 +66,7 @@ fn test_at_a_point_the_component_lands_there_in_one_undo_step() {
     let mut w = window();
     let n0 = w.viewport.scene.doc.groups.len();
     let comp = w
-        .import_igz_path(&block(&dir), Some(v3(4., 2., 0.)))
+        .import_document_path(&block(&dir), Some(v3(4., 2., 0.)))
         .unwrap()
         .expect("a component");
     assert!(has(&w, comp) && w.viewport.scene.doc.groups.len() == n0 + 1);
@@ -82,7 +82,7 @@ fn test_without_a_point_it_waits_for_the_click() {
     let dir = TmpDir::new();
     let mut w = window();
     let n0 = w.viewport.scene.doc.groups.len();
-    let comp = w.import_igz_path(&block(&dir), None).unwrap();
+    let comp = w.import_document_path(&block(&dir), None).unwrap();
     assert!(w.viewport.tool::<PlaceGroupTool>().is_some());
     assert!(comp.is_none_or(|c| !has(&w, c)));
     assert_eq!(w.viewport.scene.doc.groups.len(), n0);
@@ -91,10 +91,10 @@ fn test_without_a_point_it_waits_for_the_click() {
 #[test]
 fn test_an_unreadable_file_raises_and_changes_nothing() {
     let dir = TmpDir::new();
-    let bad = dir.path().join("broken.igz");
+    let bad = dir.path().join("broken.xtr");
     std::fs::write(&bad, b"not a document").unwrap();
     let mut w = window();
     let n0 = w.viewport.scene.doc.groups.len();
-    assert!(w.import_igz_path(&bad, Some(DVec3::ZERO)).is_err());
+    assert!(w.import_document_path(&bad, Some(DVec3::ZERO)).is_err());
     assert_eq!(w.viewport.scene.doc.groups.len(), n0);
 }

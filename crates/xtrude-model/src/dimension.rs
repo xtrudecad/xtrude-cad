@@ -166,7 +166,7 @@ pub struct Dimension {
     pub anchor_b: Option<VertexAnchor>,
 }
 
-/// How the document's dimensions look: the `.igz` `"dimension_style"`
+/// How the document's dimensions look: the document's `"dimension_style"`
 /// object. Keys this version does not know are kept in `extra` and written
 /// back after the known ones, so a document from another version keeps
 /// them.

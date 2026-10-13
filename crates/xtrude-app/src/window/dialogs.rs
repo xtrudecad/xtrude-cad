@@ -85,7 +85,7 @@ pub trait Dialogs {
     fn report(&mut self, title: &str, text: &str) {
         self.warn(title, text)
     }
-    /// A file to read (`filter` like "Xtrude CAD document (*.igz)"),
+    /// A file to read (`filter` like "Xtrude CAD document (*.xtr)"),
     /// starting in the folder `start`.
     fn open_file(&mut self, title: &str, filter: &str, start: &Path) -> Option<PathBuf>;
     /// A file to write; `start` is the suggested path (folder and name).
@@ -253,6 +253,8 @@ pub struct ScriptedDialogs {
     pub asked: Vec<(String, String)>,
     /// Where each file dialog started.
     pub starts: Vec<PathBuf>,
+    /// The filter each file dialog offered.
+    pub filters: Vec<String>,
     /// The simplification each STL dialog preselected.
     pub stl_modes: Vec<usize>,
 }
@@ -302,18 +304,20 @@ impl Dialogs for ScriptedDialogs {
         self.asked
             .push(("report".into(), format!("{title}: {text}")));
     }
-    fn open_file(&mut self, title: &str, _f: &str, start: &Path) -> Option<PathBuf> {
+    fn open_file(&mut self, title: &str, filter: &str, start: &Path) -> Option<PathBuf> {
         self.asked.push(("open".into(), title.into()));
         self.starts.push(start.to_path_buf());
+        self.filters.push(filter.into());
         if self.open_paths.is_empty() {
             None
         } else {
             self.open_paths.remove(0)
         }
     }
-    fn save_file(&mut self, title: &str, _f: &str, start: &Path) -> Option<PathBuf> {
+    fn save_file(&mut self, title: &str, filter: &str, start: &Path) -> Option<PathBuf> {
         self.asked.push(("save".into(), title.into()));
         self.starts.push(start.to_path_buf());
+        self.filters.push(filter.into());
         if self.save_paths.is_empty() {
             None
         } else {

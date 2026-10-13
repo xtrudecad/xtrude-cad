@@ -16,6 +16,7 @@ mod test_curve;
 mod test_dae_import;
 mod test_dimension_anchors;
 mod test_dimensions;
+mod test_document;
 mod test_document_camera;
 mod test_dxf_import;
 mod test_explode_view;

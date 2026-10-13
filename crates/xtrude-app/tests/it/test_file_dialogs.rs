@@ -52,7 +52,7 @@ fn test_the_chosen_folder_is_remembered_and_reused() {
     std::fs::create_dir_all(&other).unwrap();
     let other_s = other.to_string_lossy().into_owned();
     assert_eq!(start_in(&other_s, None), other);
-    let inside = other.join("x.igz");
+    let inside = other.join("x.xtr");
     assert_eq!(start_in(&inside.to_string_lossy(), None), inside);
     // a remembered folder that vanished is not used
     settings::set(
@@ -79,7 +79,7 @@ fn test_the_shim_feeds_the_dialog_and_learns_from_it() {
     assert_eq!(dialogs.borrow().starts[0], tmp.join("sheet.pdf")); // started where the user was
     assert_eq!(last_dir(None), tmp.join("output")); // …and learnt the new folder
     dialogs.borrow_mut().open_paths.push(None); // cancelled
-    win.pick_open("Open", "IGZ (*.igz)");
+    win.pick_open("Open", "Xtrude CAD document (*.xtr)");
     assert_eq!(dialogs.borrow().starts[1], tmp.join("output"));
     assert_eq!(last_dir(None), tmp.join("output")); // a cancel changes nothing
 }
@@ -90,7 +90,7 @@ fn test_with_nothing_remembered_a_dialog_starts_beside_the_open_document() {
     let tmp = TmpDir::new();
     std::fs::create_dir_all(tmp.join("project")).unwrap();
     let mut win = common::window();
-    win.current_path = Some(tmp.join("project").join("peg.igz"));
+    win.current_path = Some(tmp.join("project").join("peg.xtr"));
     let dialogs = Rc::new(RefCell::new(ScriptedDialogs::default()));
     win.dialogs = Box::new(dialogs.clone());
     dialogs.borrow_mut().save_paths.push(None);

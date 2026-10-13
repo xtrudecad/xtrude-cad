@@ -16,7 +16,7 @@ fn test_recent_list_is_ordered_deduplicated_and_capped() {
     let dir = TmpDir::new();
     let mut docs = Vec::new();
     for i in 0..12 {
-        let p = dir.path().join(format!("doc{i}.igz"));
+        let p = dir.path().join(format!("doc{i}.xtr"));
         std::fs::write(&p, "{}").unwrap();
         remember_recent(&p);
         docs.push(p);
@@ -33,7 +33,7 @@ fn test_recent_list_is_ordered_deduplicated_and_capped() {
     // A file deleted meanwhile is not offered.
     std::fs::remove_file(&docs[11]).unwrap();
     let labels: Vec<String> = recent_menu().iter().map(|i| i.text().to_string()).collect();
-    assert!(!labels.iter().any(|t| t.contains("doc11.igz")));
-    assert!(labels.iter().any(|t| t.contains("doc9.igz")));
+    assert!(!labels.iter().any(|t| t.contains("doc11.xtr")));
+    assert!(labels.iter().any(|t| t.contains("doc9.xtr")));
     assert!(labels.iter().any(|t| t.contains("Clear")));
 }

@@ -192,7 +192,7 @@ first. Handles compare with `==`, and `tostring(h)` names them.
 ### Data in the document
 
 `doc:data()` and `doc:set_data(t)` keep a table in the document, under
-the extension's `id`. The data is saved in the `.igz` file and follows
+the extension's `id`. The data is saved in the document (`.xtr`) and follows
 undo and redo. The table may hold strings, numbers, booleans and tables
 of them. An extension sees only its own data, never the data of other
 extensions or of IngeTrazo extensions. Documents keep that data

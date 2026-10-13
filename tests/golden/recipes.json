@@ -1,5 +1,5 @@
 {
-  "_doc": "Golden models: <name>.igz/.stl/.obj/.mtl are snapshots of each recipe replayed by Xtrude CAD, written by XTRUDE_UPDATE_GOLDEN=1; crates/xtrude-io/tests/it/test_golden.rs replays each recipe on the engine and compares. Faces are picked by a point inside them, edges by a point on them. 'along' signs a push by a world direction.",
+  "_doc": "Golden models: <name>.xtr/.stl/.obj/.mtl are snapshots of each recipe replayed by Xtrude CAD, written by XTRUDE_UPDATE_GOLDEN=1; crates/xtrude-io/tests/it/test_golden.rs replays each recipe on the engine and compares. Faces are picked by a point inside them, edges by a point on them. 'along' signs a push by a world direction.",
   "recipes": [
     {"name": "box", "ops": [
       {"op": "rect", "pts": [[0,0,0],[4,0,0],[4,3,0],[0,3,0]]},
