@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Parts-tray test: dragging the exploded-view slider previews live and lands
+//! Exploded view panel test: dragging the slider previews live and lands
 //! as one undo step. (The command tests are in xtrude-io.)
 
 use crate::common;
@@ -82,7 +82,7 @@ fn exploded(w: &MainWindow, g: GroupId) -> Option<Exploded> {
 }
 
 #[test]
-fn test_the_tray_slider_is_one_undo_step_per_drag() {
+fn test_the_panel_slider_is_one_undo_step_per_drag() {
     let mut w = window();
     let bx = assembly(&mut w);
     let scene = &mut w.viewport.scene;
@@ -91,7 +91,7 @@ fn test_the_tray_slider_is_one_undo_step_per_drag() {
     scene.version += 1;
     let assembled = world(&w, bx);
     let mut tray = Tray::default();
-    let panel = &mut tray.parts;
+    let panel = &mut tray.exploded;
     panel.refresh(&w);
     let before = w.viewport.history.undo_len();
     panel.explode_press(&mut w);

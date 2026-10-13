@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The Saved views tray section: «+ View» names each new view «View N»,
+//! The Saved views drop-down panel: «+ View» names each new view «View N»,
 //! and recalling or updating one says so by name.
 
 use crate::common;
 
 use common::window;
 use xtrude_app::tray::saved_views::SavedViews;
-use xtrude_app::tray::SECTIONS;
+use xtrude_app::window::TOOLBAR_PANELS;
 
 #[test]
-fn test_the_section_is_titled_saved_views() {
-    let (_, title) = SECTIONS.iter().find(|(k, _)| *k == "saved_views").unwrap();
+fn test_the_panel_is_titled_saved_views() {
+    let (_, title) = TOOLBAR_PANELS
+        .iter()
+        .find(|(k, _)| *k == "saved_views")
+        .unwrap();
     assert_eq!(*title, "Saved views");
-    assert!(SECTIONS.iter().all(|(k, _)| *k != "scenes"));
+    assert!(TOOLBAR_PANELS.iter().all(|(k, _)| *k != "scenes"));
 }
 
 #[test]

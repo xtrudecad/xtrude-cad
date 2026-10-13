@@ -197,7 +197,7 @@ impl<T> Key<T> {
         }
     }
 
-    /// A key whose name is built at run time (one per tray section).
+    /// A key whose name is built at run time (one per dock panel).
     pub fn named(name: String, default: fn() -> T) -> Key<T> {
         Key {
             name: Cow::Owned(name),
@@ -298,12 +298,16 @@ pub mod keys {
     pub const TOOLBAR_STACKS: Key<Value> = Key::new("ui/toolbar_stacks", null);
     /// The old «large icons» toggle (`"1"`), read once to migrate it.
     pub const LARGE_TOOLBAR_ICONS: Key<String> = Key::new("ui/large_toolbar_icons", empty);
-    /// The trays whose tabs are hidden (a list, or one name).
-    pub const HIDDEN_TRAYS: Key<Value> = Key::new("ui/hidden_trays", null);
-    /// The tray sections the user closed, by panel class (a list).
-    pub const HIDDEN_TRAY_SECTIONS: Key<Value> = Key::new("ui/hidden_tray_sections", null);
-    /// The tray sections top to bottom, by panel class (a list).
-    pub const TRAY_SECTION_ORDER: Key<Value> = Key::new("ui/tray_section_order", null);
+    // The right-hand tray of 0.1.0 stored `ui/hidden_trays`,
+    // `ui/hidden_tray_sections`, `ui/tray_section_order` and
+    // `tray/collapsed/<class>`; the left dock replaced it and leaves them
+    // unread, so a 0.1.0 layout opens as the factory one. Do not reuse
+    // those names.
+    /// The left dock's panels the user closed, by panel class (a list);
+    /// unset, the factory ones.
+    pub const HIDDEN_DOCK_PANELS: Key<Value> = Key::new("ui/hidden_dock_panels", null);
+    /// The model tree's optional columns shown (a list of column keys).
+    pub const MODEL_TREE_COLUMNS: Key<Value> = Key::new("ui/model_tree_columns", null);
 
     /// The values last given to an extension command's parameters: a JSON
     /// object by parameter key, lengths in metres.
@@ -311,9 +315,9 @@ pub mod keys {
         Key::named(format!("ext/{ext}/{command}/params"), no_json)
     }
 
-    /// Whether a tray section is folded, by its panel class name.
-    pub fn tray_collapsed(class: &str) -> Key<bool> {
-        Key::named(format!("tray/collapsed/{class}"), no)
+    /// Whether a dock panel is folded, by its panel class name.
+    pub fn dock_collapsed(class: &str) -> Key<bool> {
+        Key::named(format!("dock/collapsed/{class}"), no)
     }
 
     // Document defaults

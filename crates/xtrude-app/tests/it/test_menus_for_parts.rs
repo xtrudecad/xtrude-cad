@@ -145,6 +145,9 @@ fn test_the_view_menu() {
     );
     for id in [
         "toggle_projection",
+        "panel:layers",
+        "panel:saved_views",
+        "panel:exploded_view",
         "Style ▸",
         "Rest of model while editing ▸",
         "show_section_planes",
@@ -232,6 +235,7 @@ fn test_the_model_menu() {
             "-",
             "paint",
             "eyedropper",
+            "panel:colors",
             "-",
             "document_print_material",
         ]

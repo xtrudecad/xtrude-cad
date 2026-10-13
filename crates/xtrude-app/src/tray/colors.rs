@@ -77,7 +77,7 @@ pub struct Colors {
 impl Colors {
     /// The library's one section, «RAL Classic  (213)»: the palette in
     /// code order, without a heading per family. Named after the palette,
-    /// not «Colors», which is the tray section's own title.
+    /// not «Colors», which is the panel's own title.
     pub fn library_title(&self) -> String {
         format!("{}  ({})", tr("RAL Classic", &[]), ral_colors().len())
     }

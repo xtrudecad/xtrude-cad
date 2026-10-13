@@ -115,7 +115,7 @@ pub fn part_material(meshes: &MeshTable, part: &Group) -> String {
         .unwrap_or_default()
 }
 
-/// One row of the Parts tray.
+/// One part of a container, measured like a cut list.
 #[derive(Clone, Debug)]
 pub struct PartRow {
     pub part: crate::ids::GroupId,

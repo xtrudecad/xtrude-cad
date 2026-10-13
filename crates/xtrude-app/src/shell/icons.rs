@@ -1471,6 +1471,63 @@ fn styles_icon(p: &mut Painter, _ink: Rgba) {
     p.restore();
 }
 
+/// Layers: a filled sheet over two outlined ones.
+fn layers_icon(p: &mut Painter, _ink: Rgba) {
+    for y in [33.0, 26.0] {
+        p.draw_line(8.0, y, 24.0, y + 8.0);
+        p.draw_line(24.0, y + 8.0, 40.0, y);
+    }
+    p.save();
+    p.set_brush(ACCENT);
+    p.draw_polygon(&[(24.0, 10.0), (40.0, 18.0), (24.0, 26.0), (8.0, 18.0)]);
+    p.restore();
+}
+
+/// Saved views: a camera with a bookmark.
+fn saved_views_icon(p: &mut Painter, _ink: Rgba) {
+    p.no_brush();
+    p.draw_rounded_rect(6.0, 16.0, 30.0, 22.0, 3.0, 3.0);
+    p.draw_rect(12.0, 11.0, 9.0, 5.0);
+    p.draw_ellipse(21.0, 27.0, 6.0, 6.0);
+    p.save();
+    p.no_pen();
+    p.set_brush(ACCENT);
+    p.draw_polygon(&[
+        (32.0, 6.0),
+        (42.0, 6.0),
+        (42.0, 22.0),
+        (37.0, 18.0),
+        (32.0, 22.0),
+    ]);
+    p.restore();
+}
+
+/// Colors: three swatches.
+fn colors_icon(p: &mut Painter, _ink: Rgba) {
+    dot(p, 17.0, 18.0, 8.5, Some(Rgba(214, 69, 65, 255)));
+    dot(p, 31.0, 18.0, 8.5, Some(ACCENT));
+    dot(p, 24.0, 31.0, 8.5, Some(Rgba(240, 180, 40, 255)));
+}
+
+/// Exploded view: four blocks drawn apart from a centre.
+fn exploded_view_icon(p: &mut Painter, _ink: Rgba) {
+    p.no_brush();
+    for (x, y) in [(5.0, 5.0), (29.0, 5.0), (5.0, 29.0), (29.0, 29.0)] {
+        p.draw_rect(x, y, 14.0, 14.0);
+    }
+    p.save();
+    p.set_pen(Pen::round(ACCENT, 2.8));
+    for (dx, dy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
+        p.draw_line(
+            24.0 + dx * 2.0,
+            24.0 + dy * 2.0,
+            24.0 + dx * 6.0,
+            24.0 + dy * 6.0,
+        );
+    }
+    p.restore();
+}
+
 fn chevron(p: &mut Painter, color: Rgba, pts: &[[(f32, f32); 3]]) {
     p.save();
     p.set_pen(Pen::round(color, 3.4));
@@ -1654,6 +1711,10 @@ pub const KEYS: &[&str] = &[
     "protractor",
     "section",
     "styles",
+    "layers",
+    "saved_views",
+    "colors",
+    "exploded_view",
     "section_planes",
     "section_cuts",
     "section_fill",
@@ -1724,6 +1785,10 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "protractor" => protractor,
         "section" => section,
         "styles" => styles_icon,
+        "layers" => layers_icon,
+        "saved_views" => saved_views_icon,
+        "colors" => colors_icon,
+        "exploded_view" => exploded_view_icon,
         "section_planes" => section_planes,
         "section_cuts" => section_cuts,
         "section_fill" => section_fill,
@@ -1741,8 +1806,8 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "view_back" => |p, _| view_face(p, "back"),
         "view_right" => |p, _| view_face(p, "right"),
         "view_left" => |p, _| view_face(p, "left"),
-        "side_collapse" => |p, ink| chevron(p, ink, &[[(19.0, 13.0), (30.0, 24.0), (19.0, 35.0)]]),
-        "side_expand" => |p, ink| chevron(p, ink, &[[(29.0, 13.0), (18.0, 24.0), (29.0, 35.0)]]),
+        "side_collapse" => |p, ink| chevron(p, ink, &[[(29.0, 13.0), (18.0, 24.0), (29.0, 35.0)]]),
+        "side_expand" => |p, ink| chevron(p, ink, &[[(19.0, 13.0), (30.0, 24.0), (19.0, 35.0)]]),
         "overflow_h" => |p, _| {
             chevron(
                 p,

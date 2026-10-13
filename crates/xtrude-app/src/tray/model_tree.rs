@@ -2,20 +2,36 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The model tree (`ModelTree`): the model as a tree of its groups and
 //! components — click selects (opening the groups above it), double-click
-//! edits, a rename is one undo step, and dropping rows on a group moves
-//! them there without moving them in the world.
+//! edits, a rename is one undo step, the eye shows or hides, and dropping
+//! rows on a group moves them there without moving them in the world.
+//!
+//! It is where the model's structure is read: a component row counts its
+//! copies and selects them all; «Components only» lists each definition
+//! once ([`Components`]); optional columns measure each row (size along
+//! the model axes, faces, colour); and each top-level row is marked as
+//! the link a robot description makes of it, with a warning when the
+//! link's name is not the group's ([`xtrude_model::links`]).
 
 use std::collections::{HashMap, HashSet};
 
 use xtrude_model::commands::{HideCommand, RenameGroupCommand, ReparentGroupsCommand};
 use xtrude_model::entity::EntityRef;
-use xtrude_model::group::Group;
+use xtrude_model::group::{iter_placements, Group};
 use xtrude_model::i18n::tr;
 use xtrude_model::ids::GroupId;
+use xtrude_model::links::links;
 use xtrude_model::model_tree::{ancestors, can_reparent, parent_map};
+use xtrude_model::parts::part_material;
+use xtrude_model::settings::{self, keys};
+use xtrude_model::units::fmt_triple;
 
+use super::components::Components;
 use super::natural_key;
 use crate::window::MainWindow;
+
+/// The optional columns: `(key, title)`, in their order on screen. The key
+/// is what `ui/model_tree_columns` stores.
+pub const COLUMNS: [(&str, &str); 3] = [("size", "Size"), ("faces", "Faces"), ("color", "Color")];
 
 /// One row of the tree.
 #[derive(Clone, Debug, PartialEq)]
@@ -24,12 +40,64 @@ pub struct Row {
     pub name: String,
     pub component: bool,
     pub hidden: bool,
+    /// A component's copies in the model, at every level; 1 for a group.
+    pub copies: usize,
+    /// The link the row's top-level group makes (its own name for a
+    /// top-level row, the one it merges into for a nested one).
+    pub link: String,
+    /// Whether the row is a top-level group: a link of its own.
+    pub top_level: bool,
+    /// The optional columns, `""` while they are off: W × D × H along the
+    /// model axes, the faces counted with the nested groups', the colour
+    /// most of its surface wears.
+    pub size: String,
+    pub faces: String,
+    pub color: String,
     pub children: Vec<Row>,
+}
+
+impl Row {
+    /// The link mark's warning, for a top-level row whose link does not
+    /// go out under the group's name.
+    pub fn link_warning(&self) -> Option<String> {
+        (self.top_level && self.link != self.name).then(|| {
+            tr(
+                "Exports as «{link}»: a link name holds only letters, digits and _, and no two are the same",
+                &[("link", &self.link)],
+            )
+        })
+    }
+
+    /// What the link mark's tooltip says.
+    pub fn link_tip(&self) -> String {
+        if self.top_level {
+            tr(
+                "Link «{link}» of a robot description",
+                &[("link", &self.link)],
+            )
+        } else {
+            tr("Merged into link «{link}»", &[("link", &self.link)])
+        }
+    }
+
+    /// The text of the optional column `key`.
+    pub fn column(&self, key: &str) -> &str {
+        match key {
+            "size" => &self.size,
+            "faces" => &self.faces,
+            _ => &self.color,
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct ModelTree {
     pub filter: String,
+    /// «Components only»: one row per component definition
+    /// ([`Self::components`]) instead of the tree.
+    pub components_only: bool,
+    /// The component definitions and their copies.
+    pub components: Components,
     /// The document's name (the root row).
     pub root_name: String,
     pub rows: Vec<Row>,
@@ -40,22 +108,112 @@ pub struct ModelTree {
     pub root_selected: bool,
     /// The groups open for editing (shown bold).
     pub open: Vec<GroupId>,
+    /// The row to scroll into view, taken by the shell when it draws it:
+    /// the first group selected in the canvas.
+    pub scroll_to: Option<GroupId>,
     signature: Option<String>,
 }
 
-fn build(nodes: &[Group]) -> Vec<Row> {
-    let mut rows: Vec<Row> = nodes
+/// What a row is built from besides its group.
+struct Build<'a> {
+    w: &'a MainWindow,
+    copies: HashMap<GroupId, usize>,
+    columns: Vec<&'static str>,
+}
+
+impl Build<'_> {
+    /// The rows of `nodes`, under the link `link` (`None` at the top
+    /// level, where each group is a link of its own, named in `links`).
+    fn rows(
+        &self,
+        nodes: &[Group],
+        link: Option<&str>,
+        links: &HashMap<GroupId, String>,
+    ) -> Vec<Row> {
+        let mut rows: Vec<Row> = nodes
+            .iter()
+            .map(|g| {
+                let top_level = link.is_none();
+                let link = link
+                    .map(str::to_string)
+                    .or_else(|| links.get(&g.id).cloned())
+                    .unwrap_or_default();
+                Row {
+                    group: g.id,
+                    name: g.name.clone(),
+                    component: g.is_component(),
+                    hidden: g.hidden,
+                    copies: self.copies.get(&g.id).copied().unwrap_or(1),
+                    top_level,
+                    size: self.column("size", || self.size(g)),
+                    faces: self.column("faces", || self.faces(g)),
+                    color: self.column("color", || {
+                        part_material(&self.w.viewport.scene.doc.meshes, g)
+                    }),
+                    children: self.rows(&g.children, Some(&link), links),
+                    link,
+                }
+            })
+            .collect();
+        rows.sort_by_key(|r| natural_key(&r.name));
+        rows
+    }
+
+    fn column(&self, key: &str, text: impl FnOnce() -> String) -> String {
+        if self.columns.contains(&key) {
+            text()
+        } else {
+            String::new()
+        }
+    }
+
+    fn size(&self, g: &Group) -> String {
+        let pts = self.w.viewport.scene.doc.group_world_points(g.id);
+        if pts.is_empty() {
+            return "—".into();
+        }
+        let (lo, hi) = pts
+            .iter()
+            .fold((pts[0], pts[0]), |(lo, hi), p| (lo.min(*p), hi.max(*p)));
+        let d = hi - lo;
+        fmt_triple(d.x, d.y, d.z, false)
+    }
+
+    fn faces(&self, g: &Group) -> String {
+        let doc = &self.w.viewport.scene.doc;
+        iter_placements(g, None)
+            .iter()
+            .map(|(p, _)| doc.mesh(p.mesh).faces.len())
+            .sum::<usize>()
+            .to_string()
+    }
+}
+
+/// The optional columns shown, in [`COLUMNS`] order
+/// (`ui/model_tree_columns`; none by default).
+pub fn shown_columns() -> Vec<&'static str> {
+    let stored = settings::read(&keys::MODEL_TREE_COLUMNS);
+    let on = |k: &str| {
+        stored
+            .as_array()
+            .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(k)))
+    };
+    COLUMNS.iter().map(|(k, _)| *k).filter(|k| on(k)).collect()
+}
+
+/// Show or hide the optional column `key`, and remember it.
+pub fn set_column_shown(key: &str, shown: bool) {
+    let mut cols = shown_columns();
+    cols.retain(|k| *k != key);
+    if shown {
+        cols.extend(COLUMNS.iter().map(|(k, _)| *k).find(|k| *k == key));
+    }
+    let ordered: Vec<&str> = COLUMNS
         .iter()
-        .map(|g| Row {
-            group: g.id,
-            name: g.name.clone(),
-            component: g.is_component(),
-            hidden: g.hidden,
-            children: build(&g.children),
-        })
+        .map(|(k, _)| *k)
+        .filter(|k| cols.contains(k))
         .collect();
-    rows.sort_by_key(|r| natural_key(&r.name));
-    rows
+    settings::write(&keys::MODEL_TREE_COLUMNS, &serde_json::json!(ordered));
 }
 
 impl ModelTree {
@@ -75,8 +233,19 @@ impl ModelTree {
         tr("Model", &[])
     }
 
-    fn signature(w: &MainWindow) -> String {
+    fn signature(w: &MainWindow, columns: &[&str], copies: &HashMap<GroupId, usize>) -> String {
         let mut s = Self::document_name(w);
+        // the columns measure the geometry: any edit may change them
+        if !columns.is_empty() {
+            s.push_str(&format!(
+                "|{}:{}",
+                columns.join(","),
+                w.viewport.scene.version
+            ));
+        }
+        let mut c: Vec<_> = copies.iter().collect();
+        c.sort();
+        s.push_str(&format!("|{c:?}"));
         fn walk(nodes: &[Group], depth: usize, s: &mut String) {
             for g in nodes {
                 s.push_str(&format!(
@@ -94,13 +263,33 @@ impl ModelTree {
     }
 
     pub fn refresh(&mut self, w: &MainWindow) {
-        let sig = Self::signature(w);
+        self.components.refresh_in_model(w);
+        let copies: HashMap<GroupId, usize> = self
+            .components
+            .rows
+            .iter()
+            .flat_map(|r| r.groups.iter().map(|g| (*g, r.groups.len())))
+            .collect();
+        let columns = shown_columns();
+        let sig = Self::signature(w, &columns, &copies);
         if self.signature.as_deref() != Some(sig.as_str()) {
             self.signature = Some(sig);
             self.root_name = Self::document_name(w);
-            self.rows = build(&w.viewport.scene.doc.groups);
+            let links: HashMap<GroupId, String> = links(&w.viewport.scene.doc)
+                .into_iter()
+                .map(|l| (l.group, l.name))
+                .collect();
+            let build = Build { w, copies, columns };
+            self.rows = build.rows(&w.viewport.scene.doc.groups, None, &links);
         }
         self.sync_from_scene(w);
+    }
+
+    /// Show or hide the optional column `key`; the rows are measured again.
+    pub fn set_column_shown(&mut self, w: &MainWindow, key: &str, shown: bool) {
+        set_column_shown(key, shown);
+        self.signature = None;
+        self.refresh(w);
     }
 
     /// The viewport's selection highlighted, and the open groups.
@@ -121,6 +310,8 @@ impl ModelTree {
         let mut b = self.selected.clone();
         b.sort();
         if a != b {
+            // picked in the canvas: found in the tree without hunting
+            self.scroll_to = wanted.first().copied();
             self.selected = wanted.clone();
             self.root_selected = false;
             for g in wanted {
@@ -276,6 +467,40 @@ impl ModelTree {
             entities: ents,
             hidden,
         });
+        w.pump_events();
+        self.refresh(w);
+    }
+
+    /// Select all copies: every copy of `group`'s component that shares
+    /// its parent (the ones at other levels are not selectable with it).
+    pub fn select_copies(&mut self, w: &mut MainWindow, group: GroupId) {
+        let Some(row) = self
+            .components
+            .rows
+            .iter()
+            .position(|r| r.groups.contains(&group))
+        else {
+            return;
+        };
+        self.components.select_at_level_of(w, row, group);
+        self.refresh(w);
+    }
+
+    /// «Components only»: a definition's row clicked selects its copies,
+    /// those at the first copy's level.
+    pub fn select_definition(&mut self, w: &mut MainWindow, row: usize) {
+        self.components.select(w, row);
+        self.refresh(w);
+    }
+
+    /// Split into Pieces on `group`, selected alone and closed.
+    pub fn split(&mut self, w: &mut MainWindow, group: GroupId) {
+        if w.viewport.scene.edit_group() == Some(group) {
+            w.viewport.end_group_edit();
+        }
+        super::select_groups(w, &[group]);
+        w.trigger("split_into_pieces");
+        self.expanded.insert(group);
         w.pump_events();
         self.refresh(w);
     }

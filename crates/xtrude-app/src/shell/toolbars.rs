@@ -37,9 +37,9 @@ impl XtrudeApp {
     /// The docked lines of `area`, outermost first, as panels of the
     /// `ui` being laid out; records the area's rectangle (zero thickness
     /// at its edge when empty) for the drop test. Declared in this order —
-    /// top, status bar, bottom, left, right, then the trays — so the top
-    /// and bottom lines span the window and the side columns sit outside
-    /// the trays.
+    /// top, status bar, bottom, left, right, then the left dock — so the
+    /// top and bottom lines span the window and the side columns sit
+    /// outside the dock.
     pub(super) fn toolbar_area(&mut self, ui: &mut egui::Ui, area: ToolbarArea) {
         let before = ui.available_rect_before_wrap();
         let column = self.icon_px() + 14.0;
@@ -515,9 +515,9 @@ impl XtrudeApp {
         }
     }
 
-    /// A drop-down panel (the Styles or the Dimension style, by its
-    /// [`TOOLBAR_PANELS`] key); in a column it opens beside the button,
-    /// not below it.
+    /// A drop-down panel's button (by its [`TOOLBAR_PANELS`] key): it
+    /// opens or closes the panel, which then opens under it, or beside it
+    /// in a column.
     fn panel_button(&mut self, ui: &mut egui::Ui, key: &str, vertical: bool) {
         let Some(&(key, title)) = TOOLBAR_PANELS.iter().find(|(k, _)| *k == key) else {
             return;
@@ -534,39 +534,81 @@ impl XtrudeApp {
                 egui::Color32::WHITE,
             );
         }
+        if self.open_panel == Some(key) {
+            ui.painter().rect_stroke(
+                rect,
+                3.0,
+                ui.visuals().selection.stroke,
+                egui::StrokeKind::Inside,
+            );
+        }
         let r = r.on_hover_text(tr(title, &[]));
+        let anchor = if vertical {
+            r.rect.right_top()
+        } else {
+            r.rect.left_bottom()
+        };
+        self.panel_anchors.insert(key, anchor);
         if r.clicked() {
-            self.open_panel = if self.open_panel == Some(key) {
+            let next = if self.open_panel == Some(key) {
                 None
             } else {
                 Some(key)
             };
-            self.tray.styles.refresh(&self.window);
+            self.open_drop_down(next);
         }
-        if self.open_panel == Some(key) {
-            let pos = if vertical {
-                r.rect.right_top()
-            } else {
-                r.rect.left_bottom()
-            };
-            let mut open = true;
-            egui::Window::new(tr(title, &[]))
-                .id(egui::Id::new(("panel", key)))
-                .default_pos(pos)
-                .collapsible(false)
-                .resizable(false)
-                .open(&mut open)
-                .show(ui.ctx(), |ui| {
-                    if key == "styles" {
-                        self.tray_ui.styles(ui, &mut self.tray, &mut self.window);
-                    } else {
-                        self.tray_ui.dimstyle(ui, &mut self.tray, &mut self.window);
+    }
+
+    /// Open the drop-down panel `key` (`None`: close the open one), its
+    /// model brought up to date.
+    pub(super) fn open_drop_down(&mut self, key: Option<&'static str>) {
+        self.open_panel = key;
+        self.tray.refresh(&self.window);
+    }
+
+    /// The open drop-down panel, under its button when a bar shows it
+    /// (opened from a menu, near the top left of the viewport otherwise).
+    pub(super) fn drop_down_window(&mut self, ctx: &egui::Context, viewport: egui::Rect) {
+        if let Some(key) = self.window.panel_requested.take() {
+            self.open_drop_down(Some(key));
+        }
+        let Some(key) = self.open_panel else {
+            return;
+        };
+        let Some(&(key, title)) = TOOLBAR_PANELS.iter().find(|(k, _)| *k == key) else {
+            return;
+        };
+        let pos = self
+            .panel_anchors
+            .get(key)
+            .copied()
+            .unwrap_or(viewport.left_top() + egui::vec2(24.0, 24.0));
+        let mut open = true;
+        egui::Window::new(tr(title, &[]))
+            .id(egui::Id::new(("panel", key)))
+            .default_pos(pos)
+            .collapsible(false)
+            .resizable(false)
+            .open(&mut open)
+            .show(ctx, |ui| {
+                ui.set_max_width(320.0);
+                // Layers may be docked at the same time: ids of its own
+                ui.push_id(("drop-down", key), |ui| match key {
+                    "styles" => self.tray_ui.styles(ui, &mut self.tray, &mut self.window),
+                    "dimension_style" => {
+                        self.tray_ui.dimstyle(ui, &mut self.tray, &mut self.window)
                     }
+                    "colors" => self.tray_ui.colors(ui, &mut self.tray, &mut self.window),
+                    "layers" => self.tray_ui.layers(ui, &mut self.tray, &mut self.window),
+                    "saved_views" => self
+                        .tray_ui
+                        .saved_views(ui, &mut self.tray, &mut self.window),
+                    _ => self.tray_ui.exploded(ui, &mut self.tray, &mut self.window),
                 });
-            // a dialog opened from the panel closes the drop-down first
-            if !open || self.dialogs.borrow().pending.is_some() {
-                self.open_panel = None;
-            }
+            });
+        // a dialog opened from the panel closes the drop-down first
+        if !open || self.dialogs.borrow().pending.is_some() {
+            self.open_panel = None;
         }
     }
 }

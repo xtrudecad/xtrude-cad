@@ -106,7 +106,7 @@ fn test_the_stacks_sit_where_their_members_were() {
             "stack:arcs",
         ]
     );
-    assert_eq!(bar(&w, "main").last().unwrap(), "stack:paint");
+    assert_eq!(bar(&w, "main")[5..], ["stack:paint", "panel:colors"]);
     let model = bar(&w, "model");
     // Fillet and Chamfer where Fillet was, Shell after them (Hole
     // follows Push/Pull, Revolve follows Sweep)
