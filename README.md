@@ -36,7 +36,7 @@ overwritten.
 - **Import:** STEP (`.step`, `.stp`; AP203, AP214, AP242), STL, Wavefront
   OBJ, glTF/GLB, COLLADA (`.dae`), DXF and `.skp`.
 - **Export:** STL (millimetres), 3MF (millimetres, one object per part,
-  with colours), Wavefront OBJ, glTF/GLB, COLLADA and images.
+  with colours), Wavefront OBJ, glTF/GLB and COLLADA.
 
 3MF export writes colours the standard way (core 3MF base materials).
 OrcaSlicer does not read colours from a 3MF it did not write: it opens
