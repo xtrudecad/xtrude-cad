@@ -142,7 +142,7 @@ fn test_the_segment_is_drawn_and_survives_the_document() {
     let mut vp = stub();
     vp.scene.doc.guides.push(g);
     let dir = TmpDir::new();
-    let path = dir.join("guide.xtr");
+    let path = dir.join("guide.xtrude");
     xtrude_io::document::save_scene(&vp.scene, &path).expect("save");
     let mut back = stub();
     xtrude_io::document::load_into(&mut back.scene, &path, None).expect("load");

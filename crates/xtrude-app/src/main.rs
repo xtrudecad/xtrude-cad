@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Xtrude CAD — technical 3D modelling for 3D printing, in Rust.
 //!
-//! `xtrude [document.xtr]` (an IngeTrazo `document.igz` opens as a new,
+//! `xtrude [document.xtrude]` (an IngeTrazo `document.igz` opens as a new,
 //! unsaved document).
 
 use std::path::PathBuf;

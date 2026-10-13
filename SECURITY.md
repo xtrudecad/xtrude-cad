@@ -32,7 +32,7 @@ out), and credit you in the advisory unless you prefer not to be named.
 
 Examples of what we treat as security problems:
 
-- opening a document or an imported file (`.xtr`, `.igz`, STL, OBJ, glTF, DAE,
+- opening a document or an imported file (`.xtrude`, `.igz`, STL, OBJ, glTF, DAE,
   DXF, `.skp`, STEP) that runs code, writes or reads files it should
   not, or crashes the editor in a way an attacker controls;
 - a Lua extension that gets out of its sandbox: reaches files, the

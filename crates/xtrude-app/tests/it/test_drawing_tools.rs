@@ -314,7 +314,7 @@ fn test_soft_survives_snapshot_and_document() {
     vp.redo();
     assert_eq!(n_soft(&vp), 24);
     let dir = TmpDir::new();
-    let path = dir.path().join("cyl.xtr");
+    let path = dir.path().join("cyl.xtrude");
     xtrude_io::document::save_scene(&vp.scene, &path).unwrap();
     let mut loaded = stub();
     xtrude_io::document::load_into(&mut loaded.scene, &path, None).unwrap();

@@ -16,7 +16,7 @@ use xtrude_model::group::world_mesh;
 use xtrude_model::ids::GroupId;
 use xtrude_model::scene::Scene;
 
-/// A 1 × 1 × 0.5 box drawn from the origin, saved as block.xtr.
+/// A 1 × 1 × 0.5 box drawn from the origin, saved as block.xtrude.
 fn block(dir: &TmpDir) -> PathBuf {
     let mut s = Scene::new();
     let p = [
@@ -39,7 +39,7 @@ fn block(dir: &TmpDir) -> PathBuf {
     ] {
         s.mesh_mut().add_face(&q.map(|i| p[i]), &[]);
     }
-    let path = dir.path().join("block.xtr");
+    let path = dir.path().join("block.xtrude");
     document::save_scene(&s, &path).unwrap();
     path
 }
@@ -91,7 +91,7 @@ fn test_without_a_point_it_waits_for_the_click() {
 #[test]
 fn test_an_unreadable_file_raises_and_changes_nothing() {
     let dir = TmpDir::new();
-    let bad = dir.path().join("broken.xtr");
+    let bad = dir.path().join("broken.xtrude");
     std::fs::write(&bad, b"not a document").unwrap();
     let mut w = window();
     let n0 = w.viewport.scene.doc.groups.len();

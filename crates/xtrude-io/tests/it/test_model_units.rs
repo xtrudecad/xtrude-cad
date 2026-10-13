@@ -16,8 +16,8 @@ fn test_units_travel_in_the_document_and_old_files_read_as_metres() {
     assert_eq!(back.units, Units::new("cm", 1));
     let tmp = TmpDir::new();
     let plain = Scene::new();
-    document::save_scene(&plain, &tmp.join("mm.xtr")).unwrap();
-    let doc = document_json(&tmp.join("mm.xtr"));
+    document::save_scene(&plain, &tmp.join("mm.xtrude")).unwrap();
+    let doc = document_json(&tmp.join("mm.xtrude"));
     assert_eq!(
         doc["scene"]["units"],
         serde_json::json!({"length": "mm", "precision": 2})

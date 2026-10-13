@@ -33,7 +33,7 @@ fn test_the_document_round_trip_binds_again() {
         )),
     );
     let tmp = TmpDir::new();
-    let path = tmp.join("dimension.xtr");
+    let path = tmp.join("dimension.xtrude");
     document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
     document::load_into(&mut back, &path, None).unwrap();
@@ -50,7 +50,7 @@ fn test_new_documents_take_arrows_and_old_ones_keep_their_ticks() {
     let mut s = Scene::new();
     s.dimension_style.ends = "none".into();
     let tmp = TmpDir::new();
-    let path = tmp.join("ends.xtr");
+    let path = tmp.join("ends.xtrude");
     document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
     document::load_into(&mut back, &path, None).unwrap();

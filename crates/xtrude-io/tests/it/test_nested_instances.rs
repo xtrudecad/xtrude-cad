@@ -30,7 +30,7 @@ fn test_document_round_trip_keeps_the_tree_and_writes_the_prototype_once() {
     top.layer = Some("fasteners".into());
     s.doc.groups.push(top);
     let tmp = TmpDir::new();
-    let path = tmp.join("screw.xtr");
+    let path = tmp.join("screw.xtrude");
     document::save_scene(&s, &path).unwrap();
     let raw = payload(&path);
     assert_eq!(raw["protos"].as_array().unwrap().len(), 1);

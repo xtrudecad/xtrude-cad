@@ -117,8 +117,8 @@
         {
             "id": "modelFile",
             "type": "promptString",
-            "description": "Model to open (.xtr or .igz, relative to the workspace or absolute)",
-            "default": "tests/golden/box.xtr"
+            "description": "Model to open (.xtrude or .igz, relative to the workspace or absolute)",
+            "default": "tests/golden/box.xtrude"
         },
         {
             "id": "skpFile",

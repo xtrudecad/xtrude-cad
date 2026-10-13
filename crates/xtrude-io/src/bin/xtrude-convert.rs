@@ -3,7 +3,7 @@
 //! `xtrude-convert IN OUT`: open a document and write it back out in the
 //! format of OUT's extension.
 //!
-//! IN is an Xtrude CAD document (`.xtr`), an IngeTrazo document
+//! IN is an Xtrude CAD document (`.xtrude`), an IngeTrazo document
 //! (`.igz`, read only), an STL or an OBJ; OUT an Xtrude CAD document, an
 //! STL or an OBJ.
 //!

@@ -105,7 +105,7 @@ pub fn v3(x: f64, y: f64, z: f64) -> xtrude_core::DVec3 {
 /// Save `scene` to a scratch file and load it into a fresh scene.
 pub fn roundtrip(scene: &xtrude_model::scene::Scene) -> xtrude_model::scene::Scene {
     let tmp = TmpDir::new();
-    let path = tmp.join("doc.xtr");
+    let path = tmp.join("doc.xtrude");
     xtrude_io::document::save_scene(scene, &path).expect("save");
     let mut back = xtrude_model::scene::Scene::new();
     xtrude_io::document::load_into(&mut back, &path, None).expect("load");

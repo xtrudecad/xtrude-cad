@@ -266,7 +266,7 @@ fn style_tip(name: &str) -> &'static str {
     }
 }
 
-pub const SAVE_TIP: &str = "Save the document to its .xtr file.";
+pub const SAVE_TIP: &str = "Save the document to its .xtrude file.";
 pub const TEXT3D_TIP: &str =
     "Build a text as an extruded solid, in the font and height you choose.";
 
@@ -546,7 +546,7 @@ impl MainWindow {
                 "open",
                 "Open…",
                 OPEN,
-                "Open an Xtrude CAD document (.xtr) in place of this one; an IngeTrazo document (.igz) opens as a new, unsaved one.",
+                "Open an Xtrude CAD document (.xtrude) in place of this one; an IngeTrazo document (.igz) opens as a new, unsaved one.",
             ),
             ("save", "Save", SAVE, SAVE_TIP),
             (
@@ -566,8 +566,8 @@ impl MainWindow {
         }
         for (id, text, tip) in [
             (
-                "import:xtr",
-                "Xtrude CAD document as component (.xtr)…",
+                "import:xtrude",
+                "Xtrude CAD document as component (.xtrude)…",
                 "Bring another Xtrude CAD document in as one component, placed with a click.",
             ),
             (
@@ -957,7 +957,7 @@ impl MainWindow {
             M(
                 tr("Import", &[]),
                 [
-                    "xtr", "igz", "skp", "dae", "glb", "obj", "stl", "step", "dxf",
+                    "xtrude", "igz", "skp", "dae", "glb", "obj", "stl", "step", "dxf",
                 ]
                 .map(|k| act(&format!("import:{k}")))
                 .to_vec(),

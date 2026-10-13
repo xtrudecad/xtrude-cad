@@ -21,7 +21,7 @@ body:
     id: steps
     attributes:
       label: Steps to reproduce
-      description: The tool, the clicks and the values you typed. Attach the `.xtr` document or the imported file if you can.
+      description: The tool, the clicks and the values you typed. Attach the `.xtrude` document or the imported file if you can.
       placeholder: |
         1. Draw a 20 × 10 mm rectangle
         2. Pull it 5 mm

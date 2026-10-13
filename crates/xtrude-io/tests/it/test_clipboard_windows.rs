@@ -87,11 +87,11 @@ fn test_the_scene_travels_as_a_document() {
     let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
     assert!(z.by_name("scene.igz").is_err());
     let mut doc = Vec::new();
-    z.by_name("scene.xtr")
+    z.by_name("scene.xtrude")
         .unwrap()
         .read_to_end(&mut doc)
         .unwrap();
     let mut s = xtrude_model::scene::Scene::new();
-    xtrude_io::document::load_bytes(&mut s, &doc, "scene.xtr", None).unwrap();
+    xtrude_io::document::load_bytes(&mut s, &doc, "scene.xtrude", None).unwrap();
     assert_eq!(s.mesh().faces.len(), 1);
 }

@@ -135,7 +135,7 @@ fn the_desktop_file_opens_documents_igz_and_the_system_types_start_up_imports() 
     assert!(mime.contains("<comment>IngeTrazo document</comment>"));
     assert!(
         !mime.contains("<magic"),
-        "an .xtr is gzip and an .igz a zip: no magic"
+        "an .xtrude is gzip and an .igz a zip: no magic"
     );
     let expected: String = ["application/x-xtrudecad", "application/x-ingetrazo"]
         .into_iter()

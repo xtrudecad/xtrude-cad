@@ -27,7 +27,7 @@ fn test_open_restores_the_authors_view_and_new_resets_it() {
         c.pitch = 0.2;
         c.perspective = false;
     }
-    let path = dir.path().join("doc.xtr");
+    let path = dir.path().join("doc.xtrude");
     w.do_save(&path);
     let home = w.viewport.scene.camera_home.clone().expect("a saved view");
     assert_eq!(home.distance, Some(33.0));
@@ -92,7 +92,7 @@ fn test_a_document_without_a_saved_camera_opens_framed() {
     let dir = TmpDir::new();
     let mut s = Scene::new();
     small_part(&mut s);
-    let path = dir.path().join("part.xtr");
+    let path = dir.path().join("part.xtrude");
     document::save_scene(&s, &path).unwrap(); // no camera_home
     let mut w = window();
     w.viewport.camera.distance = 20.0;

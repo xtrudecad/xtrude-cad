@@ -24,14 +24,14 @@ texture, translation and packaging features were removed, millimetre
 documents became the default, and the Python/PySide6 application was
 rewritten in Rust (wgpu + egui).
 
-Xtrude CAD saves its documents in a format of its own, `.xtr`. It still
+Xtrude CAD saves its documents in a format of its own, `.xtrude`. It still
 reads IngeTrazo's `.igz` documents: one opens as a new, unsaved Xtrude
-CAD document, which is saved as `.xtr`, so the `.igz` is never
+CAD document, which is saved as `.xtrude`, so the `.igz` is never
 overwritten.
 
 ## File formats
 
-- **Documents:** Xtrude CAD documents (`.xtr`), open and save;
+- **Documents:** Xtrude CAD documents (`.xtrude`), open and save;
   IngeTrazo documents (`.igz`), open and import.
 - **Import:** STEP (`.step`, `.stp`; AP203, AP214, AP242), STL, Wavefront
   OBJ, glTF/GLB, COLLADA (`.dae`), DXF and `.skp`.
@@ -90,7 +90,7 @@ Metal, DX12 or OpenGL ES 3 support. Linux is the primary target.
 
 ```bash
 cargo run --release -p xtrude-app                 # launch
-cargo run --release -p xtrude-app -- part.xtr     # open a document
+cargo run --release -p xtrude-app -- part.xtrude  # open a document
 cargo run --release -p xtrude-app -- --check      # self-check (prints OK)
 ```
 

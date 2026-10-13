@@ -10,7 +10,7 @@ use xtrude_model::scene::Scene;
 #[test]
 fn test_a_nan_is_never_saved_and_the_old_file_survives() {
     let tmp = TmpDir::new();
-    let path = tmp.join("grille.xtr");
+    let path = tmp.join("grille.xtrude");
     let mut s = Scene::new();
     s.mesh_mut()
         .add_face(&[v3(0., 0., 0.), v3(1., 0., 0.), v3(1., 1., 0.)], &[]);
@@ -23,13 +23,13 @@ fn test_a_nan_is_never_saved_and_the_old_file_survives() {
         other => panic!("expected NonFinite, got {other:?}"),
     }
     assert_eq!(std::fs::read(&path).unwrap(), good);
-    assert!(!tmp.join("grille.xtr.part").exists());
+    assert!(!tmp.join("grille.xtrude.part").exists());
 }
 
 #[test]
 fn test_a_clean_document_is_strict_json() {
     let tmp = TmpDir::new();
-    let path = tmp.join("ok.xtr");
+    let path = tmp.join("ok.xtrude");
     let mut s = Scene::new();
     s.mesh_mut()
         .add_edge(v3(0., 0., 0.), v3(2., 0., 0.))

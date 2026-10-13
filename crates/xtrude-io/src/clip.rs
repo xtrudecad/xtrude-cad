@@ -4,7 +4,7 @@
 //! clipboard's wire format.
 //!
 //! The payload is a small zip: `clip.json` (reference point and the loose
-//! edges) plus `scene.xtr`, a throwaway document holding the copied faces
+//! edges) plus `scene.xtrude`, a throwaway document holding the copied faces
 //! and groups — written by the regular document writer, so materials,
 //! component definitions and group axes travel exactly as in a file. The
 //! system-clipboard plumbing (MIME type [`MIME`], lazy rendering) lives in
@@ -24,9 +24,9 @@ use crate::document::{self, DocError};
 
 /// The system-clipboard MIME type of a model clipboard.
 pub const MIME: &str = "application/x-xtrude-clipboard";
-/// 2: the scene travels as an Xtrude CAD document (`scene.xtr`).
+/// 2: the scene travels as an Xtrude CAD document (`scene.xtrude`).
 const FORMAT: i64 = 2;
-const SCENE_ENTRY: &str = "scene.xtr";
+const SCENE_ENTRY: &str = "scene.xtrude";
 
 /// A model clipboard (`viewport.clipboard`).
 #[derive(Clone, Debug, Default)]

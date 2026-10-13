@@ -33,7 +33,7 @@ fn test_dimension_survives_document_round_trip() {
             v3(0., 0., 2.),
         )),
     );
-    let loaded = roundtrip(&s, "dim.xtr");
+    let loaded = roundtrip(&s, "dim.xtrude");
     assert_eq!(loaded.doc.dimensions.len(), 1);
     let d = &loaded.doc.dimensions[0];
     let view = loaded.doc_view();
@@ -49,7 +49,7 @@ fn test_dimension_style_survives_document_round_trip() {
     s.dimension_style.decimals = 0;
     s.dimension_style.units = "cm".into();
     s.dimension_style.font_size = 14;
-    let loaded = roundtrip(&s, "style.xtr");
+    let loaded = roundtrip(&s, "style.xtrude");
     assert_eq!(loaded.dimension_style.decimals, 0);
     assert_eq!(loaded.dimension_style.units, "cm");
     assert_eq!(loaded.dimension_style.font_size, 14);
@@ -61,7 +61,7 @@ fn test_linear_dimension_survives_document_round_trip() {
     s.doc.dimensions.push(
         Dimension::new(v3(0., 0., 0.), v3(4., 3., 0.), v3(0., 5., 0.)).with_axis(Some(Axis::X)),
     );
-    let back = roundtrip(&s, "linear.xtr");
+    let back = roundtrip(&s, "linear.xtrude");
     assert_eq!(back.doc.dimensions.len(), 1);
     let d = &back.doc.dimensions[0];
     assert_eq!(d.axis, Some(Axis::X));
@@ -79,7 +79,7 @@ fn test_an_unknown_dimension_style_key_survives_the_round_trip() {
     std::fs::write(&path, payload.to_string()).unwrap();
     let mut first = Scene::new();
     igz::load_into(&mut first, &path, None).unwrap();
-    let back = roundtrip(&first, "again.xtr");
+    let back = roundtrip(&first, "again.xtrude");
     let style = &back.dimension_style;
     assert_eq!(style.extra.get("leader_gap"), Some(&json!({"mm": 1.5})));
     assert_eq!((style.decimals, style.ends.as_str()), (1, "none"));

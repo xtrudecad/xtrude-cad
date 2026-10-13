@@ -14,7 +14,7 @@ fn test_the_document_is_gzipped_json() {
     let mut h = History::new();
     drawn_cube(&mut s, &mut h);
     let tmp = TmpDir::new();
-    let doc = tmp.join("cube.xtr");
+    let doc = tmp.join("cube.xtrude");
     document::save_scene(&s, &doc).unwrap();
     assert!(std::fs::read(&doc).unwrap().starts_with(b"\x1f\x8b"));
     let data = document_json(&doc);

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Xtrude CAD saves its own documents (`.xtr`) and reads IngeTrazo's `.igz`
+//! Xtrude CAD saves its own documents (`.xtrude`) and reads IngeTrazo's `.igz`
 //! as an import: an `.igz` opens as a new, unsaved document with no path,
-//! Save then asks where to write the `.xtr`, and the `.igz` on disk is
+//! Save then asks where to write the `.xtrude`, and the `.igz` on disk is
 //! never written.
 
 use crate::common;
@@ -65,13 +65,13 @@ fn test_save_asks_for_a_path_and_writes_a_document_beside_the_untouched_igz() {
     let mut w = window();
     assert!(w.open_path(&igz));
     let d = scripted(&mut w);
-    let target = dir.path().join("servo.xtr");
+    let target = dir.path().join("servo.xtrude");
     d.borrow_mut().save_paths.push(Some(target.clone()));
     w.trigger("save");
     let d = d.borrow();
     assert_eq!(d.asked[0].0, "save", "{:?}", d.asked);
-    assert_eq!(d.starts[0].file_name().unwrap(), "servo.xtr");
-    assert!(d.filters[0].starts_with("Xtrude CAD document (*.xtr)"));
+    assert_eq!(d.starts[0].file_name().unwrap(), "servo.xtrude");
+    assert!(d.filters[0].starts_with("Xtrude CAD document (*.xtrude)"));
     assert_eq!(w.current_path.as_deref(), Some(target.as_path()));
     assert!(!w.is_dirty());
     assert_eq!(std::fs::read(&igz).unwrap(), before);
@@ -91,10 +91,10 @@ fn test_saving_under_an_igz_name_writes_a_document_instead() {
     d.borrow_mut().save_paths.push(Some(igz.clone()));
     w.trigger("save_as");
     assert_eq!(std::fs::read(&igz).unwrap(), before);
-    let written = dir.path().join("servo.xtr");
+    let written = dir.path().join("servo.xtrude");
     assert_eq!(w.current_path.as_deref(), Some(written.as_path()));
     assert!(std::fs::read(&written).unwrap().starts_with(b"\x1f\x8b"));
-    // a saved document gives `.xtr` again, however it is named
+    // a saved document gives `.xtrude` again, however it is named
     w.do_save(&written);
     let names: Vec<String> = std::fs::read_dir(dir.path())
         .unwrap()
@@ -122,13 +122,13 @@ fn test_a_document_opens_with_its_path_and_is_remembered() {
     let dir = TmpDir::new();
     let mut w = window();
     assert!(w.open_path(&igz_copy(&dir)));
-    let path = dir.path().join("servo.xtr");
+    let path = dir.path().join("servo.xtrude");
     w.do_save(&path);
     let mut w = window();
     assert!(w.open_path(&path));
     assert_eq!(w.current_path.as_deref(), Some(path.as_path()));
     assert!(!w.is_dirty());
-    assert!(w.title.contains("servo.xtr") && !w.title.ends_with(" *"));
+    assert!(w.title.contains("servo.xtrude") && !w.title.ends_with(" *"));
     let canon = path.canonicalize().unwrap().to_string_lossy().into_owned();
     assert_eq!(recent_paths().first(), Some(&canon));
     remember_recent(&igz_copy(&dir));
@@ -144,24 +144,27 @@ fn test_open_offers_both_documents_and_save_only_the_native_one() {
     d.borrow_mut().save_paths.push(None);
     w.trigger("save_as");
     let d = d.borrow();
-    assert!(d.filters[0].starts_with("Xtrude CAD or IngeTrazo document (*.xtr *.igz)"));
-    assert!(d.filters[1].starts_with("Xtrude CAD document (*.xtr)"));
+    assert!(d.filters[0].starts_with("Xtrude CAD or IngeTrazo document (*.xtrude *.igz)"));
+    assert!(d.filters[1].starts_with("Xtrude CAD document (*.xtrude)"));
     assert!(!d.filters[1].contains("igz"));
-    assert_eq!(d.starts[1].file_name().unwrap(), "untitled.xtr");
+    assert_eq!(d.starts[1].file_name().unwrap(), "untitled.xtrude");
 }
 
 #[test]
 fn test_import_offers_both_documents_as_components() {
     let mut w = window();
     for (id, text) in [
-        ("import:xtr", "Xtrude CAD document as component (.xtr)…"),
+        (
+            "import:xtrude",
+            "Xtrude CAD document as component (.xtrude)…",
+        ),
         ("import:igz", "IngeTrazo document as component (.igz)…"),
     ] {
         assert_eq!(w.actions.get(id).map(|a| a.text.as_str()), Some(text));
     }
     let d = scripted(&mut w);
     d.borrow_mut().open_paths.extend([None, None]);
-    w.trigger("import:xtr");
+    w.trigger("import:xtrude");
     w.trigger("import:igz");
     let d = d.borrow();
     assert_eq!(
@@ -171,7 +174,7 @@ fn test_import_offers_both_documents_as_components() {
             ("open".to_string(), "Import IngeTrazo document".to_string()),
         ]
     );
-    assert!(d.filters[0].starts_with("Xtrude CAD document (*.xtr)"));
+    assert!(d.filters[0].starts_with("Xtrude CAD document (*.xtrude)"));
     assert!(d.filters[1].starts_with("IngeTrazo document (*.igz)"));
 }
 
@@ -195,8 +198,8 @@ fn test_the_desktop_dialogs_get_the_document_extensions() {
     let exts = |f: &str| parse_filter(f).map(|(_, e)| e);
     assert_eq!(
         exts(OPEN_FILE_FILTER),
-        Some(vec!["xtr".into(), "igz".into()])
+        Some(vec!["xtrude".into(), "igz".into()])
     );
-    assert_eq!(exts(DOCUMENT_FILE_FILTER), Some(vec!["xtr".into()]));
+    assert_eq!(exts(DOCUMENT_FILE_FILTER), Some(vec!["xtrude".into()]));
     assert_eq!(exts(IGZ_FILE_FILTER), Some(vec!["igz".into()]));
 }

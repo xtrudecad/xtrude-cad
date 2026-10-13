@@ -26,10 +26,11 @@ use super::{filedialogs, MainWindow, SaveChoice};
 use crate::tools::place_group::PlaceGroupTool;
 
 /// Save and Save As: the Xtrude CAD document.
-pub const DOCUMENT_FILE_FILTER: &str = "Xtrude CAD document (*.xtr);;All files (*)";
+pub const DOCUMENT_FILE_FILTER: &str = "Xtrude CAD document (*.xtrude);;All files (*)";
 /// Open: an Xtrude CAD document, or an IngeTrazo one (opened as a new,
 /// unsaved document).
-pub const OPEN_FILE_FILTER: &str = "Xtrude CAD or IngeTrazo document (*.xtr *.igz);;All files (*)";
+pub const OPEN_FILE_FILTER: &str =
+    "Xtrude CAD or IngeTrazo document (*.xtrude *.igz);;All files (*)";
 /// File ▸ Import ▸ IngeTrazo document.
 pub const IGZ_FILE_FILTER: &str = "IngeTrazo document (*.igz);;All files (*)";
 
@@ -514,7 +515,7 @@ impl MainWindow {
     // ---- imports ---------------------------------------------------------------------------
     pub(super) fn on_import(&mut self, kind: &str) {
         let (title, filter) = match kind {
-            "xtr" => ("Import Xtrude CAD document", DOCUMENT_FILE_FILTER),
+            "xtrude" => ("Import Xtrude CAD document", DOCUMENT_FILE_FILTER),
             "igz" => ("Import IngeTrazo document", IGZ_FILE_FILTER),
             "skp" => ("Import SKP", "SKP (*.skp);;All files (*)"),
             "dae" => ("Import DAE", "COLLADA (*.dae);;All files (*)"),
@@ -532,7 +533,7 @@ impl MainWindow {
             return;
         };
         match kind {
-            "xtr" | "igz" => self.on_import_document_path(&path, title),
+            "xtrude" | "igz" => self.on_import_document_path(&path, title),
             "skp" => {
                 self.import_skp_path(&path);
             }

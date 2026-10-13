@@ -45,7 +45,7 @@ fn test_unpainted_face_writes_no_color_key() {
     let mut h = History::new();
     square(&mut s, &mut h);
     let tmp = TmpDir::new();
-    let path = tmp.join("plain.xtr");
+    let path = tmp.join("plain.xtrude");
     document::save_scene(&s, &path).unwrap();
     let data = document_json(&path);
     assert!(data["scene"]["faces"][0].get("color").is_none());
