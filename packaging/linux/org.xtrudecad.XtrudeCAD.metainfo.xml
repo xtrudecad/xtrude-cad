@@ -71,6 +71,20 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="0.1.0-rc.2" date="2026-10-13" type="development">
+      <description>
+        <p>The second release candidate of Xtrude CAD 0.1.0.</p>
+        <ul>
+          <li>Documents are saved in Xtrude CAD's own format, <code>.xtrude</code>. IngeTrazo <code>.igz</code> documents still open, as new unsaved documents, and are no longer written.</li>
+          <li>3MF export, for slicers that read it.</li>
+          <li>Menus and toolbars organised around the work on a part, with stacked toolbar buttons for related tools.</li>
+          <li>One Import… and one Export… command; the file dialog lists the formats. Opening a file that is not a document starts a new document holding it.</li>
+          <li>Push/pull refuses a push that would break the solid while dragging, and keeps the solid on fine curves.</li>
+          <li>Copies of an imported <code>.skp</code> component keep one shared definition.</li>
+          <li>The unfinished image export is removed.</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.1.0-rc.1" date="2026-10-12" type="development">
       <description>
         <p>The first release of Xtrude CAD.</p>
