@@ -232,6 +232,8 @@ fn test_the_model_menu() {
             "-",
             "paint",
             "eyedropper",
+            "-",
+            "document_print_material",
         ]
     );
 }

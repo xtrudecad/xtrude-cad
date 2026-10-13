@@ -146,6 +146,7 @@ mod test_plane_lock;
 mod test_platform_choice;
 mod test_preferences;
 mod test_preferences_layout;
+mod test_print_material_ui;
 mod test_profile_lines;
 mod test_properties_name;
 mod test_properties_units;

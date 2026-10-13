@@ -126,6 +126,9 @@ impl MainWindow {
         if let Some(layer) = self.layer_submenu() {
             menu.push(layer);
         }
+        if let Some(material) = self.print_material_submenu() {
+            menu.push(material);
+        }
         if let Some(select) = self.select_submenu() {
             menu.push(select);
         }
