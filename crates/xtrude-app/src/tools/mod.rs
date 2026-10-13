@@ -48,6 +48,7 @@ pub mod place_group;
 pub mod protractor;
 pub mod pushpull;
 pub mod rectangle;
+pub mod revolve;
 pub mod rotate;
 pub mod rotated_rectangle;
 pub mod scale;

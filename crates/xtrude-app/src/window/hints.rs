@@ -144,6 +144,12 @@ fn hint_entry(key: &str) -> Option<Hint> {
             "Select the path, then click the profile face. Alt = sweep along the selection.",
             "Move along the path; click to finish.",
         ),
+        "revolve" => Phases(&[
+            ("idle", "Click the face to turn (or select it first)."),
+            ("axis", "Click an edge in the face's plane, or the axis's first point."),
+            ("axis2", "Click the second point of the axis."),
+            ("angle", "Click to turn, or type the angle and Enter. 'Ns' = sides."),
+        ]),
         "offset" => Two(
             "Click a face, or connected edges, to offset.",
             "Move to set the offset, or type it and Enter.",

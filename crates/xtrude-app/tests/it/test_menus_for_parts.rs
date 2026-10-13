@@ -196,6 +196,7 @@ fn test_the_model_menu() {
             "pushpull",
             "hole",
             "sweep",
+            "revolve",
             "offset",
             "fillet",
             "chamfer",

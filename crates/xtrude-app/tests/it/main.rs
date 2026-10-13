@@ -170,6 +170,7 @@ mod test_rectangle_plane_message;
 mod test_renamed_actions;
 mod test_renamed_tools;
 mod test_repeat_last_command;
+mod test_revolve_tool;
 mod test_ring_push;
 mod test_rotate_array;
 mod test_rotate_center_arc;

@@ -109,10 +109,10 @@ fn test_the_stacks_sit_where_their_members_were() {
     assert_eq!(bar(&w, "main").last().unwrap(), "stack:paint");
     let model = bar(&w, "model");
     // Fillet and Chamfer where Fillet was, Shell after them (Hole
-    // follows Push/Pull)
+    // follows Push/Pull, Revolve follows Sweep)
     assert_eq!(model[..2], ["pushpull", "hole"]);
     assert_eq!(
-        model[4..8],
+        model[5..9],
         ["stack:edges", "shell", "stack:booleans", "solid_split"]
     );
 }
