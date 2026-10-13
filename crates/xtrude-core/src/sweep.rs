@@ -9,6 +9,10 @@
 //! onto the joint plane — the exact miter. A closed circular path whose axis
 //! lies in the profile's plane is a lathe and turns the profile
 //! about the axis instead.
+//!
+//! Revolve turns a profile about an axis in its plane: a full turn along
+//! the lathe path, a partial one along an arc of it (the profile turned to
+//! each station, so every joint is a plane through the axis).
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -515,7 +519,21 @@ pub fn sweep_profile(mesh: &mut Mesh, face: FaceId, path: &[DVec3], closed: bool
     let Some((rings, _dirs, spans)) = sweep_rings(&pf, path, closed) else {
         return false;
     };
-    let stations = path.len();
+    build_sweep(mesh, face, &rings, spans, closed);
+    true
+}
+
+/// Replace `face` by the solid its `rings` span: the walls between
+/// consecutive rings, the end caps of an open sweep, welded, with the
+/// curve facets softened and the faces turned outward.
+fn build_sweep(
+    mesh: &mut Mesh,
+    face: FaceId,
+    rings: &[Vec<Vec<DVec3>>],
+    spans: usize,
+    closed: bool,
+) {
+    let stations = rings.len();
     let before_edges: HashSet<EdgeId> = mesh.edge_ids().into_iter().collect();
     let before_faces: HashSet<FaceId> = mesh.face_ids().into_iter().collect();
     let profile_loops: Vec<Vec<VertexId>> = mesh.face(face).loops().cloned().collect();
@@ -576,5 +594,184 @@ pub fn sweep_profile(mesh: &mut Mesh, face: FaceId, path: &[DVec3], closed: bool
         }
     }
     orient_outward(mesh, DEFAULT_SEED, None);
-    true
+}
+
+/// The sides a full turn of a revolve has by default.
+pub const REVOLVE_SIDES: u32 = 24;
+
+/// Why a face cannot be revolved about an axis.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RevolveRefusal {
+    /// The axis is not a line in the face's plane.
+    OffPlane,
+    /// The axis runs through the face: the turn would cut through itself.
+    CrossesFace,
+    /// The angle is zero or beyond a full turn.
+    Angle,
+    /// The face has no area, or lies on the axis.
+    Degenerate,
+}
+
+/// How far (m) a point may stand off the axis's plane, or across the
+/// axis, and still count as on it.
+const REVOLVE_TOL: f64 = 1e-7;
+
+/// Whether `face` can turn about the line through `origin` along `axis`:
+/// the line lies in the face's plane and leaves the face on one side
+/// (touching its boundary is fine).
+pub fn revolve_check(face: &PolyFace, origin: DVec3, axis: DVec3) -> Result<(), RevolveRefusal> {
+    let n = face.normal().unit_or_zero();
+    let ax = axis.unit_or_zero();
+    if n == DVec3::ZERO {
+        return Err(RevolveRefusal::Degenerate);
+    }
+    if ax == DVec3::ZERO
+        || ax.dot(n).abs() > 1e-6
+        || (origin - face.vertices[0]).dot(n).abs() > REVOLVE_TOL
+    {
+        return Err(RevolveRefusal::OffPlane);
+    }
+    let across = ax.cross(n);
+    let (lo, hi) = face
+        .vertices
+        .iter()
+        .map(|&v| (v - origin).dot(across))
+        .fold((f64::INFINITY, f64::NEG_INFINITY), |(a, b), d| {
+            (a.min(d), b.max(d))
+        });
+    if lo < -REVOLVE_TOL && hi > REVOLVE_TOL {
+        return Err(RevolveRefusal::CrossesFace);
+    }
+    if lo.abs().max(hi.abs()) <= REVOLVE_TOL {
+        return Err(RevolveRefusal::Degenerate);
+    }
+    Ok(())
+}
+
+/// The spans of a revolve by `deg` with `sides` per full turn: at least
+/// one, and at least three for a full turn.
+pub fn revolve_spans(deg: f64, sides: u32) -> usize {
+    let full = (sides.max(3)) as f64;
+    let spans = (full * deg.abs() / 360.0 - 1e-9).ceil() as usize;
+    spans.max(1)
+}
+
+/// Whether a revolve turns by `deg`: not zero, at most a full turn.
+pub fn revolve_angle_ok(deg: f64) -> bool {
+    deg.is_finite() && deg.abs() >= 1e-9 && deg.abs() <= 360.0 + 1e-9
+}
+
+/// Whether `deg` is a full turn.
+pub fn is_full_turn(deg: f64) -> bool {
+    (deg.abs() - 360.0).abs() < 1e-9
+}
+
+/// Revolve `face` (with holes) by `deg` about the line through `origin`
+/// along `axis` (right-handed), `sides` per full turn, mutating `mesh`.
+/// A full turn sweeps along the lathe path, a circle about the axis
+/// through the face's centroid; a partial turn along an arc of it, the
+/// profile turned to each of its stations, with end caps. On a refusal
+/// the mesh is untouched.
+pub fn revolve_profile(
+    mesh: &mut Mesh,
+    face: FaceId,
+    origin: DVec3,
+    axis: DVec3,
+    deg: f64,
+    sides: u32,
+) -> Result<(), RevolveRefusal> {
+    if !revolve_angle_ok(deg) {
+        return Err(RevolveRefusal::Angle);
+    }
+    let pf = mesh.poly_face(face);
+    revolve_check(&pf, origin, axis)?;
+    if is_full_turn(deg) {
+        let ax = axis.unit_or_zero();
+        let spans = revolve_spans(deg, sides);
+        let path: Vec<DVec3> = (0..spans)
+            .map(|k| {
+                let a = (deg * k as f64 / spans as f64).to_radians();
+                origin + glam::DQuat::from_axis_angle(ax, a) * (pf.centroid() - origin)
+            })
+            .collect();
+        return if sweep_profile(mesh, face, &path, true) {
+            Ok(())
+        } else {
+            Err(RevolveRefusal::Degenerate)
+        };
+    }
+    let (rings, spans) = revolve_rings(&pf, origin, axis, deg, sides);
+    build_sweep(mesh, face, &rings, spans, false);
+    Ok(())
+}
+
+/// The profile's rings (outer + holes) turned to each station of a
+/// revolve, and the span count; a full turn's last station is its first.
+fn revolve_rings(
+    face: &PolyFace,
+    origin: DVec3,
+    axis: DVec3,
+    deg: f64,
+    sides: u32,
+) -> (Vec<Vec<Vec<DVec3>>>, usize) {
+    let ax = axis.unit_or_zero();
+    let spans = revolve_spans(deg, sides);
+    let stations = if is_full_turn(deg) { spans } else { spans + 1 };
+    let mut loops = vec![face.vertices.clone()];
+    loops.extend(face.holes.iter().cloned());
+    let rings = (0..stations)
+        .map(|k| {
+            if k == 0 {
+                return loops.clone();
+            }
+            let a = (deg * k as f64 / spans as f64).to_radians();
+            let q = glam::DQuat::from_axis_angle(ax, a);
+            loops
+                .iter()
+                .map(|lp| lp.iter().map(|&p| origin + q * (p - origin)).collect())
+                .collect()
+        })
+        .collect();
+    (rings, spans)
+}
+
+/// A revolve as plain polygons for a live preview: the walls, and the far
+/// end of a partial turn; nothing when the revolve would be refused.
+pub fn revolve_preview_faces(
+    face: &PolyFace,
+    origin: DVec3,
+    axis: DVec3,
+    deg: f64,
+    sides: u32,
+) -> Vec<PolyFace> {
+    if !revolve_angle_ok(deg) || revolve_check(face, origin, axis).is_err() {
+        return Vec::new();
+    }
+    let (rings, spans) = revolve_rings(face, origin, axis, deg, sides);
+    let closed = is_full_turn(deg);
+    let mut out = Vec::new();
+    for s in 0..spans {
+        let (r0, r1) = (&rings[s], &rings[(s + 1) % rings.len()]);
+        for (lp0, lp1) in r0.iter().zip(r1.iter()) {
+            let m = lp0.len();
+            for j in 0..m {
+                if let Some(q) = wall(&[lp0[j], lp0[(j + 1) % m], lp1[(j + 1) % m], lp1[j]]) {
+                    out.push(PolyFace {
+                        vertices: q,
+                        holes: Vec::new(),
+                        attrs: face.attrs.clone(),
+                    });
+                }
+            }
+        }
+    }
+    if !closed {
+        let last = &rings[rings.len() - 1];
+        out.push(PolyFace {
+            vertices: last[0].clone(),
+            holes: last[1..].to_vec(),
+            attrs: face.attrs.clone(),
+        });
+    }
+    out
 }
