@@ -180,6 +180,7 @@ fn test_the_draw_menu() {
             "  rotated_rect",
             "  circle",
             "  polygon",
+            "  slot",
             "-",
             "eraser",
         ]

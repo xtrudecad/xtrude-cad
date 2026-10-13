@@ -257,7 +257,7 @@ fn test_the_new_stacks_hold_their_families() {
             "rectangles",
             &["rectangle", "rectangle_center", "rotated_rect"],
         ),
-        ("circles", &["circle", "polygon"]),
+        ("circles", &["circle", "polygon", "slot"]),
         ("edges", &["fillet", "chamfer"]),
         (
             "nav",

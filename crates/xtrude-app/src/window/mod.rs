@@ -56,6 +56,7 @@ pub fn make_tool(key: &str) -> Option<Box<dyn Tool>> {
         "rotated_rect" => Box::new(rotated_rectangle::RotatedRectangleTool::new()),
         "circle" => Box::new(circle::RadialTool::circle()),
         "polygon" => Box::new(circle::RadialTool::polygon()),
+        "slot" => Box::new(slot::SlotTool::new()),
         "arc" => Box::new(arc::ArcTool::new()),
         "arc3" => Box::new(arc::ThreePointArcTool::new()),
         "center_arc" => Box::new(arc::CenterArcTool::new()),
@@ -124,6 +125,7 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
             "rotated_rect",
             "circle",
             "polygon",
+            "slot",
             "arc",
             "arc3",
             "center_arc",
@@ -213,6 +215,7 @@ const TOOL_KEYS: &[&str] = &[
     "rotated_rect",
     "circle",
     "polygon",
+    "slot",
     "arc",
     "arc3",
     "center_arc",
@@ -996,6 +999,7 @@ impl MainWindow {
                     "rotated_rect",
                     "circle",
                     "polygon",
+                    "slot",
                 ]
                 .map(act)
                 .to_vec(),

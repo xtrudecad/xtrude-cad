@@ -192,6 +192,7 @@ mod test_sidebar_trays;
 mod test_skp_import;
 mod test_skp_no_vendor_files;
 mod test_slot_through_subtracted_side;
+mod test_slot_tool;
 mod test_small_faces;
 mod test_snap_dwell_timer;
 mod test_snap_excludes_moving_geometry;
