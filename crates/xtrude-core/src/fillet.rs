@@ -8,6 +8,9 @@
 //! face) cuts it by that face's plane; an open end cuts it square; two
 //! rounded edges meeting stop on the mitre plane; three rounded edges (a box
 //! corner) get a spherical patch. Anything else is refused with a reason.
+//!
+//! A chamfer is the same cut with a one-segment strip, sized by its setback
+//! (the distance along each face from the edge) rather than by a radius.
 
 use std::collections::{HashMap, HashSet};
 
@@ -66,6 +69,37 @@ fn inward(mesh: &Mesh, face: FaceId, v0: VertexId, v1: VertexId) -> Option<DVec3
     unit(mesh.face_normal(face).cross(d?))
 }
 
+/// How big a rounding is.
+#[derive(Clone, Copy, Debug)]
+enum Size {
+    /// The arc's radius (a fillet).
+    Radius(f64),
+    /// The distance along each face from the edge (a chamfer).
+    Setback(f64),
+}
+
+/// The words of the refusals: a fillet rounds, a chamfer bevels.
+struct Words {
+    verb: &'static str,
+    done: &'static str,
+    gerund: &'static str,
+    size: &'static str,
+}
+
+const FILLET_WORDS: Words = Words {
+    verb: "round",
+    done: "rounded",
+    gerund: "Rounding",
+    size: "radius",
+};
+
+const CHAMFER_WORDS: Words = Words {
+    verb: "chamfer",
+    done: "chamfered",
+    gerund: "Chamfering",
+    size: "distance",
+};
+
 #[derive(Clone, Debug)]
 struct EdgeRound {
     edge: EdgeId,
@@ -77,6 +111,7 @@ struct EdgeRound {
     w1: DVec3,
     w2: DVec3,
     t: f64,
+    radius: f64,
     c_off: DVec3,
     offsets: Vec<DVec3>,
     sign: f64,
@@ -122,18 +157,27 @@ impl FilletPlan {
     }
 }
 
-fn section_offsets(
-    w1: DVec3,
-    w2: DVec3,
+/// The cross-section of a rounding between faces going `w1` and `w2` away
+/// from the edge.
+struct Section {
+    /// Setback: the distance along each face from the edge.
+    t: f64,
     radius: f64,
-    segments: usize,
-) -> Option<(f64, DVec3, Vec<DVec3>)> {
+    c_off: DVec3,
+    offsets: Vec<DVec3>,
+}
+
+fn section_offsets(w1: DVec3, w2: DVec3, size: Size, segments: usize) -> Option<Section> {
     let cos_a = w1.dot(w2).clamp(-1.0, 1.0);
     let alpha = cos_a.acos();
     let min = MIN_ANGLE_DEG.to_radians();
     if alpha < min || alpha > std::f64::consts::PI - min {
         return None;
     }
+    let radius = match size {
+        Size::Radius(r) => r,
+        Size::Setback(d) => d * (alpha / 2.0).tan(),
+    };
     let t = radius / (alpha / 2.0).tan();
     let c_off = (w1 + w2) * (radius / alpha.sin());
     let t1 = w1 * t;
@@ -148,7 +192,12 @@ fn section_offsets(
             c_off + (a * ang.cos() + b * ang.sin()) * radius
         })
         .collect();
-    Some((t, c_off, pts))
+    Some(Section {
+        t,
+        radius,
+        c_off,
+        offsets: pts,
+    })
 }
 
 fn cut(p: DVec3, offsets: &[DVec3], d: DVec3, plane: (DVec3, DVec3)) -> Option<Vec<DVec3>> {
@@ -217,6 +266,32 @@ pub fn plan_fillet(
     radius: f64,
     segments: usize,
 ) -> Result<FilletPlan, String> {
+    plan_rounding(mesh, edges, Size::Radius(radius), segments, &FILLET_WORDS)
+}
+
+/// Plan the chamfer of `edges`, cut back `distance` along each face from
+/// the edge; `Err(reason)` when it cannot be done. The plan's `radius` is
+/// the distance. [`apply_fillet`] applies it.
+pub fn plan_chamfer(mesh: &Mesh, edges: &[EdgeId], distance: f64) -> Result<FilletPlan, String> {
+    plan_rounding(mesh, edges, Size::Setback(distance), 1, &CHAMFER_WORDS)
+}
+
+fn plan_rounding(
+    mesh: &Mesh,
+    edges: &[EdgeId],
+    size: Size,
+    segments: usize,
+    words: &Words,
+) -> Result<FilletPlan, String> {
+    let Words {
+        verb,
+        done,
+        gerund,
+        size: size_word,
+    } = *words;
+    let radius = match size {
+        Size::Radius(r) | Size::Setback(r) => r,
+    };
     let mut uniq: Vec<EdgeId> = Vec::new();
     for &e in edges {
         if !uniq.contains(&e) && mesh.has_edge(e) {
@@ -224,29 +299,36 @@ pub fn plan_fillet(
         }
     }
     if uniq.is_empty() {
-        return Err("Pick an edge to round.".into());
+        return Err(format!("Pick an edge to {verb}."));
     }
     if radius <= 0.0 {
-        return Err("The radius must be positive.".into());
+        return Err(format!("The {size_word} must be positive."));
     }
     let segments = segments.max(1);
     let mut rounds: IndexMap<EdgeId, EdgeRound> = IndexMap::new();
     for &e in &uniq {
         let ed = mesh.edge(e);
         if ed.faces.len() != 2 {
-            return Err("Only an edge between exactly two faces can be rounded.".into());
+            return Err(format!(
+                "Only an edge between exactly two faces can be {done}."
+            ));
         }
         let (f1, f2) = (ed.faces[0], ed.faces[1]);
         let d = unit(mesh.pos(ed.v1) - mesh.pos(ed.v0))
-            .ok_or("A zero-length edge cannot be rounded.")?;
+            .ok_or_else(|| format!("A zero-length edge cannot be {done}."))?;
         let (Some(w1), Some(w2)) = (
             inward(mesh, f1, ed.v0, ed.v1),
             inward(mesh, f2, ed.v0, ed.v1),
         ) else {
             return Err("Could not read the faces around the edge.".into());
         };
-        let (t, c_off, offsets) = section_offsets(w1, w2, radius, segments)
-            .ok_or("The faces meet too flat or too sharp to round.")?;
+        let Section {
+            t,
+            radius,
+            c_off,
+            offsets,
+        } = section_offsets(w1, w2, size, segments)
+            .ok_or_else(|| format!("The faces meet too flat or too sharp to {verb}."))?;
         let n1 = mesh.face_normal(f1);
         let sign = if n1.dot(w1 * t - c_off) >= 0.0 {
             1.0
@@ -265,6 +347,7 @@ pub fn plan_fillet(
                 w1,
                 w2,
                 t,
+                radius,
                 c_off,
                 offsets,
                 sign,
@@ -328,7 +411,7 @@ pub fn plan_fillet(
     let check = |outcomes: &[SetOutcome], p: DVec3| -> Result<(), String> {
         if outcomes.iter().any(|o| matches!(o, SetOutcome::Outside)) {
             return Err(format!(
-                "The radius is too large for the face at {}.",
+                "The {size_word} is too large for the face at {}.",
                 fmt(p)
             ));
         }
@@ -355,7 +438,7 @@ pub fn plan_fillet(
                 };
                 if caps.len() > 1 {
                     return Err(format!(
-                        "The corner at {} has too many faces to round.",
+                        "The corner at {} has too many faces to {verb}.",
                         fmt(vp)
                     ));
                 }
@@ -384,7 +467,7 @@ pub fn plan_fillet(
                 let allowed: HashSet<FaceId> = [ra.f1, ra.f2, rb.f1, rb.f2].into_iter().collect();
                 if faces_here.iter().any(|g| !allowed.contains(g)) {
                     return Err(format!(
-                        "The corner at {} has too many faces to round.",
+                        "The corner at {} has too many faces to {verb}.",
                         fmt(vp)
                     ));
                 }
@@ -401,7 +484,7 @@ pub fn plan_fillet(
                     format!("The two edges at {} fold back on each other.", fmt(vp))
                 })?;
                 let sec = cut(vp, &ra.offsets, ra.d, (vp, m)).ok_or_else(|| {
-                    format!("The edges at {} meet too sharply to round.", fmt(vp))
+                    format!("The edges at {} meet too sharply to {verb}.", fmt(vp))
                 })?;
                 let sec_b: Vec<DVec3> = if rb.f1 == ra.f1 || rb.f2 == ra.f2 {
                     sec.clone()
@@ -429,7 +512,7 @@ pub fn plan_fillet(
                 let allowed: HashSet<FaceId> = rs.iter().flat_map(|r| [r.f1, r.f2]).collect();
                 if faces_here.iter().any(|g| !allowed.contains(g)) {
                     return Err(format!(
-                        "The corner at {} has too many faces to round.",
+                        "The corner at {} has too many faces to {verb}.",
                         fmt(vp)
                     ));
                 }
@@ -462,11 +545,14 @@ pub fn plan_fillet(
                     let s1 = (cut_pts[0] - vp).dot(r.d);
                     let s2 = (cut_pts[1] - vp).dot(r.d);
                     if (s1 - s2).abs() > 1e-3 * 1f64.max(r.t) {
-                        return Err(format!("The corner at {} is too skewed to round.", fmt(vp)));
+                        return Err(format!(
+                            "The corner at {} is too skewed to {verb}.",
+                            fmt(vp)
+                        ));
                     }
                     if s1.abs() > mesh.edge_length(r.edge) * 0.5 + 1e-9 {
                         return Err(format!(
-                            "The radius is too large for the edge at {}.",
+                            "The {size_word} is too large for the edge at {}.",
                             fmt(vp)
                         ));
                     }
@@ -486,12 +572,7 @@ pub fn plan_fillet(
                 }
                 patch_corners.push((group.clone(), sections));
             }
-            _ => {
-                return Err(format!(
-                    "More than three rounded edges meet at {}.",
-                    fmt(vp)
-                ))
-            }
+            _ => return Err(format!("More than three {done} edges meet at {}.", fmt(vp))),
         }
     }
 
@@ -538,19 +619,19 @@ pub fn plan_fillet(
         let (p0, normal) = plane_of(mesh, f);
         let lp = rebuilt_loop(f, &mesh.face(f).outer)
             .filter(|l| l.len() >= 3)
-            .ok_or("A face would collapse — the radius is too large.")?;
+            .ok_or_else(|| format!("A face would collapse — the {size_word} is too large."))?;
         let mut holes = Vec::new();
         for h in &mesh.face(f).holes {
             let hl = rebuilt_loop(f, h)
                 .filter(|l| l.len() >= 3)
-                .ok_or("A face would collapse — the radius is too large.")?;
+                .ok_or_else(|| format!("A face would collapse — the {size_word} is too large."))?;
             holes.push(hl);
         }
         let span = lp.iter().map(|p| (*p - p0).length()).fold(0.0, f64::max);
         let span = if span == 0.0 { 1.0 } else { span };
         for &p in &lp {
             if (p - p0).dot(normal).abs() > PLANE_TOL * 1f64.max(span) {
-                return Err(format!("Rounding would bend the face at {}.", fmt(p)));
+                return Err(format!("{gerund} would bend the face at {}.", fmt(p)));
             }
         }
         plan.removed_faces.push(f);
@@ -566,7 +647,7 @@ pub fn plan_fillet(
         let along = (b[0] - a[0]).dot(r.d);
         if along <= 1e-6 {
             return Err(format!(
-                "The radius is too large for the edge at {}.",
+                "The {size_word} is too large for the edge at {}.",
                 fmt(mesh.pos(r.v0))
             ));
         }
@@ -606,7 +687,8 @@ pub fn plan_fillet(
     // Corner patches.
     for (group, sections) in &patch_corners {
         let rs: Vec<&EdgeRound> = group.iter().map(|e| &rounds[e]).collect();
-        let Some(CornerPatch { tris, soft }) = corner_patch(&rs, sections, radius, segments) else {
+        let Some(CornerPatch { tris, soft }) = corner_patch(&rs, sections, rs[0].radius, segments)
+        else {
             return Err(format!(
                 "Could not close the corner at {}.",
                 fmt(sections[0][0])
