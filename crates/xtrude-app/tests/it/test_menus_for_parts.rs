@@ -196,6 +196,7 @@ fn test_the_model_menu() {
             "offset",
             "fillet",
             "chamfer",
+            "shell",
             "text3d",
             "-",
             "move",

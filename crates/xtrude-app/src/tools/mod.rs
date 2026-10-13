@@ -51,6 +51,7 @@ pub mod rotated_rectangle;
 pub mod scale;
 pub mod section;
 pub mod select;
+pub mod shell;
 pub mod solids;
 pub mod sweep;
 pub mod text;

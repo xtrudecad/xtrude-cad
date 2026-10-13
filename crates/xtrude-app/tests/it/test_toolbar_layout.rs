@@ -702,6 +702,7 @@ fn test_the_bars_hold_the_parts_tools_in_the_order_of_the_work() {
                     "sweep",
                     "offset",
                     "stack:edges",
+                    "shell",
                     "stack:booleans",
                     "solid_split",
                     "merge_solids",

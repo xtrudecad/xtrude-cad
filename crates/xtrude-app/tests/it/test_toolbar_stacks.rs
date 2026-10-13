@@ -108,10 +108,10 @@ fn test_the_stacks_sit_where_their_members_were() {
     );
     assert_eq!(bar(&w, "main").last().unwrap(), "stack:paint");
     let model = bar(&w, "model");
-    // Fillet and Chamfer where Fillet was
+    // Fillet and Chamfer where Fillet was, Shell after them
     assert_eq!(
-        model[3..6],
-        ["stack:edges", "stack:booleans", "solid_split"]
+        model[3..7],
+        ["stack:edges", "shell", "stack:booleans", "solid_split"]
     );
 }
 
