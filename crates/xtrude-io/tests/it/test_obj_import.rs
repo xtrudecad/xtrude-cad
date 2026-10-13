@@ -18,7 +18,7 @@ fn test_the_document_is_gzipped_json() {
     document::save_scene(&s, &doc).unwrap();
     assert!(std::fs::read(&doc).unwrap().starts_with(b"\x1f\x8b"));
     let data = document_json(&doc);
-    assert_eq!(data["xtrude_format"], 1);
+    assert_eq!(data["xtrude_format"], 2);
     assert!(data.get("igz_format").is_none());
 }
 

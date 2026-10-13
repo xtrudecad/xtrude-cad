@@ -9,6 +9,7 @@ use common::*;
 use std::collections::HashSet;
 use xtrude_io::{document, igz};
 use xtrude_model::group::iter_placements;
+use xtrude_model::print_material::{default_print_material, PrintMaterial};
 use xtrude_model::scene::Scene;
 
 const REMOVED_KEYS: [&str; 8] = [
@@ -120,4 +121,21 @@ fn test_an_upstream_example_document_opens() {
         .map(|(g, _)| s.doc.mesh(g.mesh).faces.len())
         .sum();
     assert!(faces > 0);
+}
+
+#[test]
+fn test_upstream_documents_open_in_the_default_print_material() {
+    for name in ["upstream_removed_features.igz", "banca-pergola-yanque.igz"] {
+        let mut s = Scene::new();
+        s.doc.print_material = PrintMaterial::new("Resin", 1100.0);
+        igz::load_into(&mut s, &data(name), None).unwrap();
+        assert_eq!(s.doc.print_material, default_print_material(), "{name}");
+        assert!(
+            s.doc
+                .all_groups()
+                .iter()
+                .all(|g| g.print_material.is_none()),
+            "{name}"
+        );
+    }
 }
