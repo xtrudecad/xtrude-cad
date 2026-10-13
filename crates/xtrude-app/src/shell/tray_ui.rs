@@ -11,7 +11,7 @@ use crate::tray::exploded::EXPLODE_MODES;
 use crate::tray::model_tree::{shown_columns, Row, COLUMNS};
 use crate::tray::styles::{Styles, MODES, SWATCHES};
 use crate::tray::{Tray, TrayAction, DOCK_PANELS};
-use crate::window::MainWindow;
+use crate::window::{CtxItem, MainWindow};
 
 /// Per-frame UI state the models do not keep (text being typed).
 #[derive(Default)]
@@ -316,6 +316,54 @@ impl TrayUi {
         let p = &mut tray.properties;
         ui.set_min_height(64.0);
         rich(ui, &p.text.clone());
+        let mut picked: Option<String> = None;
+        ui.horizontal_wrapped(|ui| {
+            if p.can_show_problems
+                && ui
+                    .button(tr("Show…", &[]))
+                    .on_hover_text(tr(
+                        "Open it on the edges that keep it from being closed, with the Solid Inspector",
+                        &[],
+                    ))
+                    .clicked()
+            {
+                p.show_problems(w);
+            }
+            if let Some(items) = &p.material_menu {
+                ui.menu_button(tr("Print material", &[]), |ui| {
+                    for item in items {
+                        match item {
+                            CtxItem::Entry {
+                                id,
+                                text,
+                                enabled,
+                                checked,
+                            } => {
+                                let r = ui.add_enabled(
+                                    *enabled,
+                                    egui::Button::new(text)
+                                        .selected(checked.unwrap_or(false)),
+                                );
+                                if r.clicked() {
+                                    picked = Some(id.clone());
+                                    ui.close();
+                                }
+                            }
+                            CtxItem::Separator => {
+                                ui.separator();
+                            }
+                            CtxItem::Menu(..) => {}
+                        }
+                    }
+                })
+                .response
+                .on_hover_text(tr("The print material of the groups selected", &[]));
+            }
+        });
+        if let Some(id) = picked {
+            w.trigger(&id);
+            p.refresh(w);
+        }
         if p.named.is_some() {
             ui.horizontal(|ui| {
                 ui.label(tr("Name:", &[]));
