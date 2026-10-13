@@ -167,7 +167,8 @@ pub struct XtrudeApp {
     about: bool,
     /// The About box's lockup and whether it is the dark one.
     about_logo: Option<(bool, egui::TextureHandle)>,
-    model_info: Option<model_info_ui::ModelInfoState>,
+    /// When Model Info's title stops saying "copied!" (egui time, seconds).
+    model_info_copied_until: Option<f64>,
     theme_dark: Option<bool>,
     /// The palette in force, set with `theme_dark`.
     palette: crate::theme::Palette,
@@ -216,7 +217,7 @@ impl XtrudeApp {
             prefs: None,
             about: false,
             about_logo: None,
-            model_info: None,
+            model_info_copied_until: None,
             theme_dark: None,
             palette: crate::theme::dark_palette(),
             msaa,
@@ -1160,9 +1161,6 @@ impl eframe::App for XtrudeApp {
         self.apply_theme(&ctx);
         self.preferences_dialog(&ctx);
         self.about_dialog(&ctx);
-        if std::mem::take(&mut self.window.model_info_requested) {
-            self.open_model_info();
-        }
         if let Some(dir) = self.window.open_folder_requested.take() {
             if let Err(e) = open_folder(&dir) {
                 use xtrude_model::i18n::tr;

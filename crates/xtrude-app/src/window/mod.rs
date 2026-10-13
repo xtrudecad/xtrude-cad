@@ -384,8 +384,8 @@ pub struct MainWindow {
     /// Leave threaded imports running for the shell to poll; otherwise
     /// (tests, scripts) the window waits for them.
     pub background_imports: bool,
-    /// Model Info was asked for: the shell opens the dialog.
-    pub model_info_requested: bool,
+    /// The open Model Info window (Inspect ▸ Model Info), modeless.
+    pub model_info: Option<model_info::ModelInfo>,
     /// A drop-down panel a menu asked for (its [`TOOLBAR_PANELS`] key):
     /// the shell takes it and opens the panel.
     pub panel_requested: Option<&'static str>,
@@ -447,7 +447,7 @@ impl MainWindow {
             progress: None,
             import_job: None,
             background_imports: false,
-            model_info_requested: false,
+            model_info: None,
             panel_requested: None,
             solid_inspector: None,
             saved_content: 0,
@@ -1541,7 +1541,12 @@ impl MainWindow {
             "model_info" => {
                 // one-shot: the tool in hand stays
                 self.remembered(model_info::NAME, id);
-                self.model_info_requested = true;
+                // a second call counts again in the open window
+                let scene = &self.viewport.scene;
+                match self.model_info.as_mut() {
+                    Some(info) => info.refresh(scene),
+                    None => self.model_info = Some(model_info::ModelInfo::new(scene)),
+                }
             }
             "solid_inspector" => {
                 // one-shot like Model Info; a second call refreshes the open

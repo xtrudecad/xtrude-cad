@@ -132,6 +132,29 @@ fn fmt_len(metres: f64, style: &DimensionStyle) -> String {
 }
 
 /// Walk the document and return its statistics.
+/// The open Model Info window: the numbers it shows and its tab. Modeless:
+/// it stays open while the model changes; Refresh, or Model Info once
+/// more, counts again.
+#[derive(Clone, Debug)]
+pub struct ModelInfo {
+    pub stats: ModelStats,
+    /// 0: Geometry, 1: Colors & Layers.
+    pub tab: usize,
+}
+
+impl ModelInfo {
+    pub fn new(scene: &Scene) -> Self {
+        ModelInfo {
+            stats: collect_stats(scene),
+            tab: 0,
+        }
+    }
+
+    pub fn refresh(&mut self, scene: &Scene) {
+        self.stats = collect_stats(scene);
+    }
+}
+
 pub fn collect_stats(scene: &Scene) -> ModelStats {
     let loose = scene.loose_mesh(); // the real loose mesh, group open or not
     let groups = &scene.doc.groups;

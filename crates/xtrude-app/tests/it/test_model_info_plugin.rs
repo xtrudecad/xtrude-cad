@@ -86,7 +86,7 @@ fn test_tool_metadata() {
 
     w.activate_tool("line");
     assert!(w.trigger("model_info"));
-    assert!(w.model_info_requested);
+    assert!(w.model_info.is_some());
     assert_eq!(w.active_tool_key(), Some("line"));
     // the window remembers it: Shift+R opens it again
     assert_eq!(
@@ -187,4 +187,24 @@ fn test_stats_to_text_mentions_the_essentials() {
     let text = stats_to_text(&collect_stats(&scene));
     assert!(text.contains("rgb(255,0,0)"));
     assert!(text.contains("Layer 0"));
+}
+
+#[test]
+fn test_model_info_stays_open_and_a_second_call_counts_again() {
+    let mut w = common::window();
+    assert!(w.model_info.is_none());
+    assert!(w.trigger("model_info"));
+    let before = w.model_info.as_ref().unwrap().stats.loose_faces;
+    w.model_info.as_mut().unwrap().tab = 1;
+    // the window stays open while the model changes
+    w.viewport
+        .scene
+        .mesh_mut()
+        .add_face(&[v3(0., 0., 0.), v3(1., 0., 0.), v3(1., 1., 0.)], &[]);
+    w.viewport.scene.version += 1;
+    assert_eq!(w.model_info.as_ref().unwrap().stats.loose_faces, before);
+    assert!(w.trigger("model_info"));
+    let info = w.model_info.as_ref().unwrap();
+    assert_eq!(info.stats.loose_faces, before + 1);
+    assert_eq!(info.tab, 1, "the same window, on its tab");
 }
