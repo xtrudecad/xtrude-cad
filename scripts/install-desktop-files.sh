@@ -20,7 +20,7 @@
 #       `Exec=` pointing at this checkout's binary, so the menu entry and
 #       "Open with" start the build (`xtrude` need not be on PATH)
 #   icons/hicolor/<size>/apps/org.xtrudecad.XtrudeCAD.{png,svg}
-#   mime/packages/org.xtrudecad.XtrudeCAD.xml  the `.igz` MIME type
+#   mime/packages/org.xtrudecad.XtrudeCAD.xml  the `.xtr` and `.igz` MIME types
 # and refreshes the desktop, icon and MIME caches when their tools exist.
 #
 # Usage:

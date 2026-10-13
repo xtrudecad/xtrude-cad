@@ -117,13 +117,28 @@ fn the_install_script_is_executable_and_rewrites_the_desktop_exec() {
 const SYSTEM_TYPES: &[&str] = &["image/vnd.dxf"];
 
 #[test]
-fn the_desktop_file_opens_igz_and_the_system_types_start_up_imports() {
+fn the_desktop_file_opens_documents_igz_and_the_system_types_start_up_imports() {
     let mime = std::fs::read_to_string(linux_dir().join(format!("{APP_ID}.mime.xml")))
         .expect("the MIME file");
+    assert_eq!(xtrude_io::document::MIME, "application/x-xtrudecad");
+    assert!(mime.contains(&format!(
+        r#"<mime-type type="{}">"#,
+        xtrude_io::document::MIME
+    )));
+    assert!(mime.contains(&format!(
+        r#"<glob pattern="*.{}"/>"#,
+        xtrude_io::document::EXTENSION
+    )));
+    assert!(mime.contains("<comment>Xtrude CAD document</comment>"));
     assert!(mime.contains(r#"<mime-type type="application/x-ingetrazo">"#));
     assert!(mime.contains(r#"<glob pattern="*.igz"/>"#));
-    assert!(!mime.contains("<magic"), "an .igz is a zip: no magic");
-    let expected: String = std::iter::once("application/x-ingetrazo")
+    assert!(mime.contains("<comment>IngeTrazo document</comment>"));
+    assert!(
+        !mime.contains("<magic"),
+        "an .xtr is gzip and an .igz a zip: no magic"
+    );
+    let expected: String = ["application/x-xtrudecad", "application/x-ingetrazo"]
+        .into_iter()
         .chain(SYSTEM_TYPES.iter().copied())
         .map(|t| format!("{t};"))
         .collect();
