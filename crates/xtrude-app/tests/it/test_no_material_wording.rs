@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The app shows colours, so what the user reads says "color", never
-//! "material". The import and export tips keep "materials": there it is
-//! the file format's own term (OBJ/MTL, glTF, COLLADA, .skp).
+//! "material".
 
 use crate::common;
 
@@ -14,16 +13,6 @@ use xtrude_core::snap::LinearMode;
 use xtrude_model::entity::EntityRef;
 use xtrude_model::ids::MeshId;
 use xtrude_model::scene::SelectMode;
-
-/// The actions whose tip names the file format's materials.
-const FILE_FORMAT_TIPS: [&str; 6] = [
-    "import:skp",
-    "import:dae",
-    "import:glb",
-    "import:obj",
-    "export:glb",
-    "export:obj",
-];
 
 fn says_material(text: &str) -> bool {
     text.to_lowercase().contains("material")
@@ -47,22 +36,10 @@ fn test_no_action_label_or_tip_says_material() {
     let bad: Vec<String> = w
         .actions
         .iter()
-        .filter(|a| {
-            says_material(&a.text)
-                || (says_material(&a.status_tip) && !FILE_FORMAT_TIPS.contains(&a.id.as_str()))
-        })
+        .filter(|a| says_material(&a.text) || says_material(&a.status_tip))
         .map(|a| format!("{}: {} / {}", a.id, a.text, a.status_tip))
         .collect();
     assert!(bad.is_empty(), "{}", bad.join("\n"));
-    // The file formats' tips do keep their term.
-    for id in FILE_FORMAT_TIPS {
-        let tip = &w
-            .actions
-            .get(id)
-            .expect("an import/export action")
-            .status_tip;
-        assert!(says_material(tip), "{id}: {tip}");
-    }
 }
 
 #[test]

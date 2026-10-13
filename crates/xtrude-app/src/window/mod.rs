@@ -546,7 +546,7 @@ impl MainWindow {
                 "open",
                 "Open…",
                 OPEN,
-                "Open an Xtrude CAD document (.xtrude) in place of this one; an IngeTrazo document (.igz) opens as a new, unsaved one.",
+                "Open an Xtrude CAD document (.xtrude) in place of this one; an IngeTrazo document (.igz), or a file of another format Xtrude CAD reads, opens as a new, unsaved one.",
             ),
             ("save", "Save", SAVE, SAVE_TIP),
             (
@@ -566,74 +566,14 @@ impl MainWindow {
         }
         for (id, text, tip) in [
             (
-                "import:xtrude",
-                "Xtrude CAD document as component (.xtrude)…",
-                "Bring another Xtrude CAD document in as one component, placed with a click.",
+                "import",
+                "Import…",
+                "Bring a file into this model: another document as one component, or a STEP, STL, OBJ, glTF, COLLADA, DXF or .skp model.",
             ),
             (
-                "import:igz",
-                "IngeTrazo document as component (.igz)…",
-                "Bring an IngeTrazo document in as one component, placed with a click.",
-            ),
-            (
-                "import:skp",
-                "SKP (.skp)…",
-                "Bring in a .skp model with its groups and materials.",
-            ),
-            (
-                "import:dae",
-                "COLLADA (.dae)…",
-                "Bring in a COLLADA model with its materials.",
-            ),
-            (
-                "import:glb",
-                "glTF/GLB (.glb)…",
-                "Bring in a glTF binary model with its materials.",
-            ),
-            (
-                "import:obj",
-                "Wavefront OBJ (.obj)…",
-                "Bring in a Wavefront OBJ model with its materials.",
-            ),
-            (
-                "import:stl",
-                "STL mesh (*.stl)…",
-                "Bring in an STL mesh — a 3D print or a scan — at the scale you choose.",
-            ),
-            (
-                "import:step",
-                "STEP (.step, .stp)…",
-                "Bring in a STEP model with its parts, assemblies and colours, as faces to measure and model around.",
-            ),
-            (
-                "import:dxf",
-                "AutoCAD DXF (.dxf)…",
-                "Bring in the linework of an AutoCAD drawing, one group per layer.",
-            ),
-            (
-                "export:glb",
-                "glTF / GLB (3D, single file)…",
-                "Save the model as one .glb file with its materials, for Blender and web viewers.",
-            ),
-            (
-                "export:dae",
-                "COLLADA (.dae)…",
-                "Save the model as COLLADA, which most 3D programs open.",
-            ),
-            (
-                "export:stl",
-                "STL (3D printing)…",
-                "Save the model as an STL mesh in millimetres, for 3D printing.",
-            ),
-            (
-                "export:3mf",
-                "3MF (for printing)…",
-                "Save the model as a 3MF file for slicers: one object per part, in millimetres, with its colours.",
-            ),
-            (
-                "export:obj",
-                "Wavefront OBJ (.obj)…",
-                "Save the model as Wavefront OBJ with its materials.",
+                "export",
+                "Export…",
+                "Save the model in another format: STL in millimetres for 3D printing, 3MF for slicers, OBJ, glTF or COLLADA.",
             ),
         ] {
             a.add(Action::new(id, &tr(text, &[])).tip(&tr(tip, &[])));
@@ -954,20 +894,8 @@ impl MainWindow {
             act("save"),
             act("save_as"),
             S,
-            M(
-                tr("Import", &[]),
-                [
-                    "xtrude", "igz", "skp", "dae", "glb", "obj", "stl", "step", "dxf",
-                ]
-                .map(|k| act(&format!("import:{k}")))
-                .to_vec(),
-            ),
-            M(
-                tr("Export", &[]),
-                ["stl", "3mf", "obj", "glb", "dae"]
-                    .map(|k| act(&format!("export:{k}")))
-                    .to_vec(),
-            ),
+            act("import"),
+            act("export"),
             S,
             act("quit"),
         ];
@@ -1403,20 +1331,14 @@ impl MainWindow {
             self.run_repeatable("Add Crossing Edges", id, |w| w.on_add_crossing_edges(mode));
             return true;
         }
-        if let Some(k) = id.strip_prefix("import:") {
-            self.on_import(k);
-            return true;
-        }
-        if let Some(k) = id.strip_prefix("export:") {
-            self.on_export(k);
-            return true;
-        }
         if self.dispatch_context(id) || self.dispatch_extensions(id) {
             return true;
         }
         match id {
             "save" | "save_tb" => self.on_save(),
             "save_as" => self.on_save_as(),
+            "import" => self.on_import(),
+            "export" => self.on_export(),
             "new" => self.on_new(),
             "open" => self.on_open(),
             "quit" => self.request_quit(),

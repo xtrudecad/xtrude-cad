@@ -168,7 +168,7 @@ group.
 | `doc:data()` | The extension's own data in the document (see below), or `nil`. |
 | `doc:set_data(table)` | Replaces the extension's data. `nil` removes it. |
 | `doc:export_stl(path, { selection_only = false })` | Writes the model (or only the selected groups and loose faces) as a binary STL in millimetres. |
-| `doc:export_obj(path)` | Writes the model as a Wavefront OBJ in metres, with its colours in a `.mtl` file of the same name beside it, as **File ▸ Export ▸ OBJ** does. |
+| `doc:export_obj(path)` | Writes the model as a Wavefront OBJ in metres, with its colours in a `.mtl` file of the same name beside it, as **File ▸ Export…** does for an `.obj` name. |
 
 ### Faces, edges and groups
 

@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 use common::{window, TmpDir};
+use xtrude_app::tools::place_group::PlaceGroupTool;
 use xtrude_app::window::files::{recent_paths, remember_recent};
 use xtrude_app::window::{MainWindow, ScriptedDialogs};
 use xtrude_io::document;
@@ -144,38 +145,38 @@ fn test_open_offers_both_documents_and_save_only_the_native_one() {
     d.borrow_mut().save_paths.push(None);
     w.trigger("save_as");
     let d = d.borrow();
-    assert!(d.filters[0].starts_with("Xtrude CAD or IngeTrazo document (*.xtrude *.igz)"));
+    let open: Vec<&str> = d.filters[0].split(";;").collect();
+    assert!(open[0].starts_with("Supported formats (*.xtrude *.igz "));
+    assert_eq!(open[1], "Xtrude CAD document (*.xtrude)");
+    assert_eq!(open[2], "IngeTrazo document (*.igz)");
     assert!(d.filters[1].starts_with("Xtrude CAD document (*.xtrude)"));
     assert!(!d.filters[1].contains("igz"));
     assert_eq!(d.starts[1].file_name().unwrap(), "untitled.xtrude");
 }
 
 #[test]
-fn test_import_offers_both_documents_as_components() {
+fn test_import_takes_both_documents_as_components() {
+    let dir = TmpDir::new();
+    let igz = igz_copy(&dir);
     let mut w = window();
-    for (id, text) in [
-        (
-            "import:xtrude",
-            "Xtrude CAD document as component (.xtrude)…",
-        ),
-        ("import:igz", "IngeTrazo document as component (.igz)…"),
-    ] {
-        assert_eq!(w.actions.get(id).map(|a| a.text.as_str()), Some(text));
-    }
+    assert!(w.open_path(&igz));
+    let xtrude = dir.path().join("servo.xtrude");
+    w.do_save(&xtrude);
+    let mut w = window();
     let d = scripted(&mut w);
-    d.borrow_mut().open_paths.extend([None, None]);
-    w.trigger("import:xtrude");
-    w.trigger("import:igz");
+    d.borrow_mut().open_paths.extend([Some(xtrude), Some(igz)]);
+    // each comes in as one component on the placing tool
+    for _ in 0..2 {
+        w.trigger("import");
+        assert!(w.viewport.tool::<PlaceGroupTool>().is_some());
+        w.viewport.escape();
+    }
     let d = d.borrow();
-    assert_eq!(
-        d.asked,
-        [
-            ("open".to_string(), "Import Xtrude CAD document".to_string()),
-            ("open".to_string(), "Import IngeTrazo document".to_string()),
-        ]
+    assert!(
+        d.asked.iter().all(|(k, t)| k == "open" && t == "Import"),
+        "{:?}",
+        d.asked
     );
-    assert!(d.filters[0].starts_with("Xtrude CAD document (*.xtrude)"));
-    assert!(d.filters[1].starts_with("IngeTrazo document (*.igz)"));
 }
 
 #[test]
@@ -193,15 +194,23 @@ fn test_an_igz_imports_as_one_component() {
 
 #[test]
 fn test_the_desktop_dialogs_get_the_document_extensions() {
-    use xtrude_app::shell::dialogs::parse_filter;
-    use xtrude_app::window::files::{DOCUMENT_FILE_FILTER, IGZ_FILE_FILTER, OPEN_FILE_FILTER};
-    let exts = |f: &str| parse_filter(f).map(|(_, e)| e);
+    use xtrude_app::shell::dialogs::parse_filters;
+    use xtrude_app::window::files::{formats_filter, DOCUMENT_FILE_FILTER, IMPORT_FORMATS};
+    let open = parse_filters(&formats_filter(IMPORT_FORMATS, true));
+    assert_eq!(open[0].0, "Supported formats");
+    assert_eq!(&open[0].1[..2], ["xtrude", "igz"]);
     assert_eq!(
-        exts(OPEN_FILE_FILTER),
-        Some(vec!["xtrude".into(), "igz".into()])
+        open[1],
+        ("Xtrude CAD document".into(), vec!["xtrude".into()])
     );
-    assert_eq!(exts(DOCUMENT_FILE_FILTER), Some(vec!["xtrude".into()]));
-    assert_eq!(exts(IGZ_FILE_FILTER), Some(vec!["igz".into()]));
+    assert_eq!(open[2], ("IngeTrazo document".into(), vec!["igz".into()]));
+    assert_eq!(
+        parse_filters(DOCUMENT_FILE_FILTER),
+        [(
+            "Xtrude CAD document".to_string(),
+            vec!["xtrude".to_string()]
+        )]
+    );
 }
 
 #[test]
@@ -214,7 +223,7 @@ fn test_importing_the_document_being_edited_is_refused() {
     let groups = w.viewport.scene.doc.groups.len();
     let d = scripted(&mut w);
     d.borrow_mut().open_paths.push(Some(path));
-    w.trigger("import:xtrude");
+    w.trigger("import");
     assert_eq!(w.viewport.scene.doc.groups.len(), groups);
     let d = d.borrow();
     assert_eq!(

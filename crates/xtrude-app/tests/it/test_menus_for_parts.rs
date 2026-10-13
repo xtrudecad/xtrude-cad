@@ -68,21 +68,17 @@ fn test_the_menu_bar_follows_the_work() {
 
 #[test]
 fn test_file_exports_stl_first() {
+    use xtrude_app::shell::dialogs::parse_filters;
+    use xtrude_app::window::files::{formats_filter, EXPORT_FORMATS};
     let w = common::window();
     let file = menu(&w, "File");
-    let at = file.iter().position(|e| e == "Export ▸").unwrap();
-    assert_eq!(
-        file[at + 1..],
-        [
-            "  export:stl",
-            "  export:3mf",
-            "  export:obj",
-            "  export:glb",
-            "  export:dae",
-            "-",
-            "quit"
-        ]
-    );
+    let at = file.iter().position(|e| e == "import").unwrap();
+    assert_eq!(file[at..], ["import", "export", "-", "quit"]);
+    let exts: Vec<Vec<String>> = parse_filters(&formats_filter(EXPORT_FORMATS, false))
+        .into_iter()
+        .map(|(_, e)| e)
+        .collect();
+    assert_eq!(exts, [["stl"], ["3mf"], ["obj"], ["glb"], ["dae"]]);
 }
 
 /// No image export: the view on screen is a screenshot away, and the

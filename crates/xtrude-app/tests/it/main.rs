@@ -84,6 +84,7 @@ mod test_icons_distinct;
 mod test_idle_frame;
 mod test_igz_opens_unsaved;
 mod test_import_document_path;
+mod test_import_export_dialogs;
 mod test_import_progress;
 mod test_insert_document;
 mod test_invert_selection;

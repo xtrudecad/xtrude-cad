@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use common::TmpDir;
-use xtrude_app::window::{MenuItem, ScriptedDialogs};
+use xtrude_app::window::ScriptedDialogs;
 
 /// The window has no converter code and runs no external program; what
 /// is checked is the
@@ -32,31 +32,16 @@ fn test_an_unreadable_skp_is_reported_and_nothing_else_runs() {
 
 #[test]
 fn test_no_skp_export_in_the_menu() {
+    use xtrude_app::window::files::{formats_filter, EXPORT_FORMATS};
     let win = common::window();
-    let mut exports = Vec::new();
-    for (_, items) in &win.menus {
-        for item in items {
-            if let MenuItem::Menu(title, sub) = item {
-                if title.replace('&', "") == "Export" {
-                    for i in sub {
-                        if let MenuItem::Action(id) = i {
-                            exports.push(
-                                win.actions
-                                    .get(id)
-                                    .map(|a| a.text.clone())
-                                    .unwrap_or_default(),
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    }
-    assert!(!exports.is_empty(), "no Export menu found");
+    let mut texts = vec![formats_filter(EXPORT_FORMATS, false)];
+    let a = win.actions.get("export").expect("the export action");
+    texts.push(format!("{} {}", a.text, a.status_tip));
     assert!(
-        exports
+        texts
             .iter()
-            .all(|t| !t.contains(".skp") && !t.contains("SketchUp")),
-        "{exports:?}"
+            .all(|t| !t.contains("skp") && !t.contains("SketchUp")),
+        "{texts:?}"
     );
+    assert!(!win.actions.iter().any(|a| a.id.starts_with("export:")));
 }
