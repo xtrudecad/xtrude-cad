@@ -361,6 +361,7 @@ impl MainWindow {
             cam.perspective = b;
         }
         self.viewport.update();
+        self.sync_projection_action();
     }
 
     /// Look at what the document's author was looking at; a document from
@@ -382,6 +383,7 @@ impl MainWindow {
         cam.fov_deg = fresh.fov_deg;
         cam.perspective = fresh.perspective;
         self.viewport.update();
+        self.sync_projection_action();
     }
 
     // ---- file dialogs ----------------------------------------------------------------------

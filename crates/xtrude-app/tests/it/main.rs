@@ -151,6 +151,7 @@ mod test_preferences;
 mod test_preferences_layout;
 mod test_print_material_ui;
 mod test_profile_lines;
+mod test_projection_action;
 mod test_properties_for_parts;
 mod test_properties_name;
 mod test_properties_units;
