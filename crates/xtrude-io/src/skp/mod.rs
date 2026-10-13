@@ -14,6 +14,7 @@
 
 pub mod adapter;
 
+use std::collections::HashMap;
 use std::fmt;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -25,7 +26,7 @@ use xtrude_core::topology::maximal_holes;
 use xtrude_core::{DVec3, Mesh};
 use xtrude_model::definitions::split_divergent_copies;
 use xtrude_model::dimension::Dimension;
-use xtrude_model::group::Group;
+use xtrude_model::group::{next_group_name, Group};
 use xtrude_model::ids::MeshId;
 use xtrude_model::layers::Layer;
 use xtrude_model::materials::{register, Material};
@@ -643,6 +644,7 @@ pub fn apply_payload(scene: &mut Scene, payload: &SkpPayload) -> Result<String, 
         protos: &payload.protos,
         meshes: &mut meshes,
         ids: &mut ids,
+        auto_names: HashMap::new(),
         scene,
     };
     let mut top: Vec<Group> = Vec::new();
@@ -653,12 +655,19 @@ pub fn apply_payload(scene: &mut Scene, payload: &SkpPayload) -> Result<String, 
         let layers = pr.instance_layers.as_deref().unwrap_or_default();
         for (i, xf) in pr.instances.iter().enumerate() {
             let layer = layers.get(i).cloned().flatten();
-            top.push(placer.place(idx, *xf, layer, 0, None)?);
+            top.push(placer.place(idx, *xf, layer, 0, None, None)?);
         }
     }
     // A tree import: the top-level instances in file order.
     for usep in &payload.placements {
-        top.push(placer.place(usep.proto, usep.xform, usep.layer.clone(), 0, Some(usep))?);
+        top.push(placer.place(
+            usep.proto,
+            usep.xform,
+            usep.layer.clone(),
+            0,
+            Some(usep),
+            None,
+        )?);
     }
     // Only the new groups: the document's own already keep the invariant,
     // and one may be open for editing.
@@ -686,6 +695,10 @@ struct Placer<'p, 's> {
     protos: &'p [Proto],
     meshes: &'p mut Vec<Option<Mesh>>,
     ids: &'p mut Vec<Option<MeshId>>,
+    /// The "Group N" of each unnamed child placement, by (prototype, child
+    /// index): every copy of a prototype gives that child the same name, so
+    /// the copies keep their contents alike and stay one component.
+    auto_names: HashMap<(usize, usize), String>,
     scene: &'s mut Scene,
 }
 
@@ -705,7 +718,8 @@ impl Placer<'_, '_> {
     }
 
     /// One placement of prototype `idx`. `usep` is the placement's own
-    /// record when the file's instance tree was kept.
+    /// record when the file's instance tree was kept; `slot` is the
+    /// (prototype, child index) a nested placement fills.
     fn place(
         &mut self,
         idx: usize,
@@ -713,6 +727,7 @@ impl Placer<'_, '_> {
         layer: Option<String>,
         depth: usize,
         usep: Option<&Placement>,
+        slot: Option<(usize, usize)>,
     ) -> Result<Group, String> {
         let protos = self.protos;
         let pr = protos
@@ -722,7 +737,16 @@ impl Placer<'_, '_> {
         let name = match usep.and_then(|u| u.name.as_ref()) {
             Some(own) => own.clone(),
             None => pr.name.clone(),
-        };
+        }
+        .filter(|n| !n.is_empty())
+        .or_else(|| {
+            slot.map(|s| {
+                self.auto_names
+                    .entry(s)
+                    .or_insert_with(next_group_name)
+                    .clone()
+            })
+        });
         let mut g = new_group(mesh, name.as_deref());
         g.xform = Some(xf);
         if layer.as_deref().is_some_and(|l| !l.is_empty()) {
@@ -737,13 +761,14 @@ impl Placer<'_, '_> {
         // A malformed file must not spin.
         if depth < 32 {
             let mut kids = Vec::with_capacity(pr.children.len());
-            for kid in &pr.children {
+            for (i, kid) in pr.children.iter().enumerate() {
                 kids.push(self.place(
                     kid.proto,
                     kid.xform,
                     kid.layer.clone(),
                     depth + 1,
                     Some(kid),
+                    Some((idx, i)),
                 )?);
             }
             g.adopt(kids);

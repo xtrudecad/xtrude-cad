@@ -111,6 +111,38 @@ fn test_copies_share_one_prototype_mesh_and_land_where_the_file_puts_them() {
 }
 
 #[test]
+fn test_copies_holding_an_unnamed_group_stay_one_component() {
+    // leg ▸ (an unnamed group, placed twice), the leg placed three times.
+    let leg = empty_defn(5, "leg-link", vec![ins(7, 0.0), ins(7, 20.0)]);
+    let root = empty_defn(
+        0,
+        "ROOT_MODEL",
+        vec![
+            named(ins(5, 0.0), "leg-1"),
+            named(ins(5, 100.0), "leg-2"),
+            named(ins(5, 200.0), "leg-3"),
+        ],
+    );
+    let scene = scene_of(&model(root, vec![leg, tri_def(7, "Group#3", vec![])]));
+    let legs = &scene.doc.groups;
+    assert_eq!(legs.len(), 3);
+    assert!(legs
+        .iter()
+        .all(|g| g.is_component() && g.mesh == legs[0].mesh));
+    let names = |g: &Group| {
+        g.children
+            .iter()
+            .map(|c| c.name.clone())
+            .collect::<Vec<_>>()
+    };
+    let first = names(&legs[0]);
+    // Each unnamed group gets a "Group N" of its own, the same in every leg.
+    assert!(first.iter().all(|n| n.starts_with("Group ")));
+    assert_ne!(first[0], first[1]);
+    assert!(legs.iter().all(|g| names(g) == first));
+}
+
+#[test]
 fn test_an_instance_tag_rides_on_its_placement() {
     let child = tri_def(5, "part", vec![]);
     let mut a = named(ins(5, 0.0), "a");
