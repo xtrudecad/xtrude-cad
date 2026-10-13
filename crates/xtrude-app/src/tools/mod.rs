@@ -10,7 +10,7 @@
 //! [`SnapPrefs`] and [`WorkPlane`].
 
 use crate::input::ScreenPt;
-use crate::value_box::{ArrayKind, ValueSpec};
+use crate::value_box::{ArrayKind, PatternEntry, ValueSpec};
 use std::any::Any;
 use std::collections::HashSet;
 use xtrude_core::Axis;
@@ -43,6 +43,7 @@ pub mod move_tool;
 pub mod offset;
 pub mod paint;
 pub mod paste;
+pub mod pattern;
 pub mod place_group;
 pub mod protractor;
 pub mod pushpull;
@@ -122,6 +123,8 @@ pub enum ToolValue {
         nominal: f64,
         close: bool,
     },
+    /// `4;15`, `4/45`: a pattern's count and spacing ([`ValueSpec::pattern`]).
+    Pattern(PatternEntry),
 }
 
 impl ToolValue {

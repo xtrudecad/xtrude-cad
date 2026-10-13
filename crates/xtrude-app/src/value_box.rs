@@ -221,6 +221,42 @@ pub fn parse_value_buffer(buffer: &str, comma_lists: bool) -> Option<Typed> {
     }
 }
 
+/// A pattern's typed entry: how many instances and how far apart.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PatternEntry {
+    /// The instances, the original among them.
+    pub count: u32,
+    /// The spacing (`4;15`), or with `spread` the span the instances
+    /// spread over (`4/45`); `None` keeps the one picked (`4`, `4/`).
+    pub step: Option<f64>,
+    /// `4/45`, `4/`: the first and last instances lie the span apart.
+    pub spread: bool,
+}
+
+/// `4`, `4;15`, `4/`, `4/45`: a pattern's count, then its spacing or (after
+/// `/`) the span its instances spread over, or `None`. The spacing is a
+/// length, or a plain number while [`units::unitless_numbers`] holds;
+/// `comma_lists` as in [`parse_value_buffer`].
+pub fn parse_pattern(buffer: &str, comma_lists: bool) -> Option<PatternEntry> {
+    let mut buffer = buffer.to_string();
+    if comma_lists && !buffer.contains(';') && !buffer.trim().chars().any(char::is_whitespace) {
+        buffer = buffer.replace(',', " ");
+    }
+    let m = regex!(r"^\s*(\d+)\s*(?:(/)\s*(.*?)|[;\s]\s*(.+?))?\s*$").captures(&buffer)?;
+    let count: u32 = m.get(1)?.as_str().parse().ok()?;
+    let spread = m.get(2).is_some();
+    let field = m.get(3).or(m.get(4)).map(|f| f.as_str().replace(',', "."));
+    let step = match field.as_deref() {
+        None | Some("") => None,
+        Some(f) => Some(parse_length_field(f)?),
+    };
+    Some(PatternEntry {
+        count,
+        step,
+        spread,
+    })
+}
+
 /// `M3`, `M2.5`, `M3c`: a screw size, or `None`.
 pub fn parse_screw(buffer: &str) -> Option<Entry> {
     let m = regex!(r"^\s*[mM]\s*(\d+(?:[.,]\d+)?)\s*([cC])?\s*$").captures(buffer)?;
@@ -250,6 +286,8 @@ pub struct ValueSpec {
     pub absolute_length: bool,
     /// `M3`, `M3c`: a metric screw size (Hole).
     pub screw_sizes: bool,
+    /// `4;15`, `4/45`: a pattern's count and spacing (the patterns).
+    pub pattern: bool,
 }
 
 /// How a tool takes arrays.
@@ -281,6 +319,8 @@ pub enum Entry {
         nominal: f64,
         close: bool,
     },
+    /// `4;15`, `4/45`: a pattern's count and spacing.
+    Pattern(PatternEntry),
     /// The entry was not understood (the buffer is cleared).
     Nothing,
 }
@@ -311,6 +351,17 @@ impl ValueBox {
             if let Some(entry) = parse_screw(&self.buffer) {
                 self.buffer.clear();
                 return Some(entry);
+            }
+        }
+        if spec.pattern {
+            let pattern = if spec.unitless {
+                units::unitless_numbers(|| parse_pattern(&self.buffer, spec.comma_lists))
+            } else {
+                parse_pattern(&self.buffer, spec.comma_lists)
+            };
+            if let Some(p) = pattern {
+                self.buffer.clear();
+                return Some(Entry::Pattern(p));
             }
         }
         let value = if spec.unitless {

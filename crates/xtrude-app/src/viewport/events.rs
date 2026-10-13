@@ -966,6 +966,10 @@ impl Viewport {
                         self.with_tool(|t, vp| t.on_value(vp, &v));
                     }
                 }
+                Some(Entry::Pattern(p)) => {
+                    let v = ToolValue::Pattern(p);
+                    self.with_tool(|t, vp| t.on_value(vp, &v));
+                }
                 Some(Entry::Value(v)) => {
                     if let Some(tv) = ToolValue::from_typed(&v) {
                         self.with_tool(|t, vp| t.on_value(vp, &tv));
