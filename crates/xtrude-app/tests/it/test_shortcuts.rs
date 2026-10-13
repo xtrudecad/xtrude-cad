@@ -150,7 +150,7 @@ fn test_perspective_moved_to_shift_p() {
     let before = w.viewport.camera.perspective;
     assert_eq!(
         press(&mut w, Key::Char('P'), Modifiers::SHIFT),
-        vec!["Toggle Perspective / Parallel"]
+        vec!["Parallel Projection"]
     );
     assert_ne!(w.viewport.camera.perspective, before);
 }

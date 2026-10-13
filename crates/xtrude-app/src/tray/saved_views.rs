@@ -54,6 +54,7 @@ impl SavedViews {
         };
         let vp = &mut w.viewport;
         view.apply(&mut vp.scene, &mut vp.camera);
+        // the style and the projection both come with the view
         w.sync_style_menu();
         let scene = &mut w.viewport.scene;
         let dead: Vec<EntityRef> = scene

@@ -799,13 +799,14 @@ impl MainWindow {
         }
         // Camera
         a.add(
-            Action::new("toggle_projection", &tr("Toggle Perspective / Parallel", &[]))
+            Action::new("toggle_projection", &tr("Parallel Projection", &[]))
                 .keys(&["Shift+P"])
                 .tip(&tr(
-                    "Switch between perspective and a parallel projection, where sizes do not shrink with distance.",
+                    "Show the model in a parallel projection, where sizes do not shrink with distance; off, in perspective.",
                     &[],
                 ))
-                .icon("projection"),
+                .icon("projection")
+                .checkable(false),
         );
         for st in builtin_styles() {
             a.add(
@@ -1496,7 +1497,10 @@ impl MainWindow {
             "delete_selection" => self.on_delete_selection(),
             "zoom_extents" => self.on_zoom_extents(),
             "zoom_selection" => self.on_zoom_selection(),
-            "toggle_projection" => self.viewport.toggle_projection(),
+            "toggle_projection" => {
+                self.viewport.toggle_projection();
+                self.sync_projection_action();
+            }
             "toggle_xray" => self.toggle_xray(),
             "style_edges" => self.toggle_style_field("edges"),
             "style_silhouettes" => self.toggle_style_field("profiles"),
@@ -1738,6 +1742,8 @@ impl MainWindow {
                 self.check_tool_action(Some(&k));
             }
         }
+        // the viewport's own key (P) may have switched the projection
+        self.sync_projection_action();
         self.update_title();
     }
 
@@ -1938,6 +1944,17 @@ impl MainWindow {
         }
         self.sync_section_menu();
         self.sync_rest_menu();
+        self.sync_projection_action();
+    }
+
+    /// Parallel Projection is checked while the camera is parallel,
+    /// whatever switched it: the action, the viewport's own key, an
+    /// opened document's camera or a saved view.
+    pub fn sync_projection_action(&mut self) {
+        let parallel = !self.viewport.camera.perspective;
+        if let Some(a) = self.actions.get_mut("toggle_projection") {
+            a.checked = parallel;
+        }
     }
 
     pub fn sync_section_menu(&mut self) {
