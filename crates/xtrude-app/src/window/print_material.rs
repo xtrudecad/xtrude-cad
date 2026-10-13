@@ -30,7 +30,7 @@ impl MainWindow {
     /// Right-click ▸ Print material, for selected groups: the built-ins,
     /// the selection's own ticked when they all have the same, Custom…
     /// and Use default.
-    pub(super) fn print_material_submenu(&self) -> Option<CtxItem> {
+    pub(crate) fn print_material_submenu(&self) -> Option<CtxItem> {
         let scene = &self.viewport.scene;
         let groups = split_selection(scene).groups;
         if groups.is_empty() {
