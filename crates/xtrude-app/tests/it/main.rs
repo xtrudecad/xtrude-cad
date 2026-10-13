@@ -185,6 +185,7 @@ mod test_select_ops;
 mod test_selection_face_dots;
 mod test_shapes_face_their_plane;
 mod test_sheet_push;
+mod test_shell_tool;
 mod test_shortcuts;
 mod test_sidebar_trays;
 mod test_skp_import;

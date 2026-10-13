@@ -886,6 +886,32 @@ fn chamfer(p: &mut Painter, ink: Rgba) {
     p.restore();
 }
 
+/// A box in section, hollowed with its top open: the walls and floor, the
+/// cavity in the accent.
+fn shell_icon(p: &mut Painter, _ink: Rgba) {
+    p.no_brush();
+    p.draw_polygon(&[
+        (9.0, 12.0),
+        (9.0, 38.0),
+        (39.0, 38.0),
+        (39.0, 12.0),
+        (33.0, 12.0),
+        (33.0, 32.0),
+        (15.0, 32.0),
+        (15.0, 12.0),
+    ]);
+    p.save();
+    p.set_pen(Pen::new(ACCENT, 3.0).cap(LineCap::Round));
+    let mut cavity = IconPath::new();
+    cavity
+        .move_to(15.0, 12.0)
+        .line_to(15.0, 32.0)
+        .line_to(33.0, 32.0)
+        .line_to(33.0, 12.0);
+    p.draw_path(&cavity);
+    p.restore();
+}
+
 fn move_icon(p: &mut Painter, _ink: Rgba) {
     p.draw_line(24.0, 10.0, 24.0, 38.0);
     p.draw_line(10.0, 24.0, 38.0, 24.0);
@@ -1527,6 +1553,7 @@ pub const KEYS: &[&str] = &[
     "offset",
     "fillet",
     "chamfer",
+    "shell",
     "move",
     "paint",
     "eyedropper",
@@ -1591,6 +1618,7 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "offset" => offset,
         "fillet" => fillet,
         "chamfer" => chamfer,
+        "shell" => shell_icon,
         "move" => move_icon,
         "paint" => paint,
         "eyedropper" => eyedropper,
@@ -1699,7 +1727,7 @@ fn pencil_badge(key: &str) -> Option<Option<&'static str>> {
 fn hotspot(key: &str) -> Option<(f32, f32)> {
     Some(match key {
         "move" | "rotate" | "scale" | "flip" | "pushpull" | "offset" | "sweep" | "fillet"
-        | "chamfer" | "text" | "text3d" | "protractor" | "orbit" | "pan" => (24.0, 24.0),
+        | "chamfer" | "shell" | "text" | "text3d" | "protractor" | "orbit" | "pan" => (24.0, 24.0),
         "dimension" => (12.0, 30.0),
         "paint" => (13.0, 35.0),
         "eyedropper" => (9.5, 38.5),

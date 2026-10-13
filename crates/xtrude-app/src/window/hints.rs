@@ -151,6 +151,13 @@ fn hint_entry(key: &str) -> Option<Hint> {
                 "Move to set the distance along the faces, or type it and Enter; click to chamfer.",
             ),
         ]),
+        "shell" => Phases(&[
+            ("idle", "Click a solid to hollow it (or select its open faces first)."),
+            (
+                "faces",
+                "Click the faces to leave open; Enter, or type the wall thickness and Enter.",
+            ),
+        ]),
         "measure" => Two(
             "Click a point or an edge to measure. Arrows lock an axis.",
             "Click the second point, or type the distance and Enter.",
