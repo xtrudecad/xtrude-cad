@@ -5,8 +5,8 @@
 //! Only components share: two component copies ([`Group::is_component`])
 //! with the same [`MeshId`] are copies of one definition, and hold the same
 //! contents — the same children, recursively, in the component's local
-//! coordinates (same names, matrices, meshes, paint, layers, hidden flags
-//! and component flags). Groups never share contents, even when two of
+//! coordinates (same names, matrices, meshes, paint, print materials,
+//! layers, hidden flags and component flags). Groups never share contents, even when two of
 //! them hold the same mesh id.
 //!
 //! The document file keeps children per copy, so a document can hold copies
@@ -42,6 +42,7 @@ fn same_placement(a: &Group, b: &Group) -> bool {
         && a.name == b.name
         && same_matrix(&a.xform, &b.xform)
         && a.material == b.material
+        && a.print_material == b.print_material
         && a.layer == b.layer
         && a.hidden == b.hidden
         && a.component == b.component

@@ -27,6 +27,7 @@ use crate::guide::Guide;
 use crate::ids::{GroupId, MeshId, ObjId};
 use crate::layers::{layer_name, Layer, DEFAULT_LAYER};
 use crate::materials::Material;
+use crate::print_material::{default_print_material, PrintMaterial};
 use crate::saved_views::{CameraHome, SavedView};
 use crate::section::SectionPlane;
 use crate::style::Style;
@@ -46,6 +47,8 @@ pub struct Doc {
     pub section_planes: Vec<SectionPlane>,
     /// Extensions' own document data (kept, saved, never read).
     pub plugin_data: Map<String, Value>,
+    /// The print material of every group without one of its own.
+    pub print_material: PrintMaterial,
 }
 
 impl Default for Doc {
@@ -62,6 +65,7 @@ impl Default for Doc {
             materials: IndexMap::new(),
             section_planes: Vec::new(),
             plugin_data: Map::new(),
+            print_material: default_print_material(),
         }
     }
 }
@@ -943,6 +947,7 @@ impl Scene {
         self.units.precision = 2;
         units::bind(&self.units);
         self.doc.plugin_data = Map::new();
+        self.doc.print_material = default_print_material();
     }
 
     // ---- Queries ---------------------------------------------------------------------------------

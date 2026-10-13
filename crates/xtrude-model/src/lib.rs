@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Xtrude CAD document model: scene, groups and components, layers, materials,
-//! annotations, units, and the command history (one atomic undo step per
+//! print materials, annotations, units, and the command history (one atomic undo step per
 //! user action).
 
 pub mod commands;
@@ -25,6 +25,7 @@ pub mod model_tree;
 pub mod parts;
 pub mod paths;
 pub mod pieces;
+pub mod print_material;
 pub mod purge;
 pub mod pushpull;
 pub mod saved_views;
