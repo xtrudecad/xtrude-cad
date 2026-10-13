@@ -33,6 +33,7 @@ mod test_group_vs_component;
 mod test_hide_edges;
 mod test_hide_objects;
 mod test_igz_dangling_proto;
+mod test_igz_errors;
 mod test_insert_document;
 mod test_layers;
 mod test_materials;

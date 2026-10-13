@@ -203,3 +203,45 @@ fn test_the_desktop_dialogs_get_the_document_extensions() {
     assert_eq!(exts(DOCUMENT_FILE_FILTER), Some(vec!["xtrude".into()]));
     assert_eq!(exts(IGZ_FILE_FILTER), Some(vec!["igz".into()]));
 }
+
+#[test]
+fn test_importing_the_document_being_edited_is_refused() {
+    let dir = TmpDir::new();
+    let mut w = window();
+    assert!(w.open_path(&igz_copy(&dir)));
+    let path = dir.path().join("servo.xtrude");
+    w.do_save(&path);
+    let groups = w.viewport.scene.doc.groups.len();
+    let d = scripted(&mut w);
+    d.borrow_mut().open_paths.push(Some(path));
+    w.trigger("import:xtrude");
+    assert_eq!(w.viewport.scene.doc.groups.len(), groups);
+    let d = d.borrow();
+    assert_eq!(
+        d.asked.last(),
+        Some(&(
+            "warn".to_string(),
+            "Import Xtrude CAD document: That is the document you are editing.".to_string()
+        ))
+    );
+}
+
+#[test]
+fn test_a_file_that_is_no_document_does_not_open_and_changes_nothing() {
+    let dir = TmpDir::new();
+    let mut w = window();
+    assert!(w.open_path(&igz_copy(&dir)));
+    let path = dir.path().join("servo.xtrude");
+    w.do_save(&path);
+    let notes = dir.path().join("notes.txt");
+    std::fs::write(&notes, "a shopping list").unwrap();
+    let d = scripted(&mut w);
+    assert!(!w.open_path(&notes));
+    assert_eq!(w.current_path.as_deref(), Some(path.as_path()));
+    assert_eq!(w.viewport.scene.mesh().faces.len(), 6);
+    assert!(!w.is_dirty());
+    let d = d.borrow();
+    assert_eq!(d.asked.len(), 1);
+    assert!(d.asked[0].1.starts_with("Open failed: "), "{:?}", d.asked);
+    assert!(d.asked[0].1.contains("notes.txt"), "{:?}", d.asked);
+}
