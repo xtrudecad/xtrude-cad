@@ -29,6 +29,7 @@ mod test_orient;
 mod test_pan_depth;
 mod test_perp_on_slope;
 mod test_shared_point_prefers_the_drawing_context;
+mod test_shell;
 mod test_shift_lock_has_snaps;
 mod test_small_loops;
 mod test_snap_extension;
