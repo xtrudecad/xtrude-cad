@@ -886,26 +886,36 @@ impl TrayUi {
                 p.apply_default(w);
             }
         });
-        ui.label(egui::RichText::new(tr("In model", &[])).weak().small());
+        ui.label(egui::RichText::new(p.slots_title()).weak().small());
         let mut apply: Option<([f64; 3], Option<String>)> = None;
+        let mut apply_slot = None;
         let mut edit: Option<(String, [f64; 3])> = None;
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
-            for s in p.in_model.clone() {
-                let r = swatch(ui, rgb32(s.rgb), &s.tip, 30.0);
-                if r.clicked() {
-                    apply = Some((s.rgb, s.name.clone()));
-                }
-                if let Some(n) = s.name.clone() {
-                    r.context_menu(|ui| {
-                        if ui.button(tr("Edit color…", &[])).clicked() {
-                            edit = Some((n.clone(), s.rgb));
-                            ui.close();
-                        }
+        egui::Grid::new("color-slots")
+            .num_columns(4)
+            .spacing(egui::vec2(6.0, 2.0))
+            .show(ui, |ui| {
+                for slot in &p.slots {
+                    let s = &slot.swatch;
+                    ui.label(egui::RichText::new(slot.number.to_string()).strong());
+                    let r = swatch(ui, rgb32(s.rgb), &s.tip, 22.0);
+                    let name = ui.add(egui::Label::new(&s.tip).sense(egui::Sense::click()));
+                    if r.clicked() || name.clicked() {
+                        apply_slot = Some(slot.clone());
+                    }
+                    if let Some(n) = s.name.clone() {
+                        r.union(name).context_menu(|ui| {
+                            if ui.button(tr("Edit color…", &[])).clicked() {
+                                edit = Some((n.clone(), s.rgb));
+                                ui.close();
+                            }
+                        });
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(egui::RichText::new(slot.area_text()).weak());
                     });
+                    ui.end_row();
                 }
-            }
-        });
+            });
         ui.label(egui::RichText::new(tr("Library", &[])).weak().small());
         let open = p.library_open;
         let r = egui::CollapsingHeader::new(p.library_title())
@@ -926,6 +936,9 @@ impl TrayUi {
         }
         if let Some((rgb, name)) = apply {
             p.apply_color(w, rgb, name.as_deref());
+        }
+        if let Some(slot) = apply_slot {
+            p.apply_slot(w, &slot);
         }
         let mut ask = edit.map(|(name, current)| TrayAction::EditNamedColor { name, current });
         ui.horizontal_wrapped(|ui| {

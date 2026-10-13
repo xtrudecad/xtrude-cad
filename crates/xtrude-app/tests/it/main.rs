@@ -32,6 +32,7 @@ mod test_clipboard_shortcuts;
 mod test_clipboard_windows;
 mod test_coalesce_hovers;
 mod test_color_dialog;
+mod test_colour_slots;
 mod test_community_files;
 mod test_component_contents_shared;
 mod test_component_copies_share_nested;

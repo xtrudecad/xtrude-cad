@@ -1,16 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The Colors section (`MaterialsPanel`): the active paint, the colours
-//! (named or not) in this model, the RAL Classic library, «+ Color…»
-//! and Purge. It holds colours only, hence its title.
+//! of this model as filament slots (numbered in the 3MF export's order,
+//! each with its face area), the Basic and RAL Classic libraries,
+//! «+ Color…» and Purge. It holds colours only, hence its title.
 
 use std::sync::OnceLock;
 
 use serde_json::Value;
+use xtrude_io::threemf::colour_slots;
 use xtrude_model::commands::{PurgeUnusedCommand, RestampMaterialCommand};
-use xtrude_model::group::iter_placements;
 use xtrude_model::i18n::tr;
 use xtrude_model::materials::Material;
+use xtrude_model::units::fmt_area;
 
 use crate::tools::paint::{paint_state, set_paint_state};
 use crate::window::MainWindow;
@@ -63,10 +65,29 @@ pub fn ral_colors() -> &'static [Swatch] {
     })
 }
 
+/// One filament slot: a colour the model prints with.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Slot {
+    /// Its number, from 1: a slicer's slot for it.
+    pub number: usize,
+    pub swatch: Swatch,
+    /// The colour of unpainted faces: picking it paints the colour off.
+    pub unpainted: bool,
+    /// The net area of its faces, every copy counted (square metres).
+    pub area: f64,
+}
+
+impl Slot {
+    /// The area in the model's units, «12.5 cm²».
+    pub fn area_text(&self) -> String {
+        fmt_area(self.area)
+    }
+}
+
 #[derive(Default)]
 pub struct Colors {
-    /// The «In model» swatches.
-    pub in_model: Vec<Swatch>,
+    /// The model's colours as filament slots, slot 1 first.
+    pub slots: Vec<Slot>,
     /// The library section is open.
     pub library_open: bool,
     /// The library's swatches: built the first time the section is
@@ -91,48 +112,46 @@ impl Colors {
         self.library_open = open;
     }
 
-    /// `refresh_in_model`: a swatch per colour in use (faces and group
-    /// paints), named when the colour has a name.
+    /// The slots' heading, «Filament slots  (3)».
+    pub fn slots_title(&self) -> String {
+        format!("{}  ({})", tr("Filament slots", &[]), self.slots.len())
+    }
+
+    /// `refresh_in_model`: a slot per colour the visible model prints
+    /// with (faces and group paints), in the 3MF export's order, named
+    /// when the colour has a name.
     pub fn refresh_in_model(&mut self, w: &MainWindow) {
-        let scene = &w.viewport.scene;
-        let mut seen: Vec<([i64; 3], Swatch)> = Vec::new();
-        let mut take = |color: Option<[f64; 3]>, mat: Option<&str>| {
-            let Some(c) = color else { return };
-            let key = c.map(|x| (x * 1e6).round() as i64);
-            match seen.iter_mut().find(|(k, _)| *k == key) {
-                Some((_, s)) => {
-                    if s.name.is_none() {
-                        s.name = mat.map(String::from);
-                    }
-                }
-                None => seen.push((
-                    key,
-                    Swatch {
-                        rgb: c,
-                        name: mat.map(String::from),
-                        tip: String::new(),
-                    },
-                )),
-            }
-        };
-        for (mid, f) in scene.render_faces() {
-            let a = &scene.doc.mesh(mid).face(f).attrs;
-            take(a.paint.color, a.paint.mat.as_deref());
-        }
-        for top in &scene.doc.groups {
-            for (g, _) in iter_placements(top, None) {
-                if let Some(p) = &g.material {
-                    take(p.color, p.mat.as_deref());
-                }
-            }
-        }
-        self.in_model = seen
+        self.slots = colour_slots(&w.viewport.scene)
             .into_iter()
-            .map(|(_, mut s)| {
-                s.tip = s.name.clone().unwrap_or_else(|| tr("Color", &[]));
-                s
+            .enumerate()
+            .map(|(i, c)| {
+                let tip = if c.unpainted {
+                    tr("Default (no color)", &[])
+                } else {
+                    c.mat.clone().unwrap_or_else(|| tr("Color", &[]))
+                };
+                Slot {
+                    number: i + 1,
+                    swatch: Swatch {
+                        rgb: c.key.color,
+                        name: c.mat,
+                        tip,
+                    },
+                    unpainted: c.unpainted,
+                    area: c.area,
+                }
             })
             .collect();
+    }
+
+    /// A slot clicked: paint with its colour (the unpainted slot paints
+    /// the colour off).
+    pub fn apply_slot(&mut self, w: &mut MainWindow, slot: &Slot) {
+        if slot.unpainted {
+            self.apply_default(w);
+        } else {
+            self.apply_color(w, slot.swatch.rgb, slot.swatch.name.as_deref());
+        }
     }
 
     /// The named colour for a swatch: the registry's when the name

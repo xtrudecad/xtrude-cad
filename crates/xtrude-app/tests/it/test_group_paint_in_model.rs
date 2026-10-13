@@ -32,5 +32,5 @@ fn test_a_painted_group_puts_its_colour_in_the_model_list() {
     w.viewport.scene.doc.groups.push(g);
     let mut p = Colors::default();
     p.refresh_in_model(&w);
-    assert!(p.in_model.iter().any(|s| s.tip.contains("Brick red")));
+    assert!(p.slots.iter().any(|s| s.swatch.tip.contains("Brick red")));
 }
