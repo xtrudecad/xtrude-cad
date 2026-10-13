@@ -11,8 +11,8 @@ use xtrude_core::{DVec3, Mesh};
 use xtrude_model::group::{add_mesh, copy_group, Group};
 use xtrude_model::ids::GroupId;
 use xtrude_model::print_material::{
-    default_print_material, group_mass, print_material_of, PrintMaterial,
-    SetDocumentPrintMaterialCommand, SetPrintMaterialCommand, BUILT_IN,
+    default_print_material, group_mass, print_material_from, print_material_of, MaterialFrom,
+    PrintMaterial, SetDocumentPrintMaterialCommand, SetPrintMaterialCommand, BUILT_IN,
 };
 use xtrude_model::scene::Scene;
 use xtrude_model::units::{fmt_density, fmt_mass, Units, UnitsOverride};
@@ -162,10 +162,19 @@ fn test_a_nested_group_takes_its_own_then_its_parts_then_the_documents() {
     let part_id = add_top(&mut s, part);
     // nothing set: the document's
     assert_eq!(print_material_of(&s.doc, deep_id).name, "PLA");
+    assert_eq!(
+        print_material_from(&s.doc, deep_id).1,
+        MaterialFrom::Document
+    );
     // the part's reaches every nested group, at any depth
     s.doc.find_group_mut(part_id).unwrap().print_material = Some(petg());
     assert_eq!(print_material_of(&s.doc, inner_id).name, "PETG");
     assert_eq!(print_material_of(&s.doc, deep_id).name, "PETG");
+    assert_eq!(
+        print_material_from(&s.doc, deep_id).1,
+        MaterialFrom::Part(part_id)
+    );
+    assert_eq!(print_material_from(&s.doc, part_id).1, MaterialFrom::Own);
     // an intermediate group's material is its own, not its children's:
     // they take their part's
     s.doc.find_group_mut(middle_id).unwrap().print_material = PrintMaterial::built_in("ABS");

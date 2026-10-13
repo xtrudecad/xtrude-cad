@@ -122,9 +122,30 @@ fn material_in<'a>(doc: &'a Doc, link: &'a Group, group: &'a Group) -> &'a Print
 /// The print material of group `id`: its own, else its top-level group's,
 /// else the document's.
 pub fn print_material_of(doc: &Doc, id: GroupId) -> &PrintMaterial {
-    match chain(doc, id) {
-        Some(path) => material_in(doc, path[0], path[path.len() - 1]),
-        None => &doc.print_material,
+    print_material_from(doc, id).0
+}
+
+/// Where a group's print material comes from.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MaterialFrom {
+    /// The group's own.
+    Own,
+    /// Its top-level group's (the part it belongs to).
+    Part(GroupId),
+    /// The document's.
+    Document,
+}
+
+/// The print material of group `id` and where it comes from.
+pub fn print_material_from(doc: &Doc, id: GroupId) -> (&PrintMaterial, MaterialFrom) {
+    let Some(path) = chain(doc, id) else {
+        return (&doc.print_material, MaterialFrom::Document);
+    };
+    let (link, group) = (path[0], path[path.len() - 1]);
+    match (&group.print_material, &link.print_material) {
+        (Some(m), _) => (m, MaterialFrom::Own),
+        (None, Some(m)) => (m, MaterialFrom::Part(link.id)),
+        (None, None) => (&doc.print_material, MaterialFrom::Document),
     }
 }
 
