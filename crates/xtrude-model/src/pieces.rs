@@ -357,6 +357,13 @@ pub fn solid_parts(mesh: &Mesh) -> Vec<Part> {
 /// every edge flag included).
 pub fn copy_part(mesh: &Mesh, faces: &[FaceId], edges: &[EdgeId]) -> Mesh {
     let mut new = Mesh::new();
+    copy_part_into(&mut new, mesh, faces, edges);
+    new
+}
+
+/// Deep-copy `faces` and `edges` of `mesh` into `new` (attrs, holes and
+/// every edge flag included), welding onto the vertices `new` has.
+pub fn copy_part_into(new: &mut Mesh, mesh: &Mesh, faces: &[FaceId], edges: &[EdgeId]) {
     let mut flat: Vec<DVec3> = Vec::new();
     for &e in edges {
         let (a, b) = mesh.edge_ab(e);
@@ -382,7 +389,7 @@ pub fn copy_part(mesh: &Mesh, faces: &[FaceId], edges: &[EdgeId]) -> Mesh {
         ));
     }
     if flat.is_empty() {
-        return new;
+        return;
     }
     let (vobjs, ids) = new.bulk_weld(&flat);
     if !edges.is_empty() {
@@ -411,7 +418,6 @@ pub fn copy_part(mesh: &Mesh, faces: &[FaceId], edges: &[EdgeId]) -> Mesh {
         }
     }
     new.resplit_curves();
-    new
 }
 
 /// The pieces `group` comes apart into, as new groups in the group's own

@@ -16,6 +16,7 @@ pub mod files;
 pub mod form;
 mod gpu;
 pub mod hints;
+pub mod hole_form;
 pub mod model_info;
 pub mod preferences;
 pub mod progress;
@@ -62,6 +63,7 @@ pub fn make_tool(key: &str) -> Option<Box<dyn Tool>> {
         "center_arc" => Box::new(arc::CenterArcTool::new()),
         "sector" => Box::new(arc::CenterArcTool::sector()),
         "pushpull" => Box::new(pushpull::PushPullTool::new()),
+        "hole" => Box::new(hole::HoleTool::new()),
         "offset" => Box::new(offset::OffsetTool::new()),
         "move" => Box::new(move_tool::MoveTool::new()),
         "rotate" => Box::new(rotate::RotateTool::new()),
@@ -137,6 +139,7 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
         "Model",
         &[
             "pushpull",
+            "hole",
             "sweep",
             "offset",
             "fillet",
@@ -221,6 +224,7 @@ const TOOL_KEYS: &[&str] = &[
     "center_arc",
     "sector",
     "pushpull",
+    "hole",
     "sweep",
     "offset",
     "fillet",
@@ -1009,6 +1013,7 @@ impl MainWindow {
         ];
         let model = vec![
             act("pushpull"),
+            act("hole"),
             act("sweep"),
             act("offset"),
             act("fillet"),
@@ -1665,6 +1670,7 @@ impl MainWindow {
                 ViewportEvent::ActivateTool(k) => self.activate_tool(&k),
                 ViewportEvent::PaintSampled => self.release_eyedropper(),
                 ViewportEvent::PromptSectionName(id) => self.name_section_plane(id),
+                ViewportEvent::PromptHoleSpec => self.prompt_hole_spec(),
                 ViewportEvent::SceneVersionChanged(_) => {
                     self.sync_style_menu();
                     self.update_title();

@@ -36,6 +36,7 @@ pub mod eraser;
 pub mod fillet;
 pub mod flip;
 pub mod freehand;
+pub mod hole;
 pub mod line;
 pub mod measure;
 pub mod move_tool;
@@ -115,6 +116,12 @@ pub enum ToolValue {
     },
     /// `2r`: a radius ([`ValueSpec::radius`]).
     Radius(f64),
+    /// `M3`, `M3c`: a screw size, the nominal diameter in mm
+    /// ([`ValueSpec::screw_sizes`]).
+    Screw {
+        nominal: f64,
+        close: bool,
+    },
 }
 
 impl ToolValue {

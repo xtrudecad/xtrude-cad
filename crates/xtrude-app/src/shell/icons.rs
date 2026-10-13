@@ -895,6 +895,28 @@ fn chamfer(p: &mut Painter, ink: Rgba) {
     p.restore();
 }
 
+/// A plate seen from above at an angle, the hole through it in the accent
+/// and its axis dashed.
+fn hole(p: &mut Painter, ink: Rgba) {
+    p.no_brush();
+    p.draw_polygon(&[(4.0, 24.0), (24.0, 14.0), (44.0, 24.0), (24.0, 34.0)]);
+    let mut sides = IconPath::new();
+    sides
+        .move_to(4.0, 24.0)
+        .line_to(4.0, 30.0)
+        .line_to(24.0, 40.0)
+        .line_to(44.0, 30.0)
+        .line_to(44.0, 24.0);
+    p.draw_path(&sides);
+    p.draw_line(24.0, 34.0, 24.0, 40.0);
+    p.save();
+    p.no_pen();
+    p.set_brush(ACCENT);
+    p.draw_ellipse(24.0, 24.0, 8.0, 4.0);
+    p.restore();
+    guide(p, ink, (24.0, 6.0), (24.0, 18.0), true);
+}
+
 /// A box in section, hollowed with its top open: the walls and floor, the
 /// cavity in the accent.
 fn shell_icon(p: &mut Painter, _ink: Rgba) {
@@ -1560,6 +1582,7 @@ pub const KEYS: &[&str] = &[
     "flip",
     "sweep",
     "pushpull",
+    "hole",
     "offset",
     "fillet",
     "chamfer",
@@ -1630,6 +1653,7 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "fillet" => fillet,
         "chamfer" => chamfer,
         "shell" => shell_icon,
+        "hole" => hole,
         "move" => move_icon,
         "paint" => paint,
         "eyedropper" => eyedropper,
@@ -1739,7 +1763,9 @@ fn pencil_badge(key: &str) -> Option<Option<&'static str>> {
 fn hotspot(key: &str) -> Option<(f32, f32)> {
     Some(match key {
         "move" | "rotate" | "scale" | "flip" | "pushpull" | "offset" | "sweep" | "fillet"
-        | "chamfer" | "shell" | "text" | "text3d" | "protractor" | "orbit" | "pan" => (24.0, 24.0),
+        | "chamfer" | "shell" | "hole" | "text" | "text3d" | "protractor" | "orbit" | "pan" => {
+            (24.0, 24.0)
+        }
         "dimension" => (12.0, 30.0),
         "paint" => (13.0, 35.0),
         "eyedropper" => (9.5, 38.5),

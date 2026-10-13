@@ -221,6 +221,16 @@ pub fn parse_value_buffer(buffer: &str, comma_lists: bool) -> Option<Typed> {
     }
 }
 
+/// `M3`, `M2.5`, `M3c`: a screw size, or `None`.
+pub fn parse_screw(buffer: &str) -> Option<Entry> {
+    let m = regex!(r"^\s*[mM]\s*(\d+(?:[.,]\d+)?)\s*([cC])?\s*$").captures(buffer)?;
+    let nominal: f64 = m.get(1)?.as_str().replace(',', ".").parse().ok()?;
+    Some(Entry::Screw {
+        nominal,
+        close: m.get(2).is_some(),
+    })
+}
+
 /// What the active tool takes in the value box.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ValueSpec {
@@ -238,6 +248,8 @@ pub struct ValueSpec {
     pub angle_ratio: bool,
     /// `2` is a factor but `2m` an absolute size (Scale).
     pub absolute_length: bool,
+    /// `M3`, `M3c`: a metric screw size (Hole).
+    pub screw_sizes: bool,
 }
 
 /// How a tool takes arrays.
@@ -263,6 +275,12 @@ pub enum Entry {
         step: Option<f64>,
     },
     Radius(f64),
+    /// `M3` (normal fit) or `M3c` (close fit): a screw size, the nominal
+    /// diameter in mm.
+    Screw {
+        nominal: f64,
+        close: bool,
+    },
     /// The entry was not understood (the buffer is cleared).
     Nothing,
 }
@@ -288,6 +306,12 @@ impl ValueBox {
     pub fn commit(&mut self, spec: ValueSpec) -> Option<Entry> {
         if self.buffer.is_empty() {
             return None;
+        }
+        if spec.screw_sizes {
+            if let Some(entry) = parse_screw(&self.buffer) {
+                self.buffer.clear();
+                return Some(entry);
+            }
         }
         let value = if spec.unitless {
             units::unitless_numbers(|| parse_value_buffer(&self.buffer, spec.comma_lists))
@@ -333,6 +357,10 @@ impl ValueBox {
             return false;
         }
         let text = ev.text.as_str();
+        if spec.screw_sizes && self.buffer.is_empty() && text.eq_ignore_ascii_case("m") {
+            self.buffer.push('M');
+            return true;
+        }
         if spec.array.is_some() {
             if text == "*" {
                 self.buffer.push_str(text);

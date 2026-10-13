@@ -13,6 +13,7 @@ pub mod cap_rebuild;
 pub mod fillet;
 pub mod fuse;
 pub mod geometry;
+pub mod hole;
 pub mod intersect;
 pub mod math;
 pub mod measure;

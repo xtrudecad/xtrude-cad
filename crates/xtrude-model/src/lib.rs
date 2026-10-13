@@ -14,6 +14,7 @@ pub mod explode;
 pub mod group;
 pub mod guide;
 pub mod history;
+pub mod hole;
 pub mod i18n;
 pub mod ids;
 pub mod insert;

@@ -91,6 +91,9 @@ pub enum ViewportEvent {
     /// A section plane was just placed: the window asks for its name and
     /// symbol (`prompt_section_name`).
     PromptSectionName(ObjId),
+    /// The Hole tool's Tab: the window asks for the whole hole
+    /// (`prompt_hole_spec`).
+    PromptHoleSpec,
     /// The model clipboard was refilled (the window publishes it on the
     /// system clipboard).
     ClipboardChanged,
