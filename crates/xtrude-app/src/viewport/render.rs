@@ -638,6 +638,7 @@ impl Viewport {
     /// The frame to draw at `size` px. `export`: an image render (no
     /// selection cues).
     pub fn frame_data(&mut self, size: [u32; 2], export: bool) -> FrameData {
+        self.sync_depth_box();
         if !export {
             self.note_painted_view(size);
         }
@@ -666,8 +667,17 @@ impl Viewport {
         self.render_cache.on_screen = None;
     }
 
+    /// Fit the parallel projection's depth range to the scene as it is
+    /// now (an empty scene: the origin). Picking and the depth read-back
+    /// go through the same matrix, so they keep to the frame on screen.
+    fn sync_depth_box(&mut self) {
+        let b = self.scene.bounds().unwrap_or((DVec3::ZERO, DVec3::ZERO));
+        self.camera.depth_box = Some(b);
+    }
+
     fn build_frame(&mut self, size: [u32; 2], export: bool) -> FrameData {
         self.sync_axes();
+        self.sync_depth_box();
         let style = self.effective_style().clone();
         self.sync_render_cache(&style);
         self.sync_preview_cache(&style);
