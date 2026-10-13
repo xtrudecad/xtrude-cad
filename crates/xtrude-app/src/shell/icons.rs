@@ -866,6 +866,26 @@ fn fillet(p: &mut Painter, ink: Rgba) {
     p.restore();
 }
 
+/// A corner in profile, its edge cut flat at 45°.
+fn chamfer(p: &mut Painter, ink: Rgba) {
+    p.no_brush();
+    p.save();
+    p.set_pen(Pen::new(ink, 1.6).dashed());
+    p.draw_line(12.0, 24.0, 12.0, 12.0);
+    p.draw_line(12.0, 12.0, 24.0, 12.0);
+    p.restore();
+    let mut path = IconPath::new();
+    path.move_to(12.0, 38.0)
+        .line_to(12.0, 24.0)
+        .line_to(24.0, 12.0)
+        .line_to(38.0, 12.0);
+    p.draw_path(&path);
+    p.save();
+    p.set_pen(Pen::new(ACCENT, 3.0));
+    p.draw_line(12.0, 24.0, 24.0, 12.0);
+    p.restore();
+}
+
 fn move_icon(p: &mut Painter, _ink: Rgba) {
     p.draw_line(24.0, 10.0, 24.0, 38.0);
     p.draw_line(10.0, 24.0, 38.0, 24.0);
@@ -1506,6 +1526,7 @@ pub const KEYS: &[&str] = &[
     "pushpull",
     "offset",
     "fillet",
+    "chamfer",
     "move",
     "paint",
     "eyedropper",
@@ -1569,6 +1590,7 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "pushpull" => pushpull,
         "offset" => offset,
         "fillet" => fillet,
+        "chamfer" => chamfer,
         "move" => move_icon,
         "paint" => paint,
         "eyedropper" => eyedropper,
@@ -1677,7 +1699,7 @@ fn pencil_badge(key: &str) -> Option<Option<&'static str>> {
 fn hotspot(key: &str) -> Option<(f32, f32)> {
     Some(match key {
         "move" | "rotate" | "scale" | "flip" | "pushpull" | "offset" | "sweep" | "fillet"
-        | "text" | "text3d" | "protractor" | "orbit" | "pan" => (24.0, 24.0),
+        | "chamfer" | "text" | "text3d" | "protractor" | "orbit" | "pan" => (24.0, 24.0),
         "dimension" => (12.0, 30.0),
         "paint" => (13.0, 35.0),
         "eyedropper" => (9.5, 38.5),

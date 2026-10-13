@@ -108,7 +108,11 @@ fn test_the_stacks_sit_where_their_members_were() {
     );
     assert_eq!(bar(&w, "main").last().unwrap(), "stack:paint");
     let model = bar(&w, "model");
-    assert_eq!(model[4..6], ["stack:booleans", "solid_split"]);
+    // Fillet and Chamfer where Fillet was
+    assert_eq!(
+        model[3..6],
+        ["stack:edges", "stack:booleans", "solid_split"]
+    );
 }
 
 #[test]
@@ -250,6 +254,7 @@ fn test_the_new_stacks_hold_their_families() {
         ("paint", &["paint", "eyedropper"][..]),
         ("lines", &["line", "freehand"]),
         ("circles", &["circle", "polygon"]),
+        ("edges", &["fillet", "chamfer"]),
         (
             "nav",
             &["nav:orbit", "nav:pan", "nav:zoom", "nav:zoom_window"],

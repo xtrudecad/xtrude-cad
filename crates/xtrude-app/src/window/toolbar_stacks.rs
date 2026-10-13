@@ -22,12 +22,13 @@ pub const STACK_PREFIX: &str = "stack:";
 
 /// The stacks: `(id, title, member action ids)`, the first member current
 /// by default. An action is a member of one stack at most.
-pub const TOOLBAR_STACKS: [(&str, &str, &[&str]); 8] = [
+pub const TOOLBAR_STACKS: [(&str, &str, &[&str]); 9] = [
     ("paint", "Paint", &["paint", "eyedropper"]),
     ("lines", "Lines", &["line", "freehand"]),
     ("rectangles", "Rectangles", &["rectangle", "rotated_rect"]),
     ("circles", "Circles and Polygons", &["circle", "polygon"]),
     ("arcs", "Arcs", &["arc", "arc3", "center_arc", "sector"]),
+    ("edges", "Fillet and Chamfer", &["fillet", "chamfer"]),
     (
         "booleans",
         "Solid Booleans",
