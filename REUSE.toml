@@ -42,7 +42,7 @@ SPDX-FileCopyrightText = [
 SPDX-License-Identifier = "GPL-2.0-or-later"
 
 # Documents written by IngeTrazo, with their textures (tests of the .igz
-# compatibility); IngeTrazo is GPL-3.0-or-later too.
+# import); IngeTrazo is GPL-3.0-or-later too.
 [[annotations]]
 path = "tests/data/*.igz"
 precedence = "override"
