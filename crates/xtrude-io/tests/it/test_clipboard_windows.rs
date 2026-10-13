@@ -79,3 +79,19 @@ fn test_the_clipboard_survives_the_trip() {
 fn test_garbage_is_not_a_clipboard() {
     assert!(decode(b"not a zip").is_none());
 }
+
+#[test]
+fn test_the_scene_travels_as_a_document() {
+    use std::io::Read;
+    let bytes = encode(&clip_data()).unwrap();
+    let mut z = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    assert!(z.by_name("scene.igz").is_err());
+    let mut doc = Vec::new();
+    z.by_name("scene.xtr")
+        .unwrap()
+        .read_to_end(&mut doc)
+        .unwrap();
+    let mut s = xtrude_model::scene::Scene::new();
+    xtrude_io::document::load_bytes(&mut s, &doc, "scene.xtr", None).unwrap();
+    assert_eq!(s.mesh().faces.len(), 1);
+}

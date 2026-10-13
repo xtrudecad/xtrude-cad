@@ -9,7 +9,7 @@ use xtrude_core::math::{DMat4, MatExt};
 use xtrude_core::orient::{is_closed, signed_volume};
 use xtrude_core::{DVec3, Mesh};
 use xtrude_io::dae::{load_dae, load_dae_with, DaeLimits};
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::commands::{ExplodeGroupCommand, MoveGroupCommand};
 use xtrude_model::group::{add_mesh, materialize, Group};
 use xtrude_model::history::History;
@@ -411,10 +411,10 @@ fn test_repeated_components_share_one_prototype() {
     h.undo(&mut s);
     assert_eq!(origin_y(s.doc.find_group(inst[0].id).unwrap()), 0);
 
-    let out = tmp.join("spacers.igz");
-    igz::save_scene(&s, &out).unwrap();
+    let out = tmp.join("spacers.xtr");
+    document::save_scene(&s, &out).unwrap();
     let mut s2 = Scene::new();
-    igz::load_into(&mut s2, &out, None).unwrap();
+    document::load_into(&mut s2, &out, None).unwrap();
     let inst2: Vec<Group> = s2
         .doc
         .groups

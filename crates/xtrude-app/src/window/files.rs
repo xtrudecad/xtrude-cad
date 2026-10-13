@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use xtrude_core::camera::OrbitCamera;
 
 use xtrude_io::step::{self, HelperBackend, StepError, Tessellation};
-use xtrude_io::{dae, dxf_in, glb, gltf, igz, obj, skp, stl, threemf};
+use xtrude_io::{dae, document, dxf_in, glb, gltf, igz, obj, skp, stl, threemf};
 use xtrude_model::history::{CmdError, Command, FnCommand};
 use xtrude_model::i18n::tr;
 use xtrude_model::saved_views::CameraHome;
@@ -25,7 +25,13 @@ use super::progress::{ImportJob, ImportProgress, ImportResult};
 use super::{filedialogs, MainWindow, SaveChoice};
 use crate::tools::place_group::PlaceGroupTool;
 
-pub const IGZ_FILE_FILTER: &str = "Xtrude CAD document (*.igz);;All files (*)";
+/// Save and Save As: the Xtrude CAD document.
+pub const DOCUMENT_FILE_FILTER: &str = "Xtrude CAD document (*.xtr);;All files (*)";
+/// Open: an Xtrude CAD document, or an IngeTrazo one (opened as a new,
+/// unsaved document).
+pub const OPEN_FILE_FILTER: &str = "Xtrude CAD or IngeTrazo document (*.xtr *.igz);;All files (*)";
+/// File ▸ Import ▸ IngeTrazo document.
+pub const IGZ_FILE_FILTER: &str = "IngeTrazo document (*.igz);;All files (*)";
 
 /// The working volume an empty document opens on, in metres, by its
 /// length unit: a printer bed's worth for millimetres and centimetres, ten
@@ -35,6 +41,16 @@ fn new_document_volume(unit: &str) -> Option<f64> {
         "mm" | "cm" => Some(0.25),
         "in" | "in-frac" => Some(0.254),
         _ => None,
+    }
+}
+
+/// Read the document at `path` into `scene`: an IngeTrazo `.igz` by its
+/// reader, anything else as an Xtrude CAD document.
+fn load_document(scene: &mut Scene, path: &Path) -> Result<(), String> {
+    if igz::is_igz_path(path) {
+        igz::load_into(scene, path, None).map_err(|e| e.to_string())
+    } else {
+        document::load_into(scene, path, None).map_err(|e| e.to_string())
     }
 }
 
@@ -54,12 +70,10 @@ pub fn recent_paths() -> Vec<String> {
     }
 }
 
-/// Put `path` at the top of File ▸ Open Recent (native documents only).
+/// Put `path` at the top of File ▸ Open Recent (Xtrude CAD documents
+/// only).
 pub fn remember_recent(path: &Path) {
-    if !path
-        .extension()
-        .is_some_and(|e| e.eq_ignore_ascii_case("igz"))
-    {
+    if !document::is_document_path(path) {
         return;
     }
     let key = path
@@ -330,7 +344,7 @@ impl MainWindow {
         }
         let Some(path) = self.pick_open(
             &tr("Open Xtrude CAD document", &[]),
-            &tr(IGZ_FILE_FILTER, &[]),
+            &tr(OPEN_FILE_FILTER, &[]),
         ) else {
             return;
         };
@@ -380,7 +394,10 @@ impl MainWindow {
     }
 
     /// Open a document at `path` (File dialog, command line, double-click).
-    /// `.dae`, `.skp`, `.dxf`, `.step` and `.stp` import instead.
+    /// An IngeTrazo `.igz` opens as a new, unsaved document with no path,
+    /// so Save asks where to write the Xtrude CAD document and the `.igz`
+    /// is never overwritten. `.dae`, `.skp`, `.dxf`, `.step` and `.stp`
+    /// import instead.
     pub fn open_path(&mut self, path: &Path) -> bool {
         let suffix = path
             .extension()
@@ -393,9 +410,10 @@ impl MainWindow {
             "step" | "stp" => return self.import_step_path(path),
             _ => {}
         }
+        let from_igz = igz::is_igz_path(path);
         let mut fresh = Scene::new();
-        if let Err(e) = igz::load_into(&mut fresh, path, None) {
-            self.dialogs.warn(&tr("Open failed", &[]), &e.to_string());
+        if let Err(e) = load_document(&mut fresh, path) {
+            self.dialogs.warn(&tr("Open failed", &[]), &e);
             return false;
         }
         self.viewport.scene = fresh;
@@ -403,10 +421,16 @@ impl MainWindow {
         self.viewport.reset_document_caches();
         self.scene_serial += 1;
         self.apply_camera_home();
-        self.current_path = Some(path.to_path_buf());
-        remember_recent(path);
-        self.import_name = None;
-        self.mark_saved();
+        if from_igz {
+            self.current_path = None;
+            self.import_name = Some(file_name(path));
+            self.set_saved_version(-1);
+        } else {
+            self.current_path = Some(path.to_path_buf());
+            remember_recent(path);
+            self.import_name = None;
+            self.mark_saved();
+        }
         self.sync_style_menu();
         let repaired = self.viewport.scene.load_repairs;
         if repaired > 0 {
@@ -440,24 +464,29 @@ impl MainWindow {
 
     pub fn on_save_as(&mut self) {
         self.viewport.end_group_edit();
+        // a document opened from an `.igz` is offered under its name
+        let opened_igz = self
+            .import_name
+            .as_deref()
+            .map(Path::new)
+            .filter(|n| igz::is_igz_path(n));
         let default_name = self
             .current_path
-            .as_ref()
-            .and_then(|p| p.file_name())
+            .as_deref()
+            .or(opened_igz)
+            .and_then(Path::file_stem)
             .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_else(|| "untitled.igz".into());
+            .unwrap_or_else(|| "untitled".into());
+        let default_name = format!("{default_name}.{}", document::EXTENSION);
         let Some(mut path) = self.pick_save(
             &tr("Save Xtrude CAD document", &[]),
-            &tr(IGZ_FILE_FILTER, &[]),
+            &tr(DOCUMENT_FILE_FILTER, &[]),
             &default_name,
         ) else {
             return;
         };
-        if !path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("igz"))
-        {
-            path.set_extension("igz");
+        if !document::is_document_path(&path) {
+            path.set_extension(document::EXTENSION);
         }
         self.do_save(&path);
     }
@@ -473,7 +502,7 @@ impl MainWindow {
             }
         }
         self.viewport.scene.camera_home = Some(self.camera_home());
-        if let Err(e) = igz::save_scene(&self.viewport.scene, path) {
+        if let Err(e) = document::save_scene(&self.viewport.scene, path) {
             self.dialogs.warn(&tr("Save failed", &[]), &e.to_string());
             return;
         }
@@ -485,7 +514,8 @@ impl MainWindow {
     // ---- imports ---------------------------------------------------------------------------
     pub(super) fn on_import(&mut self, kind: &str) {
         let (title, filter) = match kind {
-            "igz" => ("Import Xtrude CAD document", IGZ_FILE_FILTER),
+            "xtr" => ("Import Xtrude CAD document", DOCUMENT_FILE_FILTER),
+            "igz" => ("Import IngeTrazo document", IGZ_FILE_FILTER),
             "skp" => ("Import SKP", "SKP (*.skp);;All files (*)"),
             "dae" => ("Import DAE", "COLLADA (*.dae);;All files (*)"),
             "glb" => (
@@ -502,7 +532,7 @@ impl MainWindow {
             return;
         };
         match kind {
-            "igz" => self.on_import_igz_path(&path),
+            "xtr" | "igz" => self.on_import_document_path(&path, title),
             "skp" => {
                 self.import_skp_path(&path);
             }
@@ -966,39 +996,42 @@ impl MainWindow {
         true
     }
 
-    fn on_import_igz_path(&mut self, path: &Path) {
+    /// File ▸ Import ▸ an Xtrude CAD or IngeTrazo document; `title` names
+    /// the import in its messages.
+    fn on_import_document_path(&mut self, path: &Path, title: &str) {
         if let Some(cur) = &self.current_path {
             let same = path.canonicalize().ok() == cur.canonicalize().ok();
             if same {
                 self.dialogs.warn(
-                    &tr("Import Xtrude CAD document", &[]),
+                    &tr(title, &[]),
                     &tr("That is the document you are editing.", &[]),
                 );
                 return;
             }
         }
-        match self.import_igz_path(path, None) {
+        match self.import_document_path(path, None) {
             Err(e) => self
                 .dialogs
-                .warn(&tr("Import Xtrude CAD document failed", &[]), &e),
+                .warn(&tr("{title} failed", &[("title", &tr(title, &[]))]), &e),
             Ok(None) => self.dialogs.warn(
-                &tr("Import Xtrude CAD document", &[]),
+                &tr(title, &[]),
                 &tr("“{name}” has no geometry.", &[("name", &file_name(path))]),
             ),
             Ok(Some(_)) => {}
         }
     }
 
-    /// Insert the document at `path` as ONE component: `at = None`
-    /// hands it to the placement tool; a point inserts it with its origin
-    /// there at once. A file that cannot be read changes nothing.
-    pub fn import_igz_path(
+    /// Insert the document at `path` (an Xtrude CAD document, or an
+    /// IngeTrazo `.igz`) as ONE component: `at = None` hands it to the
+    /// placement tool; a point inserts it with its origin there at once. A
+    /// file that cannot be read changes nothing.
+    pub fn import_document_path(
         &mut self,
         path: &Path,
         at: Option<DVec3>,
     ) -> Result<Option<xtrude_model::ids::GroupId>, String> {
         let mut temp = Scene::new();
-        igz::load_into(&mut temp, path, None).map_err(|e| e.to_string())?;
+        load_document(&mut temp, path)?;
         self.viewport.end_group_edit();
         let stem = path
             .file_stem()

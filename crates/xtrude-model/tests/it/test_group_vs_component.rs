@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Command tests: a group of groups is a GROUP; Make Component
 //! over several groups makes ONE component holding them; Make Independent keeps the
-//! subgroups. The .igz ones are in xtrude-io, the window one in xtrude-app.
+//! subgroups. The document ones are in xtrude-io, the window one in xtrude-app.
 
 use crate::common;
 

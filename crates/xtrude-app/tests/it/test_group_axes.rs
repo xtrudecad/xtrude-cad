@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Every group keeps its OWN axes through Move/Rotate/Scale/Flip, copies, Make
 //! Unique and Explode; the edit stack draws on each context's frame; the Scale
-//! box sits on them; Change Axes moves nothing. The .igz and .skp tests
+//! box sits on them; Change Axes moves nothing. The document and .skp tests
 //! live in crates/xtrude-io.
 
 use crate::common;

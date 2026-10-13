@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Hidden objects through .igz.
+//! Hidden objects through the document.
 
 use crate::common;
 use common::*;
@@ -26,7 +26,7 @@ fn boxm(m: &mut Mesh, x0: f64) {
 }
 
 #[test]
-fn test_a_hidden_face_round_trips_through_igz() {
+fn test_a_hidden_face_round_trips_through_document() {
     let mut s = Scene::new();
     boxm(s.mesh_mut(), 0.0);
     let f = s.mesh().face_ids()[2];
@@ -64,7 +64,7 @@ fn test_hidden_view_flags_travel_in_the_document_and_in_scenes() {
 }
 
 #[test]
-fn test_hidden_flag_and_uid_round_trip_through_igz() {
+fn test_hidden_flag_and_uid_round_trip_through_document() {
     let mut s = Scene::new();
     let mut ma = Mesh::new();
     boxm(&mut ma, 0.0);

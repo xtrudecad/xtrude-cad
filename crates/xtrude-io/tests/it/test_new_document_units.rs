@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! New-document units through .igz.
+//! New-document units through the document.
 
 use crate::common;
 use common::*;

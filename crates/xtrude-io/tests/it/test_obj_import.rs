@@ -4,21 +4,22 @@
 
 use crate::common;
 use common::*;
-use xtrude_io::{igz, obj};
+use xtrude_io::{document, obj};
 use xtrude_model::history::History;
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_igz_is_plain_json() {
+fn test_the_document_is_gzipped_json() {
     let mut s = Scene::new();
     let mut h = History::new();
     drawn_cube(&mut s, &mut h);
     let tmp = TmpDir::new();
-    let doc = tmp.join("plain.igz");
-    igz::save_scene(&s, &doc).unwrap();
-    let data: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&doc).unwrap()).unwrap();
-    assert_eq!(data["igz_format"], 1);
+    let doc = tmp.join("cube.xtr");
+    document::save_scene(&s, &doc).unwrap();
+    assert!(std::fs::read(&doc).unwrap().starts_with(b"\x1f\x8b"));
+    let data = document_json(&doc);
+    assert_eq!(data["xtrude_format"], 1);
+    assert!(data.get("igz_format").is_none());
 }
 
 #[test]

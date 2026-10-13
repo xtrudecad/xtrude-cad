@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The entity's geometry, the commands, the tool's 3-click placement,
-//! occlusion, custom text and linear (axis) dimensions. The .igz round trips
+//! occlusion, custom text and linear (axis) dimensions. The document round trips
 //! live in crates/xtrude-io.
 
 use crate::common;
@@ -304,7 +304,7 @@ fn test_select_double_click_edits_dimension_text() {
     SelectTool::new().on_double_click(&mut vp, &ToolContext::at(DVec3::ZERO));
     assert_eq!(asked.borrow().0, "H = <>");
     assert!(dim(&vp, id).text.is_none());
-    // (the .igz round trip of the text: crates/xtrude-io test_dimensions)
+    // (the document round trip of the text: crates/xtrude-io test_dimensions)
 }
 
 // ---- Linear (axis) dimensions ------------------------------------------------

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! A face has two sides and Paint paints the clicked one. The .igz test lives
+//! A face has two sides and Paint paints the clicked one. The document test lives
 //! in crates/xtrude-io. The drawing tests read the frame cache
 //! (`Viewport::frame_data`).
 

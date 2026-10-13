@@ -123,7 +123,7 @@ pub struct FilePick {
     /// A file to write; otherwise one to read.
     pub save: bool,
     pub title: String,
-    /// Like "Xtrude CAD document (*.igz)".
+    /// Like "Xtrude CAD document (*.xtr)".
     pub filter: String,
     /// The folder to start in; to save, the suggested path.
     pub start: PathBuf,
@@ -500,7 +500,7 @@ impl Dialogs for ShellDialogs {
     }
 }
 
-/// `"Xtrude CAD document (*.igz)"` → `("Xtrude CAD document", ["igz"])`.
+/// `"Xtrude CAD document (*.xtr)"` → `("Xtrude CAD document", ["xtr"])`.
 pub fn parse_filter(filter: &str) -> Option<(String, Vec<String>)> {
     let first = filter.split(";;").next()?;
     let open = first.find('(')?;

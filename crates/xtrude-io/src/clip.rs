@@ -4,8 +4,8 @@
 //! clipboard's wire format.
 //!
 //! The payload is a small zip: `clip.json` (reference point and the loose
-//! edges) plus `scene.igz`, a throwaway document holding the copied faces
-//! and groups — written by the regular `.igz` writer, so materials,
+//! edges) plus `scene.xtr`, a throwaway document holding the copied faces
+//! and groups — written by the regular document writer, so materials,
 //! component definitions and group axes travel exactly as in a file. The
 //! system-clipboard plumbing (MIME type [`MIME`], lazy rendering) lives in
 //! the application.
@@ -20,9 +20,13 @@ use xtrude_model::group::{Group, MeshTable};
 use xtrude_model::ids::MeshId;
 use xtrude_model::scene::Scene;
 
+use crate::document::{self, DocError};
+
 /// The system-clipboard MIME type of a model clipboard.
 pub const MIME: &str = "application/x-xtrude-clipboard";
-const FORMAT: i64 = 1;
+/// 2: the scene travels as an Xtrude CAD document (`scene.xtr`).
+const FORMAT: i64 = 2;
+const SCENE_ENTRY: &str = "scene.xtr";
 
 /// A model clipboard (`viewport.clipboard`).
 #[derive(Clone, Debug, Default)]
@@ -52,7 +56,7 @@ fn point(v: &Value) -> Option<DVec3> {
 }
 
 /// A clipboard as bytes for the system clipboard.
-pub fn encode(clip: &ClipData) -> Result<Vec<u8>, crate::igz::IgzError> {
+pub fn encode(clip: &ClipData) -> Result<Vec<u8>, DocError> {
     let mut scene = Scene::new();
     for (lp, holes, attrs) in &clip.faces {
         let m = scene.mesh_mut();
@@ -74,16 +78,16 @@ pub fn encode(clip: &ClipData) -> Result<Vec<u8>, crate::igz::IgzError> {
         "ref": xyz(clip.reference),
         "edges": clip.edges.iter().map(|(a, b, soft, curve)| json!([xyz(*a), xyz(*b), soft, curve])).collect::<Vec<_>>(),
     });
-    let doc = serde_json::to_vec_pretty(&crate::igz::scene_json(&scene))?;
+    let doc = document::to_bytes(&scene)?;
     let mut out = std::io::Cursor::new(Vec::new());
     {
         let mut z = zip::ZipWriter::new(&mut out);
         let opts = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Stored);
-        let werr = |e: zip::result::ZipError| crate::igz::IgzError::Io(std::io::Error::other(e));
+        let werr = |e: zip::result::ZipError| DocError::Io(std::io::Error::other(e));
         z.start_file("clip.json", opts).map_err(werr)?;
         z.write_all(head.to_string().as_bytes())?;
-        z.start_file("scene.igz", opts).map_err(werr)?;
+        z.start_file(SCENE_ENTRY, opts).map_err(werr)?;
         z.write_all(&doc)?;
         z.finish().map_err(werr)?;
     }
@@ -100,27 +104,13 @@ pub fn decode(data: &[u8]) -> Option<ClipData> {
         .read_to_string(&mut head)
         .ok()?;
     let mut doc = Vec::new();
-    z.by_name("scene.igz").ok()?.read_to_end(&mut doc).ok()?;
+    z.by_name(SCENE_ENTRY).ok()?.read_to_end(&mut doc).ok()?;
     let head: Value = serde_json::from_str(&head).ok()?;
     if head.get("format").and_then(Value::as_i64) != Some(FORMAT) {
         return None;
     }
-    let dir = std::env::temp_dir().join(format!(
-        "xtrude-clip-{}-{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
-    ));
-    std::fs::create_dir_all(&dir).ok()?;
-    let path = dir.join("scene.igz");
     let mut scene = Scene::new();
-    let loaded = std::fs::write(&path, &doc)
-        .ok()
-        .and_then(|_| crate::igz::load_into(&mut scene, &path, None).ok());
-    let _ = std::fs::remove_dir_all(&dir);
-    loaded?;
+    document::load_bytes(&mut scene, &doc, SCENE_ENTRY, None).ok()?;
     let m = scene.doc.mesh(MeshId::LOOSE);
     let faces = m
         .face_ids()

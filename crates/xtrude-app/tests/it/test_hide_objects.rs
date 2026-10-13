@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Hide on objects, faces and edges, the hidden views, and saved views that
-//! remember what is hidden. The .igz tests live in crates/xtrude-io. The chunk
+//! remember what is hidden. The document tests live in crates/xtrude-io. The chunk
 //! and ghost-pass tests read the frame (`Viewport::frame_data`) the window's
 //! viewport draws.
 

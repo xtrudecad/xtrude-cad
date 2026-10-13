@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! .igz tests: any JSON value travels. (Plugin data is JSON values by
+//! Document tests: any JSON value travels. (Plugin data is JSON values by
 //! type, so nothing unserialisable can be stored.)
 
 use crate::common;
 use common::*;
 use serde_json::json;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::scene::Scene;
 
 fn job() -> serde_json::Value {
@@ -28,21 +28,20 @@ fn test_plugin_data_survives_save_and_reopen() {
 #[test]
 fn test_a_document_without_plugin_data_stays_terse() {
     let tmp = TmpDir::new();
-    let p = tmp.join("m.igz");
-    igz::save_scene(&Scene::new(), &p).unwrap();
-    let doc: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&p).unwrap()).unwrap();
+    let p = tmp.join("m.xtr");
+    document::save_scene(&Scene::new(), &p).unwrap();
+    let doc = document_json(&p);
     assert!(doc["scene"].get("plugin_data").is_none());
 }
 
 #[test]
 fn test_opening_a_document_does_not_inherit_the_previous_ones() {
     let tmp = TmpDir::new();
-    let p = tmp.join("plain.igz");
-    igz::save_scene(&Scene::new(), &p).unwrap();
+    let p = tmp.join("plain.xtr");
+    document::save_scene(&Scene::new(), &p).unwrap();
     let mut s = Scene::new();
     s.doc.plugin_data.insert("myext".into(), job());
-    igz::load_into(&mut s, &p, None).unwrap();
+    document::load_into(&mut s, &p, None).unwrap();
     assert!(s.doc.plugin_data.is_empty());
 }
 
@@ -74,20 +73,19 @@ fn test_an_unserialisable_entry_costs_that_extension_only() {
 #[test]
 fn test_plugin_data_is_read_back_as_written_and_a_non_object_is_ignored() {
     let tmp = TmpDir::new();
-    let p = tmp.join("m.igz");
-    igz::save_scene(&Scene::new(), &p).unwrap();
-    let mut doc: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&p).unwrap()).unwrap();
+    let p = tmp.join("m.xtr");
+    document::save_scene(&Scene::new(), &p).unwrap();
+    let mut doc = document_json(&p);
     doc["scene"]["plugin_data"] = json!({"ok": {"a": 1}, "n": 7});
-    std::fs::write(&p, doc.to_string()).unwrap();
+    write_document_json(&p, &doc);
     let mut back = Scene::new();
-    igz::load_into(&mut back, &p, None).unwrap();
+    document::load_into(&mut back, &p, None).unwrap();
     assert_eq!(
         serde_json::Value::Object(back.doc.plugin_data.clone()),
         json!({"ok": {"a": 1}, "n": 7})
     );
     doc["scene"]["plugin_data"] = json!("garbage");
-    std::fs::write(&p, doc.to_string()).unwrap();
-    igz::load_into(&mut back, &p, None).unwrap();
+    write_document_json(&p, &doc);
+    document::load_into(&mut back, &p, None).unwrap();
     assert!(back.doc.plugin_data.is_empty());
 }

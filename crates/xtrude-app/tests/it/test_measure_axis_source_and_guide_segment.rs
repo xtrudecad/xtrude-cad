@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! A model AXIS is a guide source; from a VERTEX the Measure tool leaves a guide POINT
-//! with its segment back to the start, drawn in dashes and kept by the .igz.
+//! with its segment back to the start, drawn in dashes and kept by the document.
 
 use crate::common;
 use crate::common::FakeProbe;
@@ -132,7 +132,7 @@ fn test_vertex_to_vertex_only_measures_and_free_space_too() {
 }
 
 #[test]
-fn test_the_segment_is_drawn_and_survives_the_igz() {
+fn test_the_segment_is_drawn_and_survives_the_document() {
     let g = Guide::new(v(3., 1.), None, Some(v(1., 1.)));
     let (_coords, spans) = guide_vertices(std::slice::from_ref(&g), 0.2, &[], None, 0.0);
     assert!(!spans.is_empty() && spans[0].1 >= 2); // dashes along the segment
@@ -142,10 +142,10 @@ fn test_the_segment_is_drawn_and_survives_the_igz() {
     let mut vp = stub();
     vp.scene.doc.guides.push(g);
     let dir = TmpDir::new();
-    let path = dir.join("guide.igz");
-    xtrude_io::igz::save_scene(&vp.scene, &path).expect("save");
+    let path = dir.join("guide.xtr");
+    xtrude_io::document::save_scene(&vp.scene, &path).expect("save");
     let mut back = stub();
-    xtrude_io::igz::load_into(&mut back.scene, &path, None).expect("load");
+    xtrude_io::document::load_into(&mut back.scene, &path, None).expect("load");
     assert_eq!(back.scene.doc.guides.len(), 1);
     let b = &back.scene.doc.guides[0];
     assert!(b.origin.is_some_and(|o| (o - v(1., 1.)).length() < 1e-6));

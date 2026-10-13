@@ -303,7 +303,7 @@ fn test_box_face_is_its_own_surface() {
 }
 
 #[test]
-fn test_soft_survives_snapshot_and_igz() {
+fn test_soft_survives_snapshot_and_document() {
     let mut vp = pushed_cylinder();
     let n_soft = |vp: &Viewport| {
         let m = vp.scene.mesh();
@@ -314,10 +314,10 @@ fn test_soft_survives_snapshot_and_igz() {
     vp.redo();
     assert_eq!(n_soft(&vp), 24);
     let dir = TmpDir::new();
-    let path = dir.path().join("cyl.igz");
-    xtrude_io::igz::save_scene(&vp.scene, &path).unwrap();
+    let path = dir.path().join("cyl.xtr");
+    xtrude_io::document::save_scene(&vp.scene, &path).unwrap();
     let mut loaded = stub();
-    xtrude_io::igz::load_into(&mut loaded.scene, &path, None).unwrap();
+    xtrude_io::document::load_into(&mut loaded.scene, &path, None).unwrap();
     assert_eq!(n_soft(&loaded), 24);
 }
 

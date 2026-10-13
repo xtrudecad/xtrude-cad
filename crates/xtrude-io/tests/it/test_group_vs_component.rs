@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Groups and components through .igz.
+//! Groups and components through the document.
 
 use crate::common;
 use common::*;
 use std::collections::HashMap;
 use xtrude_core::math::DMat4;
 use xtrude_core::Mesh;
-use xtrude_io::igz;
+use xtrude_io::{document, igz};
 use xtrude_model::commands::{MakeComponentOfCommand, MakeNestedGroupCommand};
 use xtrude_model::group::{add_mesh, Group};
 use xtrude_model::history::History;
@@ -36,7 +36,7 @@ fn spacer(s: &mut Scene, h: &mut History) {
 }
 
 #[test]
-fn test_the_flag_survives_the_igz_and_old_files_read_as_groups() {
+fn test_the_flag_survives_the_document_and_old_files_read_as_groups() {
     let mut s = Scene::new();
     let mut h = History::new();
     spacer(&mut s, &mut h);
@@ -74,10 +74,10 @@ fn test_an_older_file_reads_its_groups_of_groups_as_groups() {
     imported.adopt(vec![placed]);
     s.doc.groups.push(imported);
     let tmp = TmpDir::new();
-    let new = tmp.join("new.igz");
-    igz::save_scene(&s, &new).unwrap();
-    let mut doc: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&new).unwrap()).unwrap();
+    let new = tmp.join("new.xtr");
+    document::save_scene(&s, &new).unwrap();
+    // an IngeTrazo document from before the key existed
+    let mut doc = igz_json(&s);
     for g in doc["scene"]["groups"].as_array_mut().unwrap() {
         strip(g);
     }

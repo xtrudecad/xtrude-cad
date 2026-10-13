@@ -9,7 +9,7 @@ license.workspace = true
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
-description = "Xtrude CAD file formats: .igz documents, STL, 3MF export, OBJ, DAE and GLB, and DXF and SKP import"
+description = "Xtrude CAD file formats: .xtr documents, .igz import, STL, 3MF export, OBJ, DAE and GLB, and DXF and SKP import"
 publish = false
 
 [dependencies]
@@ -21,6 +21,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 indexmap.workspace = true
 zip.workspace = true
+flate2.workspace = true
 roxmltree = "0.20"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 base64 = "0.22"

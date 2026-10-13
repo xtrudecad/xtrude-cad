@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Styles through .igz and saved views.
+//! Styles through the document and saved views.
 
 use crate::common;
 use common::*;
@@ -10,7 +10,7 @@ use xtrude_model::scene::Scene;
 use xtrude_model::style::Style;
 
 #[test]
-fn test_igz_roundtrip_keeps_the_style() {
+fn test_document_roundtrip_keeps_the_style() {
     let mut s = Scene::new();
     s.mesh_mut()
         .add_edge(v3(0., 0., 0.), v3(1., 0., 0.))

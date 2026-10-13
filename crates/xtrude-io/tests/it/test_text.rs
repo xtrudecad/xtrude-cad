@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Text through .igz.
+//! Text through the document.
 
 use crate::common;
 use common::*;
@@ -8,7 +8,7 @@ use xtrude_model::scene::Scene;
 use xtrude_model::textlabel::TextLabel;
 
 #[test]
-fn test_label_igz_round_trip() {
+fn test_label_document_round_trip() {
     let mut s = Scene::new();
     s.doc.text_labels.push(TextLabel::new(
         v3(1., 2., 3.),

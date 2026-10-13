@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The materials registry (the .igz round trip and the .skp import tests live
+//! The materials registry (the document round trip and the .skp import tests live
 //! in xtrude-io).
 
 use indexmap::IndexMap;

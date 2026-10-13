@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Materials through .igz.
+//! Materials through the document.
 
 use crate::common;
 use common::*;
 use xtrude_core::DVec3;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::commands::AddFaceCommand;
 use xtrude_model::edits::build_add_edges;
 use xtrude_model::history::{Command, History};
@@ -26,7 +26,7 @@ fn square(s: &mut Scene, h: &mut History) -> xtrude_core::FaceId {
 }
 
 #[test]
-fn test_color_survives_igz_round_trip() {
+fn test_color_survives_document_round_trip() {
     let mut s = Scene::new();
     let mut h = History::new();
     let f = square(&mut s, &mut h);
@@ -45,9 +45,8 @@ fn test_unpainted_face_writes_no_color_key() {
     let mut h = History::new();
     square(&mut s, &mut h);
     let tmp = TmpDir::new();
-    let path = tmp.join("plain.igz");
-    igz::save_scene(&s, &path).unwrap();
-    let data: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let path = tmp.join("plain.xtr");
+    document::save_scene(&s, &path).unwrap();
+    let data = document_json(&path);
     assert!(data["scene"]["faces"][0].get("color").is_none());
 }

@@ -37,7 +37,7 @@ const KEY_SCALE: f64 = 1e4;
 pub const STITCH_TOL: f64 = 1e-4;
 
 /// Monotonic id for drawn curves (circle/arc). Segments of one curve share
-/// it so selection groups them as one curve. Session-scoped; `.igz` load
+/// it so selection groups them as one curve. Session-scoped; a document load
 /// bumps it past any stored ids so new curves stay unique.
 static CURVE_COUNTER: AtomicI64 = AtomicI64::new(1);
 
@@ -643,7 +643,7 @@ impl Mesh {
         doomed.len()
     }
 
-    // ---- Bulk construction (imports / .igz load) --------------------------
+    // ---- Bulk construction (imports / document load) --------------------------
     /// Weld positions into shared vertices, in order — the exact equivalent
     /// of calling [`Mesh::vertex`] on each point. Returns the distinct
     /// vertices touched and, per input point, its index into that list.

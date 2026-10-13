@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Document tests — another .igz document inserted as ONE component. (The
+//! Document tests — another document inserted as ONE component. (The
 //! saved-file tests live in xtrude-io, the placement tests with the app's
 //! PlaceGroupTool.)
 

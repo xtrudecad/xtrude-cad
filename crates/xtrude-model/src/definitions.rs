@@ -9,7 +9,7 @@
 //! and component flags). Groups never share contents, even when two of
 //! them hold the same mesh id.
 //!
-//! The `.igz` file keeps children per copy, so a document can hold copies
+//! The document file keeps children per copy, so a document can hold copies
 //! of one prototype whose contents differ (one edited before the editor
 //! shared contents). [`split_divergent_copies`] gives each distinct
 //! content its own mesh, so that the invariant holds once a document is

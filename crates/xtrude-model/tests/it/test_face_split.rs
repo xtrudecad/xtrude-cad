@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Hole punching: a loop drawn strictly inside a coplanar face divides it.
-//! (The .igz round trip lives in xtrude-io.)
+//! (The document round trip lives in xtrude-io.)
 
 use crate::common;
 use common::*;

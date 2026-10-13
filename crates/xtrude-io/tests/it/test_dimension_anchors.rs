@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Dimension anchors through .igz.
+//! Dimension anchors through the document.
 
 use crate::common;
 use common::*;
 use serde_json::json;
-use xtrude_io::igz;
+use xtrude_io::{document, igz};
 use xtrude_model::commands::AddDimensionCommand;
 use xtrude_model::dimension::Dimension;
 use xtrude_model::history::History;
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_the_igz_round_trip_binds_again() {
+fn test_the_document_round_trip_binds_again() {
     let mut s = Scene::new();
     s.mesh_mut().add_face(
         &[
@@ -33,10 +33,10 @@ fn test_the_igz_round_trip_binds_again() {
         )),
     );
     let tmp = TmpDir::new();
-    let path = tmp.join("dimension.igz");
-    igz::save_scene(&s, &path).unwrap();
+    let path = tmp.join("dimension.xtr");
+    document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
-    igz::load_into(&mut back, &path, None).unwrap();
+    document::load_into(&mut back, &path, None).unwrap();
     assert!(back.doc.dimensions[0].anchored());
     let v = back.mesh().vertex_at(v3(4., 0., 0.)).unwrap();
     back.mesh_mut().move_vertex(v, v3(1., 0., 0.));
@@ -50,10 +50,10 @@ fn test_new_documents_take_arrows_and_old_ones_keep_their_ticks() {
     let mut s = Scene::new();
     s.dimension_style.ends = "none".into();
     let tmp = TmpDir::new();
-    let path = tmp.join("ends.igz");
-    igz::save_scene(&s, &path).unwrap();
+    let path = tmp.join("ends.xtr");
+    document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
-    igz::load_into(&mut back, &path, None).unwrap();
+    document::load_into(&mut back, &path, None).unwrap();
     assert_eq!(back.dimension_style.ends, "none");
     let payload = json!({"igz_format": 1, "scene": {
         "vertices": [], "edges": [], "faces": [],

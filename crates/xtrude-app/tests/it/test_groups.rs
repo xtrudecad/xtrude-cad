@@ -13,7 +13,7 @@ use xtrude_app::tools::pushpull::PushPullTool;
 use xtrude_app::tools::{Tool, ToolContext};
 use xtrude_app::viewport::Viewport;
 use xtrude_core::{FaceId, Mesh};
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::commands::{
     ExplodeGroupCommand, MakeGroupCommand, MergeGroupsCommand, MoveGroupCommand,
 };
@@ -138,12 +138,12 @@ fn test_group_keeps_soft_and_curve_flags_round_trip() {
     let g = make_group(&mut vp, &faces, &edges);
     assert_eq!(soft_curve(group_mesh(&vp, g)), before);
 
-    // .igz round-trip keeps the group smooth.
+    // document round-trip keeps the group smooth.
     let dir = TmpDir::new();
-    let p = dir.path().join("cyl.igz");
-    igz::save_scene(&vp.scene, &p).unwrap();
+    let p = dir.path().join("cyl.xtr");
+    document::save_scene(&vp.scene, &p).unwrap();
     let mut scene2 = Scene::new();
-    igz::load_into(&mut scene2, &p, None).unwrap();
+    document::load_into(&mut scene2, &p, None).unwrap();
     let g2 = &scene2.doc.groups[0];
     assert_eq!(soft_curve(scene2.doc.mesh(g2.mesh)).0, before.0);
 

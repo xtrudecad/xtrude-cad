@@ -8,17 +8,17 @@ use common::window;
 use std::path::PathBuf;
 
 #[test]
-fn test_title_shows_imported_name_until_igz_takes_over() {
+fn test_title_shows_imported_name_until_the_document_takes_over() {
     let mut w = window();
     assert!(w.title.contains("Untitled"));
     w.import_name = Some("good part.skp".into()); // what an import sets
     w.update_title();
     assert!(w.title.contains("good part.skp"));
-    w.current_path = Some(PathBuf::from("/tmp/project.igz")); // Save As wins
+    w.current_path = Some(PathBuf::from("/tmp/project.xtr")); // Save As wins
     w.update_title();
-    assert!(w.title.contains("project.igz") && !w.title.contains("good part"));
+    assert!(w.title.contains("project.xtr") && !w.title.contains("good part"));
     w.current_path = None; // New clears the import name
     w.import_name = None;
     w.update_title();
-    assert!(!w.title.contains("project.igz"));
+    assert!(!w.title.contains("project.xtr"));
 }

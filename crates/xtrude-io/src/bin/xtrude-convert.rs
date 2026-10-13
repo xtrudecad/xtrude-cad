@@ -3,6 +3,10 @@
 //! `xtrude-convert IN OUT`: open a document and write it back out in the
 //! format of OUT's extension.
 //!
+//! IN is an Xtrude CAD document (`.xtr`), an IngeTrazo document
+//! (`.igz`, read only), an STL or an OBJ; OUT an Xtrude CAD document, an
+//! STL or an OBJ.
+//!
 //! IN may also be a STEP file (`.step`, `.stp`): it is read by the
 //! `xtrude-step` helper (next to this program, or named by
 //! `XTRUDE_STEP_HELPER`) with the default tessellation, and what the
@@ -21,6 +25,9 @@ fn run(input: &Path, output: &Path) -> Result<(), String> {
             .unwrap_or_default()
     };
     match ext(input).as_str() {
+        xtrude_io::document::EXTENSION => {
+            xtrude_io::document::load_into(&mut scene, input, None).map_err(|e| e.to_string())?
+        }
         "igz" => xtrude_io::igz::load_into(&mut scene, input, None).map_err(|e| e.to_string())?,
         // STL files are millimetres (what the exporters write)
         "stl" => xtrude_io::stl::load_stl(
@@ -47,7 +54,9 @@ fn run(input: &Path, output: &Path) -> Result<(), String> {
         other => return Err(format!("cannot read .{other}")),
     }
     match ext(output).as_str() {
-        "igz" => xtrude_io::igz::save_scene(&scene, output).map_err(|e| e.to_string())?,
+        xtrude_io::document::EXTENSION => {
+            xtrude_io::document::save_scene(&scene, output).map_err(|e| e.to_string())?
+        }
         "stl" => xtrude_io::stl::save_stl(&scene, output, "mm").map_err(|e| e.to_string())?,
         "obj" => xtrude_io::obj::save_obj(&scene, output).map_err(|e| e.to_string())?,
         other => return Err(format!("cannot write .{other}")),

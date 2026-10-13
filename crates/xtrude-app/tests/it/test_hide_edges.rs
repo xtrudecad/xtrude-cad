@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The reversible hide of edges and the Shift+eraser stroke, and the drawn
-//! edges following a hide. The .igz test lives in crates/xtrude-io.
+//! edges following a hide. The document test lives in crates/xtrude-io.
 
 use crate::common;
 

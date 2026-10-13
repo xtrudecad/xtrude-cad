@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The shared-vertex, non-manifold mesh.
-//! (`test_mesh_is_read_compatible_with_igz_save` lives in xtrude-io.)
+//! (`test_mesh_is_read_compatible_with_document_save` lives in xtrude-io.)
 
 use std::collections::HashSet;
 

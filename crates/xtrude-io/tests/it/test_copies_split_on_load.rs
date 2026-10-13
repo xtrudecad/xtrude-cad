@@ -7,7 +7,7 @@ use crate::common;
 use common::*;
 use xtrude_core::math::DMat4;
 use xtrude_core::Mesh;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::group::{add_mesh, Group};
 use xtrude_model::ids::MeshId;
 use xtrude_model::scene::Scene;
@@ -41,15 +41,15 @@ fn two_copies(component: bool, kids: impl Fn(MeshId, usize) -> Vec<Group>) -> Sc
 
 fn reopened(s: &Scene) -> Scene {
     let tmp = TmpDir::new();
-    let path = tmp.join("legs.igz");
-    igz::save_scene(s, &path).unwrap();
+    let path = tmp.join("legs.xtr");
+    document::save_scene(s, &path).unwrap();
     assert_eq!(
         payload(&path)["protos"].as_array().map(Vec::len),
         Some(2),
         "the file holds the two prototypes once each",
     );
     let mut back = Scene::new();
-    igz::load_into(&mut back, &path, None).unwrap();
+    document::load_into(&mut back, &path, None).unwrap();
     back
 }
 
@@ -122,10 +122,10 @@ fn test_a_difference_deep_inside_splits_every_level_above_it() {
         s.doc.groups.push(lg);
     }
     let tmp = TmpDir::new();
-    let path = tmp.join("body.igz");
-    igz::save_scene(&s, &path).unwrap();
+    let path = tmp.join("body.xtr");
+    document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
-    igz::load_into(&mut back, &path, None).unwrap();
+    document::load_into(&mut back, &path, None).unwrap();
     let (a, b) = (&back.doc.groups[0], &back.doc.groups[1]);
     assert_ne!(a.mesh, b.mesh, "the legs split");
     assert_ne!(a.children[0].mesh, b.children[0].mesh, "the servos split");
@@ -159,10 +159,10 @@ fn test_a_group_sharing_a_component_mesh_does_not_split_it() {
     let group = placed(body, "Group", 20., false);
     s.doc.groups.extend([comp, copy, group]);
     let tmp = TmpDir::new();
-    let path = tmp.join("mixed.igz");
-    igz::save_scene(&s, &path).unwrap();
+    let path = tmp.join("mixed.xtr");
+    document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
-    igz::load_into(&mut back, &path, None).unwrap();
+    document::load_into(&mut back, &path, None).unwrap();
     let meshes: Vec<MeshId> = back.doc.groups.iter().map(|g| g.mesh).collect();
     assert_eq!(meshes[0], meshes[1]);
     assert_eq!(meshes[0], meshes[2], "the group is not a copy: left alone");

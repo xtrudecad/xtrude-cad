@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Document tests — one group per letter, and the text stays editable. (The
-//! .igz round trips live in xtrude-io; the select/menu/place-tool tests with
+//! document round trips live in xtrude-io; the select/menu/place-tool tests with
 //! the app.)
 
 use crate::common;

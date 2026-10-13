@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Model dimensions attached to the geometry they measure — they follow a
 //! scale and re-measure, Move slides the line while the ends keep their
-//! vertices. The .igz tests live in crates/xtrude-io.
+//! vertices. The document tests live in crates/xtrude-io.
 
 use crate::common;
 use crate::common::FakeProbe;

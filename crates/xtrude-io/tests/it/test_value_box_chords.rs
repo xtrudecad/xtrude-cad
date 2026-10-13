@@ -15,11 +15,9 @@ fn test_a_document_with_a_nan_corner_opens_without_it() {
     quad(good.mesh_mut(), 0., 1., 0., 1., 0.);
     good.mesh_mut()
         .add_face(&[v3(3., 0., 0.), v3(4., 0., 0.), v3(4., 1., 0.)], &[]);
-    igz::save_scene(&good, &path).unwrap();
     // Damage it the way it happened: one corner and one guide become NaN,
     // written as the bare word NaN.
-    let mut data: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let mut data = igz_json(&good);
     data["scene"]["faces"][1]["vertices"][0][0] = serde_json::json!("@NAN@");
     data["scene"]["guides"] = serde_json::json!([{"point": ["@NAN@", "@NAN@", "@NAN@"], "direction": null, "origin": null}]);
     let text = data.to_string().replace("\"@NAN@\"", "NaN");

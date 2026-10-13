@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Curves through .igz.
+//! Curves through the document.
 
 use crate::common;
 use common::*;
 use xtrude_core::DVec3;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::commands::{AddFaceCommand, TagCurveCommand};
 use xtrude_model::edits::build_add_edges;
 use xtrude_model::history::{Command, History};
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_curve_id_survives_igz() {
+fn test_curve_id_survives_document() {
     let mut s = Scene::new();
     let mut h = History::new();
     let pts: Vec<DVec3> = (0..24)
@@ -32,10 +32,10 @@ fn test_curve_id_survives_igz() {
     let mut cmd = build_add_edges(&s, &segs, false, extra, None);
     h.execute(&mut s, &mut *cmd);
     let tmp = TmpDir::new();
-    let path = tmp.join("circle.igz");
-    igz::save_scene(&s, &path).unwrap();
+    let path = tmp.join("circle.xtr");
+    document::save_scene(&s, &path).unwrap();
     let mut loaded = Scene::new();
-    igz::load_into(&mut loaded, &path, None).unwrap();
+    document::load_into(&mut loaded, &path, None).unwrap();
     let m = loaded.mesh();
     let ids: std::collections::HashSet<Option<i64>> =
         m.edge_ids().iter().map(|&e| m.edge(e).curve).collect();

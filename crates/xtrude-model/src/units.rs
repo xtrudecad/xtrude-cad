@@ -47,7 +47,7 @@ impl Units {
         }
     }
 
-    /// `{"length": ..., "precision": ...}` for the `.igz`.
+    /// `{"length": ..., "precision": ...}` for the document file.
     pub fn to_json(&self) -> Value {
         serde_json::json!({"length": self.length, "precision": self.precision})
     }
@@ -58,7 +58,8 @@ pub fn default_model_units() -> Units {
     Units::new("mm", 2)
 }
 
-/// The units of an `.igz` written before documents always carried them.
+/// The units of an IngeTrazo `.igz` written before documents always
+/// carried them.
 pub fn legacy_document_units() -> Units {
     Units::new("m", 2)
 }

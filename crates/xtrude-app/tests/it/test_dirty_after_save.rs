@@ -13,7 +13,7 @@ use xtrude_model::entity::EntityRef;
 use xtrude_model::group::{add_mesh, Group};
 use xtrude_model::scene::SelectMode;
 
-/// Six groups saved to plan.igz.
+/// Six groups saved to plan.xtr.
 fn doc(dir: &TmpDir) -> PathBuf {
     let mut w0 = window();
     let sc = &mut w0.viewport.scene;
@@ -33,7 +33,7 @@ fn doc(dir: &TmpDir) -> PathBuf {
         sc.doc.groups.push(g);
     }
     sc.version += 1;
-    let path = dir.path().join("plan.igz");
+    let path = dir.path().join("plan.xtr");
     w0.do_save(&path);
     path
 }

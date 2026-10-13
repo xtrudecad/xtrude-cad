@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The materials registry through .igz and .skp.
+//! The materials registry through the document and .skp.
 
 use crate::common;
 use common::*;
@@ -8,7 +8,7 @@ use xtrude_model::materials::Material;
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_igz_roundtrip_plain() {
+fn test_document_roundtrip_plain() {
     let mut s = Scene::new();
     let f = quad(s.mesh_mut(), 0., 2., 0., 2., 0.);
     let mat = Material::new("Brick red", Some([0.7, 0.3, 0.2]), None);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The document carries its units; a bare number is typed in them and every
-//! readout shows them. The .igz round trip is in xtrude-io.
+//! readout shows them. The document round trip is in xtrude-io.
 
 use crate::common;
 

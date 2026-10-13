@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Layers through .igz.
+//! Layers through the document.
 
 use crate::common;
 use common::*;
@@ -8,7 +8,7 @@ use xtrude_model::layers::{layer_name, Layer, DEFAULT_LAYER};
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_layers_and_labels_round_trip_igz() {
+fn test_layers_and_labels_round_trip_document() {
     let mut s = Scene::new();
     let f = quad(s.mesh_mut(), 0., 2., 0., 2., 0.);
     let e = s.mesh().edge_ids()[0];

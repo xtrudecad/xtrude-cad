@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Hidden edges through .igz.
+//! Hidden edges through the document.
 
 use crate::common;
 use common::*;
@@ -10,7 +10,7 @@ use xtrude_model::history::History;
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_hidden_round_trips_through_igz() {
+fn test_hidden_round_trips_through_document() {
     let mut s = Scene::new();
     let mut h = History::new();
     let sq = [

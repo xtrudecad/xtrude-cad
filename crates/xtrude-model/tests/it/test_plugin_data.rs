@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Plugin data: the document half (the .igz round trips live in xtrude-io).
+//! Plugin data: the document half (the document round trips live in xtrude-io).
 
 use serde_json::json;
 use xtrude_model::commands::SetPluginDataCommand;

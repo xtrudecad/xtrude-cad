@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Guide entities and commands, Eraser strokes (the .igz round trip lives in
+//! Guide entities and commands, Eraser strokes (the document round trip lives in
 //! crates/xtrude-io).
 
 use crate::common;

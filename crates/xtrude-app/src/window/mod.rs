@@ -266,7 +266,7 @@ fn style_tip(name: &str) -> &'static str {
     }
 }
 
-pub const SAVE_TIP: &str = "Save the document to its .igz file.";
+pub const SAVE_TIP: &str = "Save the document to its .xtr file.";
 pub const TEXT3D_TIP: &str =
     "Build a text as an extruded solid, in the font and height you choose.";
 
@@ -542,7 +542,12 @@ impl MainWindow {
                 "Ctrl+Shift+N",
                 "Open another Xtrude CAD window with its own document; copy and paste work between them.",
             ),
-            ("open", "Open…", OPEN, "Open an Xtrude CAD document (.igz) in place of this one."),
+            (
+                "open",
+                "Open…",
+                OPEN,
+                "Open an Xtrude CAD document (.xtr) in place of this one; an IngeTrazo document (.igz) opens as a new, unsaved one.",
+            ),
             ("save", "Save", SAVE, SAVE_TIP),
             (
                 "save_as",
@@ -561,9 +566,14 @@ impl MainWindow {
         }
         for (id, text, tip) in [
             (
-                "import:igz",
-                "Xtrude CAD document as component (.igz)…",
+                "import:xtr",
+                "Xtrude CAD document as component (.xtr)…",
                 "Bring another Xtrude CAD document in as one component, placed with a click.",
+            ),
+            (
+                "import:igz",
+                "IngeTrazo document as component (.igz)…",
+                "Bring an IngeTrazo document in as one component, placed with a click.",
             ),
             (
                 "import:skp",
@@ -946,9 +956,11 @@ impl MainWindow {
             S,
             M(
                 tr("Import", &[]),
-                ["igz", "skp", "dae", "glb", "obj", "stl", "step", "dxf"]
-                    .map(|k| act(&format!("import:{k}")))
-                    .to_vec(),
+                [
+                    "xtr", "igz", "skp", "dae", "glb", "obj", "stl", "step", "dxf",
+                ]
+                .map(|k| act(&format!("import:{k}")))
+                .to_vec(),
             ),
             M(
                 tr("Export", &[]),

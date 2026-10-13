@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Nested instances through .igz.
+//! Nested instances through the document.
 
 use crate::common;
 use common::*;
 use xtrude_core::math::DMat4;
 use xtrude_core::Mesh;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::group::{add_mesh, iter_placements, world_mesh, Group};
 use xtrude_model::scene::Scene;
 
 #[test]
-fn test_igz_round_trip_keeps_the_tree_and_writes_the_prototype_once() {
+fn test_document_round_trip_keeps_the_tree_and_writes_the_prototype_once() {
     let mut s = Scene::new();
     let mut m = Mesh::new();
     quad(&mut m, 0., 1., 0., 1., 0.);
@@ -30,8 +30,8 @@ fn test_igz_round_trip_keeps_the_tree_and_writes_the_prototype_once() {
     top.layer = Some("fasteners".into());
     s.doc.groups.push(top);
     let tmp = TmpDir::new();
-    let path = tmp.join("screw.igz");
-    igz::save_scene(&s, &path).unwrap();
+    let path = tmp.join("screw.xtr");
+    document::save_scene(&s, &path).unwrap();
     let raw = payload(&path);
     assert_eq!(raw["protos"].as_array().unwrap().len(), 1);
     assert_eq!(raw["protos"][0]["faces"].as_array().unwrap().len(), 1);
@@ -39,7 +39,7 @@ fn test_igz_round_trip_keeps_the_tree_and_writes_the_prototype_once() {
     let kids = raw["groups"][0]["children"].as_array().unwrap();
     assert!(kids.len() == 1 && kids[0]["children"].as_array().unwrap().len() == 2);
     let mut back = Scene::new();
-    igz::load_into(&mut back, &path, None).unwrap();
+    document::load_into(&mut back, &path, None).unwrap();
     assert_eq!(back.doc.groups.len(), 1);
     let g = &back.doc.groups[0];
     assert_eq!(g.layer.as_deref(), Some("fasteners"));

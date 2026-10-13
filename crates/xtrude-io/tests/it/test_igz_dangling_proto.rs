@@ -23,9 +23,7 @@ fn test_an_instance_with_a_missing_prototype_opens_with_its_own_mesh() {
         g.xform = Some(DMat4::from_translation(v3(x, 0., 0.)));
         s.doc.groups.push(g);
     }
-    igz::save_scene(&s, &path).unwrap();
-    let mut doc: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+    let mut doc = igz_json(&s);
     let groups = doc["scene"]["groups"].as_array_mut().expect("groups");
     assert_eq!(groups.len(), 2);
     for g in groups {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Materials: the command and Paint tool tests (the .igz ones live in
+//! Materials: the command and Paint tool tests (the document ones live in
 //! crates/xtrude-io/tests/it/test_materials.rs).
 
 use crate::common;

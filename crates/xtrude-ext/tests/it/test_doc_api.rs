@@ -309,8 +309,8 @@ fn failing_script_leaves_the_saved_file_byte_identical() {
     let mut fx = common::fixture();
     assert!(fx.run("Box", BOX));
     let dir = common::TmpDir::new();
-    let (before, after) = (dir.0.join("before.igz"), dir.0.join("after.igz"));
-    xtrude_io::igz::save_scene(&fx.scene, &before).expect("save before");
+    let (before, after) = (dir.0.join("before.xtr"), dir.0.join("after.xtr"));
+    xtrude_io::document::save_scene(&fx.scene, &before).expect("save before");
     let src = format!(
         "{BOX}
 local g = doc:make_group(doc:faces(), 'Box')
@@ -320,7 +320,7 @@ error('late')
 "
     );
     assert!(!fx.run("Broken", &src));
-    xtrude_io::igz::save_scene(&fx.scene, &after).expect("save after");
+    xtrude_io::document::save_scene(&fx.scene, &after).expect("save after");
     let read = |p: &std::path::Path| std::fs::read(p).expect("saved file");
     assert!(read(&before) == read(&after), "the saved files differ");
 }

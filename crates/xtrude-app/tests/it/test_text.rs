@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Leader text (3D text geometry lives in crates/xtrude-core, the .igz round
+//! Leader text (3D text geometry lives in crates/xtrude-core, the document round
 //! trip in crates/xtrude-io).
 
 use crate::common;

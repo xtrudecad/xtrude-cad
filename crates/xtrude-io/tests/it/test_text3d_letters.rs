@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! 3D text letters through .igz.
+//! 3D text letters through the document.
 
 use crate::common;
 use common::*;
@@ -8,7 +8,7 @@ use xtrude_model::scene::Scene;
 use xtrude_model::text3d::{make_text_group, text_is_pristine, TextParams};
 
 #[test]
-fn test_text_group_round_trips_through_igz() {
+fn test_text_group_round_trips_through_document() {
     let mut s = Scene::new();
     let g = make_text_group(&mut s.doc.meshes, &TextParams::new("Bracket", "Sans")).unwrap();
     s.doc.groups.push(g);
@@ -25,7 +25,7 @@ fn test_text_group_round_trips_through_igz() {
 }
 
 #[test]
-fn test_a_fresh_text_is_pristine_and_stays_so_through_igz() {
+fn test_a_fresh_text_is_pristine_and_stays_so_through_document() {
     let mut s = Scene::new();
     let g = make_text_group(&mut s.doc.meshes, &TextParams::new("Bracket", "Sans")).unwrap();
     assert!(g.text3d.as_ref().unwrap()["hash"]

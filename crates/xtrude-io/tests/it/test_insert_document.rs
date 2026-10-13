@@ -6,7 +6,7 @@ use crate::common;
 use common::*;
 use xtrude_core::math::DMat4;
 use xtrude_core::Mesh;
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::group::{add_mesh, placement_points, Group};
 use xtrude_model::ids::MeshId;
 use xtrude_model::insert::import_document_as_component;
@@ -35,10 +35,10 @@ fn test_the_saved_file_comes_in_as_a_component() {
     lid.xform = Some(DMat4::IDENTITY);
     src.doc.groups.extend([peg, lid]);
     let tmp = TmpDir::new();
-    let path = tmp.join("bracket.igz");
-    igz::save_scene(&src, &path).unwrap();
+    let path = tmp.join("bracket.xtr");
+    document::save_scene(&src, &path).unwrap();
     let mut temp = Scene::new();
-    igz::load_into(&mut temp, &path, None).unwrap();
+    document::load_into(&mut temp, &path, None).unwrap();
     let mut dst = Scene::new();
     let stem = path.file_stem().unwrap().to_string_lossy().into_owned();
     let comp = import_document_as_component(&mut dst.doc, temp.doc.clone(), &stem).unwrap();
@@ -54,7 +54,7 @@ fn test_the_saved_file_comes_in_as_a_component() {
 }
 
 #[test]
-fn test_the_igz_keeps_the_group_names() {
+fn test_the_document_keeps_the_group_names() {
     let mut src = Scene::new();
     let a = Group::new(
         add_mesh(&mut src.doc.meshes, square(0., 1., 0.)),

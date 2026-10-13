@@ -7,7 +7,7 @@ use common::*;
 use std::sync::Arc;
 use xtrude_core::math::MatExt;
 use xtrude_core::{DVec3, Mesh};
-use xtrude_io::igz;
+use xtrude_io::document;
 use xtrude_model::commands::{MakeComponentOfCommand, MakeNestedGroupCommand};
 use xtrude_model::group::{add_mesh, copy_group, iter_placements, Group};
 use xtrude_model::history::History;
@@ -96,13 +96,13 @@ fn world_z(s: &Scene, g: &Group) -> Vec<i64> {
 }
 
 #[test]
-fn test_the_sharing_survives_the_igz() {
+fn test_the_sharing_survives_the_document() {
     let s = component_and_copy();
     let tmp = TmpDir::new();
-    let path = tmp.join("spacer.igz");
-    igz::save_scene(&s, &path).unwrap();
+    let path = tmp.join("spacer.xtr");
+    document::save_scene(&s, &path).unwrap();
     let mut loaded = Scene::new();
-    igz::load_into(&mut loaded, &path, None).unwrap();
+    document::load_into(&mut loaded, &path, None).unwrap();
     let (c1, c2) = (loaded.doc.groups[0].clone(), loaded.doc.groups[1].clone());
     assert!(c1
         .children
