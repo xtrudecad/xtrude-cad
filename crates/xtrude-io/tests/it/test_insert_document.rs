@@ -35,7 +35,7 @@ fn test_the_saved_file_comes_in_as_a_component() {
     lid.xform = Some(DMat4::IDENTITY);
     src.doc.groups.extend([peg, lid]);
     let tmp = TmpDir::new();
-    let path = tmp.join("bracket.xtr");
+    let path = tmp.join("bracket.xtrude");
     document::save_scene(&src, &path).unwrap();
     let mut temp = Scene::new();
     document::load_into(&mut temp, &path, None).unwrap();

@@ -28,7 +28,7 @@ fn test_plugin_data_survives_save_and_reopen() {
 #[test]
 fn test_a_document_without_plugin_data_stays_terse() {
     let tmp = TmpDir::new();
-    let p = tmp.join("m.xtr");
+    let p = tmp.join("m.xtrude");
     document::save_scene(&Scene::new(), &p).unwrap();
     let doc = document_json(&p);
     assert!(doc["scene"].get("plugin_data").is_none());
@@ -37,7 +37,7 @@ fn test_a_document_without_plugin_data_stays_terse() {
 #[test]
 fn test_opening_a_document_does_not_inherit_the_previous_ones() {
     let tmp = TmpDir::new();
-    let p = tmp.join("plain.xtr");
+    let p = tmp.join("plain.xtrude");
     document::save_scene(&Scene::new(), &p).unwrap();
     let mut s = Scene::new();
     s.doc.plugin_data.insert("myext".into(), job());
@@ -73,7 +73,7 @@ fn test_an_unserialisable_entry_costs_that_extension_only() {
 #[test]
 fn test_plugin_data_is_read_back_as_written_and_a_non_object_is_ignored() {
     let tmp = TmpDir::new();
-    let p = tmp.join("m.xtr");
+    let p = tmp.join("m.xtrude");
     document::save_scene(&Scene::new(), &p).unwrap();
     let mut doc = document_json(&p);
     doc["scene"]["plugin_data"] = json!({"ok": {"a": 1}, "n": 7});

@@ -99,7 +99,7 @@ fn world_z(s: &Scene, g: &Group) -> Vec<i64> {
 fn test_the_sharing_survives_the_document() {
     let s = component_and_copy();
     let tmp = TmpDir::new();
-    let path = tmp.join("spacer.xtr");
+    let path = tmp.join("spacer.xtrude");
     document::save_scene(&s, &path).unwrap();
     let mut loaded = Scene::new();
     document::load_into(&mut loaded, &path, None).unwrap();

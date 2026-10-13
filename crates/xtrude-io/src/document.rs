@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The Xtrude CAD document (`.xtr`, `application/x-xtrudecad`).
+//! The Xtrude CAD document (`.xtrude`, `application/x-xtrudecad`).
 //!
 //! Gzip-compressed JSON, versioned by `xtrude_format`:
 //!
@@ -31,7 +31,7 @@ pub use crate::schema::Progress;
 use crate::schema::{non_finite_where, read_payload, scene_payload};
 
 /// The document's file extension, without the dot.
-pub const EXTENSION: &str = "xtr";
+pub const EXTENSION: &str = "xtrude";
 /// The document's MIME type.
 pub const MIME: &str = "application/x-xtrudecad";
 /// The format this build writes, and the newest it reads.

@@ -77,7 +77,7 @@ fn test_saving_it_again_writes_none_of_the_removed_blocks() {
     let mut s = Scene::new();
     igz::load_into(&mut s, &fixture(), None).unwrap();
     let tmp = TmpDir::new();
-    let out = tmp.join("again.xtr");
+    let out = tmp.join("again.xtrude");
     document::save_scene(&s, &out).unwrap();
     let p = payload(&out);
     let keys: HashSet<&str> = p.as_object().unwrap().keys().map(String::as_str).collect();

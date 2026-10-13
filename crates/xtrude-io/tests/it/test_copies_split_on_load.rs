@@ -41,7 +41,7 @@ fn two_copies(component: bool, kids: impl Fn(MeshId, usize) -> Vec<Group>) -> Sc
 
 fn reopened(s: &Scene) -> Scene {
     let tmp = TmpDir::new();
-    let path = tmp.join("legs.xtr");
+    let path = tmp.join("legs.xtrude");
     document::save_scene(s, &path).unwrap();
     assert_eq!(
         payload(&path)["protos"].as_array().map(Vec::len),
@@ -122,7 +122,7 @@ fn test_a_difference_deep_inside_splits_every_level_above_it() {
         s.doc.groups.push(lg);
     }
     let tmp = TmpDir::new();
-    let path = tmp.join("body.xtr");
+    let path = tmp.join("body.xtrude");
     document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
     document::load_into(&mut back, &path, None).unwrap();
@@ -159,7 +159,7 @@ fn test_a_group_sharing_a_component_mesh_does_not_split_it() {
     let group = placed(body, "Group", 20., false);
     s.doc.groups.extend([comp, copy, group]);
     let tmp = TmpDir::new();
-    let path = tmp.join("mixed.xtr");
+    let path = tmp.join("mixed.xtrude");
     document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
     document::load_into(&mut back, &path, None).unwrap();

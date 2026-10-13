@@ -55,7 +55,7 @@ fn data_round_trips_through_a_document_file() {
             &json!({ "name": "spur", "nested": { "a": "b" }, "on": true, "sizes": [1.5, 2], "teeth": 20 })
         )
     );
-    let path = dir.0.join("data.xtr");
+    let path = dir.0.join("data.xtrude");
     document::save_scene(&fx.scene, &path).expect("saves");
     let mut back = common::fixture();
     document::load_into(&mut back.scene, &path, None).expect("loads");

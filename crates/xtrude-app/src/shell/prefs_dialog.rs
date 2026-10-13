@@ -247,7 +247,7 @@ fn field(ui: &mut egui::Ui, f: PrefsField, p: &mut Preferences) {
             ui.label("");
             ui.checkbox(
                 &mut p.backup,
-                tr("Keep a backup of the previous save (.xtr.bak)", &[]),
+                tr("Keep a backup of the previous save (.xtrude.bak)", &[]),
             );
         }
         PrefsField::UndoSteps => {

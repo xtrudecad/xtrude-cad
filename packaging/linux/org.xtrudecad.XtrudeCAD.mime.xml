@@ -3,16 +3,16 @@
   SPDX-License-Identifier: GPL-3.0-or-later
   SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 
-  The Xtrude CAD document (.xtr), and IngeTrazo's .igz, which Xtrude CAD
+  The Xtrude CAD document (.xtrude), and IngeTrazo's .igz, which Xtrude CAD
   opens as a new, unsaved document. IngeTrazo registers the .igz type
   under the same name; it is defined here too, so that it exists without
-  IngeTrazo installed. Both are matched by name only: an .xtr is gzip and
+  IngeTrazo installed. Both are matched by name only: an .xtrude is gzip and
   an .igz JSON or a zip, and their magic would claim every such file.
 -->
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
   <mime-type type="application/x-xtrudecad">
     <comment>Xtrude CAD document</comment>
-    <glob pattern="*.xtr"/>
+    <glob pattern="*.xtrude"/>
   </mime-type>
   <mime-type type="application/x-ingetrazo">
     <comment>IngeTrazo document</comment>

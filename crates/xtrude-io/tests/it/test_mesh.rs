@@ -28,7 +28,7 @@ fn test_mesh_is_read_compatible_with_document_save() {
     );
     m.add_edge(v3(0., 0., 0.), v3(0., 5., 0.)).unwrap();
     let tmp = TmpDir::new();
-    let out = tmp.join("mesh.xtr");
+    let out = tmp.join("mesh.xtrude");
     document::save_scene(&s, &out).unwrap();
     let data = document_json(&out);
     assert_eq!(

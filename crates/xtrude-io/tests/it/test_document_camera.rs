@@ -19,7 +19,7 @@ fn test_the_camera_travels_in_the_document() {
                      "pitch": 0.4, "fov_deg": 50.0, "perspective": false});
     s.camera_home = cam.as_object().map(CameraHome::from_json);
     let tmp = TmpDir::new();
-    let path = tmp.join("cam.xtr");
+    let path = tmp.join("cam.xtrude");
     document::save_scene(&s, &path).unwrap();
     let mut back = Scene::new();
     document::load_into(&mut back, &path, None).unwrap();
@@ -48,7 +48,7 @@ fn test_the_loader_reports_progress() {
         s.doc.groups.push(g);
     }
     let tmp = TmpDir::new();
-    let path = tmp.join("groups.xtr");
+    let path = tmp.join("groups.xtrude");
     document::save_scene(&s, &path).unwrap();
     let mut seen: Vec<(f64, String)> = Vec::new();
     let mut back = Scene::new();

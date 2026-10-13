@@ -558,7 +558,7 @@ fn test_shared_copies_stay_one_component_through_a_save() {
     vp.end_group_edit();
     let dir = std::env::temp_dir().join(format!("xtrude-legs-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let path = dir.join("legs.xtr");
+    let path = dir.join("legs.xtrude");
     xtrude_io::document::save_scene(&vp.scene, &path).unwrap();
     let mut back = xtrude_model::scene::Scene::new();
     xtrude_io::document::load_into(&mut back, &path, None).unwrap();

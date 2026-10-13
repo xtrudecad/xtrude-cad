@@ -85,7 +85,7 @@ pub trait Dialogs {
     fn report(&mut self, title: &str, text: &str) {
         self.warn(title, text)
     }
-    /// A file to read (`filter` like "Xtrude CAD document (*.xtr)"),
+    /// A file to read (`filter` like "Xtrude CAD document (*.xtrude)"),
     /// starting in the folder `start`.
     fn open_file(&mut self, title: &str, filter: &str, start: &Path) -> Option<PathBuf>;
     /// A file to write; `start` is the suggested path (folder and name).

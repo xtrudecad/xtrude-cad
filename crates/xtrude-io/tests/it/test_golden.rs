@@ -4,7 +4,7 @@
 //!
 //! tests/golden/recipes.json lists modelling recipes; for each, the
 //! folder holds a reference document and its exports
-//! (<name>.xtr/.stl/.obj/.mtl), snapshots of Xtrude CAD's own output.
+//! (<name>.xtrude/.stl/.obj/.mtl), snapshots of Xtrude CAD's own output.
 //! Here each recipe is replayed on the engine and compared with the
 //! reference document (same topology, positions within
 //! 1e-5 m, same paint), and the reference document is opened and
@@ -490,7 +490,7 @@ fn recipes() -> Vec<Value> {
 
 fn load_golden(name: &str) -> Scene {
     let mut s = Scene::new();
-    document::load_into(&mut s, &golden(&format!("{name}.xtr")), None).expect("golden");
+    document::load_into(&mut s, &golden(&format!("{name}.xtrude")), None).expect("golden");
     s
 }
 
@@ -530,14 +530,14 @@ fn write_references() {
     for (name, scene) in &mut scenes {
         let mut next = 0;
         number_uids(&mut scene.doc.groups, &mut next);
-        document::save_scene(scene, &golden(&format!("{name}.xtr")))
-            .unwrap_or_else(|e| panic!("{name}.xtr: {e}"));
+        document::save_scene(scene, &golden(&format!("{name}.xtrude")))
+            .unwrap_or_else(|e| panic!("{name}.xtrude: {e}"));
         let saved = load_golden(name);
         stl::save_stl(&saved, &golden(&format!("{name}.stl")), "mm")
             .unwrap_or_else(|e| panic!("{name}.stl: {e}"));
         obj::save_obj(&saved, &golden(&format!("{name}.obj")))
             .unwrap_or_else(|e| panic!("{name}.obj: {e}"));
-        eprintln!("wrote tests/golden/{name}.xtr .stl .obj .mtl");
+        eprintln!("wrote tests/golden/{name}.xtrude .stl .obj .mtl");
     }
 }
 
@@ -653,12 +653,12 @@ fn reexport_failures() -> Vec<String> {
         ) {
             failures.push(format!("{name}.obj: {e}"));
         }
-        let out_doc = tmp.join(&format!("{name}.xtr"));
+        let out_doc = tmp.join(&format!("{name}.xtrude"));
         document::save_scene(&s, &out_doc).unwrap();
         let mut back = Scene::new();
         document::load_into(&mut back, &out_doc, None).unwrap();
         if let Err(e) = compare_scenes(&name, &back, &s) {
-            failures.push(format!("{name}.xtr round trip: {e}"));
+            failures.push(format!("{name}.xtrude round trip: {e}"));
         }
     }
     failures
@@ -686,7 +686,7 @@ fn test_golden_files_match_the_recipes() {
     let mut expected: BTreeSet<String> = BTreeSet::from(["recipes.json".to_string()]);
     for r in recipes() {
         let name = recipe_name(&r);
-        for ext in ["xtr", "stl", "obj", "mtl"] {
+        for ext in ["xtrude", "stl", "obj", "mtl"] {
             expected.insert(format!("{name}.{ext}"));
         }
     }

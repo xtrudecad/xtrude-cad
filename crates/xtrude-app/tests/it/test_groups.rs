@@ -140,7 +140,7 @@ fn test_group_keeps_soft_and_curve_flags_round_trip() {
 
     // document round-trip keeps the group smooth.
     let dir = TmpDir::new();
-    let p = dir.path().join("cyl.xtr");
+    let p = dir.path().join("cyl.xtrude");
     document::save_scene(&vp.scene, &p).unwrap();
     let mut scene2 = Scene::new();
     document::load_into(&mut scene2, &p, None).unwrap();

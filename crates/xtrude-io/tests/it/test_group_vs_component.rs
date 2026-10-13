@@ -74,7 +74,7 @@ fn test_an_older_file_reads_its_groups_of_groups_as_groups() {
     imported.adopt(vec![placed]);
     s.doc.groups.push(imported);
     let tmp = TmpDir::new();
-    let new = tmp.join("new.xtr");
+    let new = tmp.join("new.xtrude");
     document::save_scene(&s, &new).unwrap();
     // an IngeTrazo document from before the key existed
     let mut doc = igz_json(&s);

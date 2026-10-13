@@ -32,7 +32,7 @@ fn test_curve_id_survives_document() {
     let mut cmd = build_add_edges(&s, &segs, false, extra, None);
     h.execute(&mut s, &mut *cmd);
     let tmp = TmpDir::new();
-    let path = tmp.join("circle.xtr");
+    let path = tmp.join("circle.xtrude");
     document::save_scene(&s, &path).unwrap();
     let mut loaded = Scene::new();
     document::load_into(&mut loaded, &path, None).unwrap();

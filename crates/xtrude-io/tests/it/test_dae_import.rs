@@ -411,7 +411,7 @@ fn test_repeated_components_share_one_prototype() {
     h.undo(&mut s);
     assert_eq!(origin_y(s.doc.find_group(inst[0].id).unwrap()), 0);
 
-    let out = tmp.join("spacers.xtr");
+    let out = tmp.join("spacers.xtrude");
     document::save_scene(&s, &out).unwrap();
     let mut s2 = Scene::new();
     document::load_into(&mut s2, &out, None).unwrap();

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! File formats: the Xtrude CAD document (`.xtr`), IngeTrazo's `.igz`
+//! File formats: the Xtrude CAD document (`.xtrude`), IngeTrazo's `.igz`
 //! (read only), the mesh interchange formats, 3MF and the SketchUp `.skp`
 //! and STEP imports.
 

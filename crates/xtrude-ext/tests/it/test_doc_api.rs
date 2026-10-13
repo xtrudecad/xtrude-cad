@@ -309,7 +309,7 @@ fn failing_script_leaves_the_saved_file_byte_identical() {
     let mut fx = common::fixture();
     assert!(fx.run("Box", BOX));
     let dir = common::TmpDir::new();
-    let (before, after) = (dir.0.join("before.xtr"), dir.0.join("after.xtr"));
+    let (before, after) = (dir.0.join("before.xtrude"), dir.0.join("after.xtrude"));
     xtrude_io::document::save_scene(&fx.scene, &before).expect("save before");
     let src = format!(
         "{BOX}
