@@ -10,7 +10,7 @@ it.
 ## 1. Prepare the release commit
 
 1. Bump the workspace `version` in `Cargo.toml` (the single source:
-   `xtrude --version`, the `.igz` `app_version`, the tarball's name) and
+   `xtrude --version`, the document's `app_version`, the tarball's name) and
    let Cargo update `Cargo.lock` (`cargo check`; CI builds with
    `--locked`).
 2. Add the release to the top of `<releases>` in
