@@ -171,3 +171,90 @@ fn test_export_without_an_extension_asks_which_format() {
     let asked = &d.borrow().asked;
     assert_eq!(asked.iter().filter(|(k, _)| k == "choose").count(), 2);
 }
+
+/// What a model needs to be found again after an export and an Open:
+/// some faces or edges.
+fn has_geometry(w: &MainWindow) -> bool {
+    face_count(w) > 0 || !w.viewport.scene.mesh().edges.is_empty()
+}
+
+#[test]
+fn test_each_export_format_writes_its_file_and_mesh_ones_open_again() {
+    let dir = TmpDir::new();
+    let mut w = window();
+    assert!(w.open_path(&golden("box.xtrude")));
+    let d = scripted(&mut w);
+    for (ext, magic) in [
+        ("stl", &b""[..]),
+        ("3mf", b"PK\x03\x04"),
+        ("obj", b""),
+        ("glb", b"glTF"),
+        ("dae", b"<?xml"),
+    ] {
+        let out = dir.path().join(format!("box.{ext}"));
+        d.borrow_mut().save_paths.push(Some(out.clone()));
+        w.trigger("export");
+        let bytes = std::fs::read(&out).unwrap_or_else(|e| panic!("{ext}: {e}"));
+        assert!(!bytes.is_empty() && bytes.starts_with(magic), "{ext}");
+        assert_eq!(
+            w.status_message
+                .as_ref()
+                .map(|m| m.text.contains(&format!("box.{ext}"))),
+            Some(true),
+            "{ext}"
+        );
+    }
+    assert!(
+        d.borrow().asked.iter().all(|(k, _)| k == "save"),
+        "{:?}",
+        d.borrow().asked
+    );
+    // the formats Open reads, without a question, open as a new document
+    for ext in ["glb", "dae"] {
+        let mut w = window();
+        let d = scripted(&mut w);
+        d.borrow_mut()
+            .open_paths
+            .push(Some(dir.path().join(format!("box.{ext}"))));
+        w.trigger("open");
+        assert!(has_geometry(&w), "{ext}");
+        assert_eq!(w.import_name, Some(format!("box.{ext}")));
+        assert!(w.current_path.is_none());
+        let asked = &d.borrow().asked;
+        assert_eq!(asked.len(), 1, "{ext}: {asked:?}");
+    }
+}
+
+#[test]
+fn test_open_of_a_dxf_starts_a_new_document_with_its_linework() {
+    let mut w = window();
+    assert!(w.open_path(&golden("box.xtrude")));
+    assert!(face_count(&w) > 0);
+    let d = scripted(&mut w);
+    let dxf =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/data/dxf/lines_and_polylines.dxf");
+    d.borrow_mut().open_paths.push(Some(dxf));
+    d.borrow_mut().choices.push(Some(0)); // the DXF's unit
+    w.trigger("open");
+    assert_eq!(w.import_name.as_deref(), Some("lines_and_polylines.dxf"));
+    assert!(w.current_path.is_none());
+    assert!(!w.viewport.scene.doc.groups.is_empty());
+    assert_eq!(face_count(&w), 0, "none of the box is left");
+}
+
+#[test]
+fn test_open_of_an_unreadable_skp_reports_it_on_a_new_document() {
+    let dir = TmpDir::new();
+    let bad = dir.path().join("broken.skp");
+    std::fs::write(&bad, b"not a .skp file at all").unwrap();
+    let mut w = window();
+    assert!(w.open_path(&golden("box.xtrude")));
+    let d = scripted(&mut w);
+    d.borrow_mut().open_paths.push(Some(bad));
+    w.trigger("open");
+    assert!(w.current_path.is_none());
+    assert_eq!(face_count(&w), 0);
+    let asked = &d.borrow().asked;
+    assert_eq!(asked.len(), 2, "{asked:?}");
+    assert_eq!(asked[1].0, "warn");
+}
