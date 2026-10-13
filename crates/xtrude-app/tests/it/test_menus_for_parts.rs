@@ -72,16 +72,25 @@ fn test_file_exports_stl_first() {
     let file = menu(&w, "File");
     let at = file.iter().position(|e| e == "Export ▸").unwrap();
     assert_eq!(
-        file[at + 1..at + 7],
+        file[at + 1..],
         [
             "  export:stl",
             "  export:3mf",
             "  export:obj",
             "  export:glb",
             "  export:dae",
-            "  export:image"
+            "-",
+            "quit"
         ]
     );
+}
+
+/// No image export: the view on screen is a screenshot away, and the
+/// action never saved anything.
+#[test]
+fn test_no_image_export() {
+    let w = common::window();
+    assert!(w.actions.get("export:image").is_none());
 }
 
 #[test]

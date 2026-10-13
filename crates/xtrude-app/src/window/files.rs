@@ -1146,11 +1146,6 @@ impl MainWindow {
             .and_then(|p| p.file_stem())
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "untitled".into());
-        if kind == "image" {
-            // Rendering the view off screen belongs to the GPU shell.
-            self.export_image_requested = Some(base);
-            return;
-        }
         let (label, suffix, filter) = match kind {
             "stl" => ("STL", "stl", "STL mesh (*.stl)"),
             "3mf" => ("3MF", "3mf", "3MF package (*.3mf)"),
