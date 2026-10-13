@@ -120,7 +120,7 @@ fn test_the_file_picked_before_a_question_is_not_asked_for_again() {
         seen.borrow_mut().push(pick.clone());
         Some(obj.clone())
     });
-    w.trigger("import:obj");
+    w.trigger("import");
     assert!(matches!(pending(&dialogs), Some(Question::Choose { .. })));
     answer(&dialogs, Answer::Index(Some(0)), &mut w, &mut tray);
     assert_eq!(picks.borrow().len(), 1, "{:?}", picks.borrow());

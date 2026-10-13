@@ -142,7 +142,7 @@ pub fn desktop_file_dialog(pick: &FilePick) -> Option<PathBuf> {
     } else {
         d = d.set_directory(&pick.start);
     }
-    if let Some((name, exts)) = parse_filter(&pick.filter) {
+    for (name, exts) in parse_filters(&pick.filter) {
         d = d.add_filter(name, &exts);
     }
     if pick.save {
@@ -500,15 +500,21 @@ impl Dialogs for ShellDialogs {
     }
 }
 
-/// `"Xtrude CAD document (*.xtrude)"` → `("Xtrude CAD document", ["xtrude"])`.
-pub fn parse_filter(filter: &str) -> Option<(String, Vec<String>)> {
-    let first = filter.split(";;").next()?;
-    let open = first.find('(')?;
-    let close = first[open..].find(')')? + open;
-    let name = first[..open].trim().to_string();
-    let exts: Vec<String> = first[open + 1..close]
+/// `"Xtrude CAD document (*.xtrude)"` → `("Xtrude CAD document", ["xtrude"])`;
+/// `None` for a line with no extension ("All files (*)").
+pub fn parse_filter(line: &str) -> Option<(String, Vec<String>)> {
+    let open = line.find('(')?;
+    let close = line[open..].find(')')? + open;
+    let name = line[..open].trim().to_string();
+    let exts: Vec<String> = line[open + 1..close]
         .split_whitespace()
         .filter_map(|p| p.strip_prefix("*.").map(String::from))
         .collect();
     (!exts.is_empty()).then_some((name, exts))
+}
+
+/// Every line of a filter (`;;` between lines) that names extensions, in
+/// order: the dialog's list of formats, the first one selected.
+pub fn parse_filters(filter: &str) -> Vec<(String, Vec<String>)> {
+    filter.split(";;").filter_map(parse_filter).collect()
 }

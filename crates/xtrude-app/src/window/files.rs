@@ -27,12 +27,82 @@ use crate::tools::place_group::PlaceGroupTool;
 
 /// Save and Save As: the Xtrude CAD document.
 pub const DOCUMENT_FILE_FILTER: &str = "Xtrude CAD document (*.xtrude);;All files (*)";
-/// Open: an Xtrude CAD document, or an IngeTrazo one (opened as a new,
-/// unsaved document).
-pub const OPEN_FILE_FILTER: &str =
-    "Xtrude CAD or IngeTrazo document (*.xtrude *.igz);;All files (*)";
-/// File ▸ Import ▸ IngeTrazo document.
-pub const IGZ_FILE_FILTER: &str = "IngeTrazo document (*.igz);;All files (*)";
+
+/// A file format the Open, Import and Export dialogs offer: `key` names
+/// it in the code, `name` and `exts` make its line in the dialog's list.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FileFormat {
+    pub key: &'static str,
+    pub name: &'static str,
+    pub exts: &'static [&'static str],
+}
+
+impl FileFormat {
+    const fn new(key: &'static str, name: &'static str, exts: &'static [&'static str]) -> Self {
+        FileFormat { key, name, exts }
+    }
+}
+
+/// What Open and Import read, in the order their dialogs list them: the
+/// documents first, then the other formats.
+pub const IMPORT_FORMATS: &[FileFormat] = &[
+    FileFormat::new("xtrude", "Xtrude CAD document", &["xtrude"]),
+    FileFormat::new("igz", "IngeTrazo document", &["igz"]),
+    FileFormat::new("step", "STEP", &["step", "stp"]),
+    FileFormat::new("stl", "STL mesh", &["stl"]),
+    FileFormat::new("obj", "Wavefront OBJ", &["obj"]),
+    FileFormat::new("glb", "glTF binary", &["glb", "gltf"]),
+    FileFormat::new("dae", "COLLADA", &["dae"]),
+    FileFormat::new("dxf", "AutoCAD DXF", &["dxf"]),
+    FileFormat::new("skp", "SKP", &["skp"]),
+];
+
+/// What Export writes, in the order its dialog lists them.
+pub const EXPORT_FORMATS: &[FileFormat] = &[
+    FileFormat::new("stl", "STL mesh, millimetres", &["stl"]),
+    FileFormat::new("3mf", "3MF package, millimetres", &["3mf"]),
+    FileFormat::new("obj", "Wavefront OBJ", &["obj"]),
+    FileFormat::new("glb", "glTF binary", &["glb"]),
+    FileFormat::new("dae", "COLLADA", &["dae"]),
+];
+
+/// A file dialog's filter for `formats`: "Supported formats" (every
+/// extension) first when `all_first`, then one line per format, then
+/// "All files".
+pub fn formats_filter(formats: &[FileFormat], all_first: bool) -> String {
+    let patterns = |exts: &[&str]| {
+        exts.iter()
+            .map(|e| format!("*.{e}"))
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let mut lines = Vec::new();
+    if all_first {
+        let every: Vec<&str> = formats
+            .iter()
+            .flat_map(|f| f.exts.iter().copied())
+            .collect();
+        lines.push(format!(
+            "{} ({})",
+            tr("Supported formats", &[]),
+            patterns(&every)
+        ));
+    }
+    for f in formats {
+        lines.push(format!("{} ({})", tr(f.name, &[]), patterns(f.exts)));
+    }
+    lines.push(tr("All files (*)", &[]));
+    lines.join(";;")
+}
+
+/// The format among `formats` that `path`'s extension names.
+pub fn format_of(formats: &[FileFormat], path: &Path) -> Option<FileFormat> {
+    let ext = path.extension()?.to_string_lossy().to_lowercase();
+    formats
+        .iter()
+        .find(|f| f.exts.contains(&ext.as_str()))
+        .copied()
+}
 
 /// The working volume an empty document opens on, in metres, by its
 /// length unit: a printer bed's worth for millimetres and centimetres, ten
@@ -192,6 +262,11 @@ impl MainWindow {
         if !self.confirm_discard(&tr("Discard current drawing?", &[])) {
             return;
         }
+        self.clear_document();
+    }
+
+    /// Replace the document with a new, empty one, without asking.
+    fn clear_document(&mut self) {
         self.viewport.scene.clear();
         self.viewport.scene.version += 1;
         self.viewport.history.clear();
@@ -343,13 +418,21 @@ impl MainWindow {
         if !self.confirm_discard(&tr("Discard current drawing and open another?", &[])) {
             return;
         }
-        let Some(path) = self.pick_open(
-            &tr("Open Xtrude CAD document", &[]),
-            &tr(OPEN_FILE_FILTER, &[]),
-        ) else {
+        let Some(path) = self.pick_open(&tr("Open", &[]), &formats_filter(IMPORT_FORMATS, true))
+        else {
             return;
         };
-        self.open_path(&path);
+        // a format that is not a document starts a new one and comes in
+        // as its import does
+        match format_of(IMPORT_FORMATS, &path) {
+            Some(f) if !matches!(f.key, "xtrude" | "igz") => {
+                self.clear_document();
+                self.import_as(f, &path);
+            }
+            _ => {
+                self.open_path(&path);
+            }
+        }
     }
 
     pub fn open_recent(&mut self, path: &Path) {
@@ -513,41 +596,44 @@ impl MainWindow {
     }
 
     // ---- imports ---------------------------------------------------------------------------
-    pub(super) fn on_import(&mut self, kind: &str) {
-        let (title, filter) = match kind {
-            "xtrude" => ("Import Xtrude CAD document", DOCUMENT_FILE_FILTER),
-            "igz" => ("Import IngeTrazo document", IGZ_FILE_FILTER),
-            "skp" => ("Import SKP", "SKP (*.skp);;All files (*)"),
-            "dae" => ("Import DAE", "COLLADA (*.dae);;All files (*)"),
-            "glb" => (
-                "Import glTF/GLB",
-                "glTF binary (*.glb *.gltf);;All files (*)",
-            ),
-            "obj" => ("Import OBJ", "Wavefront OBJ (*.obj);;All files (*)"),
-            "stl" => ("Import STL", "STL mesh (*.stl);;All files (*)"),
-            "dxf" => ("Import DXF", "AutoCAD DXF (*.dxf);;All files (*)"),
-            "step" => ("Import STEP", "STEP (*.step *.stp);;All files (*)"),
-            _ => return,
-        };
-        let Some(path) = self.pick_open(&tr(title, &[]), &tr(filter, &[])) else {
+    /// File ▸ Import: one dialog listing every format; the file's
+    /// extension says which import runs.
+    pub(super) fn on_import(&mut self) {
+        let Some(path) = self.pick_open(&tr("Import", &[]), &formats_filter(IMPORT_FORMATS, true))
+        else {
             return;
         };
-        match kind {
-            "xtrude" | "igz" => self.on_import_document_path(&path, title),
+        match format_of(IMPORT_FORMATS, &path) {
+            Some(f) => self.import_as(f, &path),
+            None => self.dialogs.warn(
+                &tr("Import", &[]),
+                &tr(
+                    "Xtrude CAD cannot import “{name}”: its format is not one it reads.",
+                    &[("name", &file_name(&path))],
+                ),
+            ),
+        }
+    }
+
+    /// Bring the file at `path`, in format `f`, into the document.
+    fn import_as(&mut self, f: FileFormat, path: &Path) {
+        match f.key {
+            "xtrude" => self.on_import_document_path(path, "Import Xtrude CAD document"),
+            "igz" => self.on_import_document_path(path, "Import IngeTrazo document"),
             "skp" => {
-                self.import_skp_path(&path);
+                self.import_skp_path(path);
             }
             "dae" => {
-                self.import_dae_path(&path);
+                self.import_dae_path(path);
             }
-            "glb" => self.import_glb_path(&path),
-            "obj" => self.import_obj_path(&path),
-            "stl" => self.import_stl_path(&path),
+            "glb" => self.import_glb_path(path),
+            "obj" => self.import_obj_path(path),
+            "stl" => self.import_stl_path(path),
             "step" => {
-                self.import_step_path(&path);
+                self.import_step_path(path);
             }
             _ => {
-                self.import_dxf_path(&path);
+                self.import_dxf_path(path);
             }
         }
     }
@@ -997,7 +1083,7 @@ impl MainWindow {
         true
     }
 
-    /// File ▸ Import ▸ an Xtrude CAD or IngeTrazo document; `title` names
+    /// File ▸ Import of an Xtrude CAD or IngeTrazo document; `title` names
     /// the import in its messages.
     fn on_import_document_path(&mut self, path: &Path, title: &str) {
         if let Some(cur) = &self.current_path {
@@ -1173,40 +1259,66 @@ impl MainWindow {
     }
 
     // ---- exports ----------------------------------------------------------------------------
-    pub(super) fn on_export(&mut self, kind: &str) {
+    /// File ▸ Export: one dialog listing every format; the file's
+    /// extension says which is written. A name without one asks which.
+    pub(super) fn on_export(&mut self) {
         let base = self
             .current_path
             .as_ref()
             .and_then(|p| p.file_stem())
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "untitled".into());
-        let (label, suffix, filter) = match kind {
-            "stl" => ("STL", "stl", "STL mesh (*.stl)"),
-            "3mf" => ("3MF", "3mf", "3MF package (*.3mf)"),
-            "obj" => ("OBJ", "obj", "Wavefront OBJ (*.obj)"),
-            "glb" => ("GLB", "glb", "glTF binary (*.glb)"),
-            _ => ("COLLADA", "dae", "COLLADA (*.dae)"),
-        };
+        let first = EXPORT_FORMATS[0];
         let Some(mut path) = self.pick_save(
-            &tr("Export {label}", &[("label", &label)]),
-            &tr(filter, &[]),
-            &format!("{base}.{suffix}"),
+            &tr("Export", &[]),
+            &formats_filter(EXPORT_FORMATS, false),
+            &format!("{base}.{}", first.exts[0]),
         ) else {
             return;
         };
-        if !path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case(suffix))
-        {
-            path.set_extension(suffix);
-        }
+        let format = match format_of(EXPORT_FORMATS, &path) {
+            Some(f) => f,
+            None => {
+                let names: Vec<String> = EXPORT_FORMATS.iter().map(|f| tr(f.name, &[])).collect();
+                let Some(i) = self.dialogs.choose(
+                    &tr("Export", &[]),
+                    &tr("Export “{name}” as", &[("name", &file_name(&path))]),
+                    &names,
+                    0,
+                ) else {
+                    return;
+                };
+                let Some(&f) = EXPORT_FORMATS.get(i) else {
+                    return;
+                };
+                let mut with_ext = path.into_os_string();
+                with_ext.push(format!(".{}", f.exts[0]));
+                path = PathBuf::from(with_ext);
+                f
+            }
+        };
         let scene = &self.viewport.scene;
-        let result: Result<(), String> = match suffix {
-            "stl" => stl::save_stl(scene, &path, "mm").map_err(|e| e.to_string()),
-            "3mf" => threemf::save_3mf(scene, &path).map_err(|e| e.to_string()),
-            "obj" => obj::save_obj(scene, &path).map_err(|e| e.to_string()),
-            "glb" => gltf::save_glb(scene, &path).map_err(|e| e.to_string()),
-            _ => dae::save_dae(scene, &path, &base).map_err(|e| e.to_string()),
+        let (label, result): (&str, Result<(), String>) = match format.key {
+            "stl" => (
+                "STL",
+                stl::save_stl(scene, &path, "mm").map_err(|e| e.to_string()),
+            ),
+            "3mf" => (
+                "3MF",
+                threemf::save_3mf(scene, &path).map_err(|e| e.to_string()),
+            ),
+            "obj" => (
+                "OBJ",
+                obj::save_obj(scene, &path).map_err(|e| e.to_string()),
+            ),
+            "glb" => (
+                "GLB",
+                gltf::save_glb(scene, &path).map_err(|e| e.to_string()),
+            ),
+            _ => (
+                "COLLADA",
+                dae::save_dae(scene, &path, &base).map_err(|e| e.to_string()),
+            ),
         };
         match result {
             Err(e) => self

@@ -81,7 +81,7 @@ fn test_stl_simplification_defaults_to_principal_planes() {
         .open_paths
         .push(Some(tmp.join("sample.stl")));
     dialogs.borrow_mut().stl.push(None); // rejected
-    win.trigger("import:stl");
+    win.trigger("import");
     assert_eq!(dialogs.borrow().stl_modes, vec![1]); // «Merge coplanar triangles on XY, XZ and YZ»
 }
 

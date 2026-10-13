@@ -18,7 +18,7 @@ use std::process::Command;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-use xtrude_app::window::{MainWindow, MenuItem, ScriptedDialogs};
+use xtrude_app::window::{MainWindow, ScriptedDialogs};
 use xtrude_core::math::DMat4;
 use xtrude_core::DVec3;
 use xtrude_io::step::protocol::{encode, RawFace, RawInstance, RawPart, RawStep};
@@ -159,24 +159,15 @@ mod stand_in {
 use stand_in::{retrying, script, writing};
 
 #[test]
-fn test_the_import_menu_offers_step() {
-    let (win, _) = window();
-    let mut imports = Vec::new();
-    for (_, items) in &win.menus {
-        for item in items {
-            if let MenuItem::Menu(title, sub) = item {
-                if title.replace('&', "") == "Import" {
-                    imports.extend(sub.iter().filter_map(|i| match i {
-                        MenuItem::Action(id) => Some(id.clone()),
-                        _ => None,
-                    }));
-                }
-            }
-        }
-    }
-    assert!(imports.contains(&"import:step".to_string()), "{imports:?}");
-    let action = win.actions.get("import:step").expect("the action");
-    assert!(action.text.contains(".step") && action.text.contains(".stp"));
+fn test_the_import_dialog_offers_step() {
+    use xtrude_app::shell::dialogs::parse_filters;
+    use xtrude_app::window::files::{formats_filter, IMPORT_FORMATS};
+    let lines = parse_filters(&formats_filter(IMPORT_FORMATS, true));
+    assert!(lines.contains(&(
+        "STEP".to_string(),
+        vec!["step".to_string(), "stp".to_string()]
+    )));
+    assert!(lines[0].1.contains(&"step".to_string()) && lines[0].1.contains(&"stp".to_string()));
 }
 
 #[test]
@@ -217,14 +208,14 @@ fn test_the_menu_asks_for_a_step_file_and_imports_it() {
     let answers = dialogs.clone();
     let ok = retrying(&mut win, &dialogs, |w| {
         answers.borrow_mut().open_paths = vec![Some(file.clone())];
-        w.trigger("import:step")
+        w.trigger("import")
     });
     assert!(ok);
     assert!(dialogs
         .borrow()
         .asked
         .iter()
-        .any(|(kind, title)| kind == "open" && title == "Import STEP"));
+        .any(|(kind, title)| kind == "open" && title == "Import"));
     assert_eq!(win.viewport.scene.doc.groups.len(), 1);
     assert_eq!(win.viewport.scene.doc.groups[0].name, "Cube");
     let message = win.status_message.as_ref().map(|m| m.text.clone());
