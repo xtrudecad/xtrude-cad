@@ -744,6 +744,7 @@ fn test_the_bars_hold_the_parts_tools_in_the_order_of_the_work() {
                     "zoom_selection",
                     "stack:views",
                     "toggle_projection",
+                    "toggle_xray",
                     "panel:styles",
                     "panel:layers",
                     "panel:saved_views",

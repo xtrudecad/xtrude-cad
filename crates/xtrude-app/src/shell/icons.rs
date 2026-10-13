@@ -1282,6 +1282,23 @@ fn projection(p: &mut Painter, _ink: Rgba) {
     p.draw_polygon(&near);
 }
 
+/// X-ray: a box whose faces are see-through, so the three edges behind
+/// it show, dashed and faded.
+fn xray(p: &mut Painter, ink: Rgba) {
+    for face in ["top", "front", "right"] {
+        accent_fill(p, &cube_face(face), 45);
+    }
+    p.save();
+    p.set_pen(Pen::new(ink.alpha(130), 2.0).dashed());
+    let b = cube_corner("B");
+    for k in ["L", "R", "B'"] {
+        let c = cube_corner(k);
+        p.draw_line(b.0, b.1, c.0, c.1);
+    }
+    p.restore();
+    cube(p, &[]);
+}
+
 /// An "i" in a circle: what the model holds.
 fn model_info(p: &mut Painter, _ink: Rgba) {
     p.no_brush();
@@ -1723,6 +1740,7 @@ pub const KEYS: &[&str] = &[
     "zoom_extents",
     "zoom_selection",
     "projection",
+    "xray",
     "model_info",
     "solid_inspector",
     "view_iso",
@@ -1797,6 +1815,7 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "zoom_extents" => zoom_extents,
         "zoom_selection" => zoom_selection,
         "projection" => projection,
+        "xray" => xray,
         "model_info" => model_info,
         "solid_inspector" => solid_inspector,
         "view_iso" => |p, _| cube(p, &[("top", 60), ("front", 150), ("right", 100)]),

@@ -195,6 +195,7 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
             "view:back",
             "view:bottom",
             "toggle_projection",
+            "toggle_xray",
             "panel:styles",
             "panel:layers",
             "panel:saved_views",
@@ -821,7 +822,8 @@ impl MainWindow {
                 .tip(&tr(
                     "Switch to X-ray, or back to the style you were in.",
                     &[],
-                )),
+                ))
+                .icon("xray"),
         );
         a.add(
             Action::new("style_edges", &tr("Edges", &[]))
@@ -1941,6 +1943,11 @@ impl MainWindow {
             if let Some(a) = self.actions.get_mut(id) {
                 a.checked = v;
             }
+        }
+        // pressed on the View bar while in X-ray; not checkable, so the
+        // menu entry carries no check mark
+        if let Some(a) = self.actions.get_mut("toggle_xray") {
+            a.checked = st.face_mode == "xray";
         }
         self.sync_section_menu();
         self.sync_rest_menu();
