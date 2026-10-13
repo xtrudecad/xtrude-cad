@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The tray's panels on screen, drawn from the models in [`crate::tray`].
+//! The side panels on screen, drawn from the models in [`crate::tray`]:
+//! the left dock and the bars' drop-down panels.
 
 use xtrude_model::i18n::tr;
 use xtrude_model::ids::GroupId;
 
-use crate::tray::model_tree::Row;
-use crate::tray::parts::{AllVisible, EXPLODE_MODES};
+use crate::tray::components::Components;
+use crate::tray::exploded::EXPLODE_MODES;
+use crate::tray::model_tree::{shown_columns, Row, COLUMNS};
 use crate::tray::styles::{Styles, MODES, SWATCHES};
-use crate::tray::{drop_index, Tray, TrayAction, SECTIONS};
+use crate::tray::{Tray, TrayAction, DOCK_PANELS};
 use crate::window::MainWindow;
 
 /// Per-frame UI state the models do not keep (text being typed).
@@ -27,11 +29,11 @@ fn rgb32(c: [f64; 3]) -> egui::Color32 {
     egui::Color32::from_rgb(q(c[0]), q(c[1]), q(c[2]))
 }
 
-/// The width of a section header's grip.
-const GRIP_WIDTH: f32 = 14.0;
-/// Where a section's title starts, from the tray's left edge (after the
-/// grip and the fold arrow); its body lines up with it.
-const TITLE_INSET: f32 = GRIP_WIDTH + 18.0;
+/// Where a panel's title starts, from the dock's left edge (after the
+/// fold arrow); its body lines up with it.
+const TITLE_INSET: f32 = 20.0;
+/// The widths of the model tree's optional columns.
+const COLUMN_WIDTHS: [(&str, f32); 3] = [("size", 120.0), ("faces", 44.0), ("color", 72.0)];
 
 /// The faint rule between two sections, inset from the tray's edges.
 fn separator(ui: &mut egui::Ui) {
@@ -43,55 +45,30 @@ fn separator(ui: &mut egui::Ui) {
     ui.painter().hline(x, rect.center().y, stroke);
 }
 
-/// What the user did on a section header this frame.
+/// What the user did on a panel header this frame.
 enum HeaderEvent {
     None,
     /// The title was clicked: fold or unfold.
     Toggle,
     /// The close button was clicked.
     Close,
-    /// The grip is being dragged.
-    Drag,
-    /// The grip was let go.
-    Drop,
 }
 
-/// A section's header row: a grip of dots on the left, the fold arrow and
-/// the title, and a close cross on the right.
+/// A panel's header row: the fold arrow and the title, and a close cross
+/// on the right.
 fn section_header(ui: &mut egui::Ui, key: &str, title: &str, open: bool) -> HeaderEvent {
     let (row, _) =
         ui.allocate_exact_size(egui::vec2(ui.available_width(), 24.0), egui::Sense::hover());
-    let grip = egui::Rect::from_min_size(row.min, egui::vec2(GRIP_WIDTH, row.height()));
     let close = egui::Rect::from_center_size(
         egui::pos2(row.right() - 10.0, row.center().y),
         egui::vec2(16.0, 16.0),
     );
-    let head = egui::Rect::from_min_max(
-        egui::pos2(grip.right(), row.top()),
-        egui::pos2(close.left() - 2.0, row.bottom()),
-    );
-    let id = egui::Id::new(("tray-section", key));
-    let grip_r = ui.interact(grip, id.with("grip"), egui::Sense::drag());
+    let head = egui::Rect::from_min_max(row.min, egui::pos2(close.left() - 2.0, row.bottom()));
+    let id = egui::Id::new(("dock-panel", key));
     let head_r = ui.interact(head, id.with("head"), egui::Sense::click());
     let close_r = ui.interact(close, id.with("close"), egui::Sense::click());
     let visuals = ui.visuals().clone();
     let painter = ui.painter();
-
-    let ink = if grip_r.hovered() || grip_r.dragged() {
-        visuals.strong_text_color()
-    } else {
-        visuals.weak_text_color()
-    };
-    for dy in [-4.0, 0.0, 4.0] {
-        for dx in [-2.0, 2.0] {
-            let c = grip.center() + egui::vec2(dx, dy);
-            painter.rect_filled(
-                egui::Rect::from_center_size(c, egui::vec2(2.0, 2.0)),
-                0.0,
-                ink,
-            );
-        }
-    }
 
     if head_r.hovered() {
         painter.rect_filled(head, 3.0, visuals.widgets.hovered.weak_bg_fill);
@@ -135,24 +112,77 @@ fn section_header(ui: &mut egui::Ui, key: &str, title: &str, open: bool) -> Head
         HeaderEvent::Close
     } else if head_r.clicked() {
         HeaderEvent::Toggle
-    } else if grip_r.drag_stopped() {
-        HeaderEvent::Drop
-    } else if grip_r.dragged() {
-        HeaderEvent::Drag
     } else {
         HeaderEvent::None
     };
-    let carrying = grip_r.dragged();
-    grip_r
-        .on_hover_cursor(egui::CursorIcon::Grab)
-        .on_hover_text(tr("Drag to move this panel up or down.", &[]));
-    if carrying {
-        // after the grip's own hover cursor; the pointer may have left it
-        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
-    }
     head_r.on_hover_cursor(egui::CursorIcon::PointingHand);
     close_r.on_hover_text(tr("Close this panel. Window > Panels brings it back.", &[]));
     event
+}
+
+/// An eye: open for a shown row, struck through for a hidden one.
+fn eye(ui: &mut egui::Ui, hidden: bool) -> egui::Response {
+    let (rect, r) = ui.allocate_exact_size(egui::vec2(16.0, 14.0), egui::Sense::click());
+    let ink = if r.hovered() {
+        ui.visuals().strong_text_color()
+    } else if hidden {
+        ui.visuals().weak_text_color().gamma_multiply(0.6)
+    } else {
+        ui.visuals().weak_text_color()
+    };
+    let painter = ui.painter();
+    let c = rect.center();
+    let stroke = egui::Stroke::new(1.2, ink);
+    painter.add(egui::Shape::ellipse_stroke(c, egui::vec2(6.0, 3.6), stroke));
+    painter.circle_filled(c, 1.8, ink);
+    if hidden {
+        painter.line_segment(
+            [c + egui::vec2(-6.0, 5.0), c + egui::vec2(6.0, -5.0)],
+            stroke,
+        );
+    }
+    r.on_hover_text(if hidden {
+        tr("Hidden — click to show", &[])
+    } else {
+        tr("Shown — click to hide", &[])
+    })
+}
+
+/// The link mark of a model tree row: two rings, and a warning triangle
+/// when the link goes out under another name.
+fn link_mark(ui: &mut egui::Ui, row: &Row) {
+    let warning = row.link_warning();
+    let (rect, r) = ui.allocate_exact_size(egui::vec2(16.0, 14.0), egui::Sense::hover());
+    let painter = ui.painter();
+    let c = rect.center();
+    match &warning {
+        Some(_) => {
+            let ink = ui.visuals().warn_fg_color;
+            let tri = vec![
+                c + egui::vec2(0.0, -6.0),
+                c + egui::vec2(6.5, 5.5),
+                c + egui::vec2(-6.5, 5.5),
+            ];
+            painter.add(egui::Shape::convex_polygon(tri, ink, egui::Stroke::NONE));
+            painter.text(
+                c + egui::vec2(0.0, 1.5),
+                egui::Align2::CENTER_CENTER,
+                "!",
+                egui::FontId::proportional(9.0),
+                ui.visuals().extreme_bg_color,
+            );
+        }
+        None => {
+            let stroke = egui::Stroke::new(1.2, ui.visuals().weak_text_color());
+            painter.circle_stroke(c + egui::vec2(-2.5, 0.0), 3.5, stroke);
+            painter.circle_stroke(c + egui::vec2(2.5, 0.0), 3.5, stroke);
+        }
+    }
+    let tip = match warning {
+        Some(w) => format!("{}\n{w}", row.link_tip()),
+        None => row.link_tip(),
+    };
+    r.on_hover_text(tip);
 }
 
 /// `<b>…</b>` and `<br>` as egui text.
@@ -186,15 +216,11 @@ fn swatch(ui: &mut egui::Ui, color: egui::Color32, tip: &str, size: f32) -> egui
 }
 
 impl TrayUi {
-    /// The Properties tray: its shown sections in the user's order, each
-    /// folded as the user left it, under a header with a grip to drag it
-    /// elsewhere and a button to close it.
+    /// The left dock: the model tree on top, and under a splitter the
+    /// other panels shown, each under a header that folds and closes it.
+    /// With the tree folded or hidden, the panels stack from the top.
     pub fn show(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
-        let shown: Vec<(&str, &str)> = Tray::section_order()
-            .into_iter()
-            .filter(|key| Tray::section_shown(key))
-            .filter_map(|key| SECTIONS.iter().find(|(k, _)| *k == key).copied())
-            .collect();
+        let shown = Tray::shown_panels();
         if shown.is_empty() {
             ui.centered_and_justified(|ui| {
                 ui.label(
@@ -207,68 +233,83 @@ impl TrayUi {
             });
             return;
         }
-        egui::ScrollArea::vertical()
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                let mut spans: Vec<(&str, f32, f32)> = Vec::new();
-                let mut dragged = None;
-                let mut dropped = None;
-                for (key, title) in shown {
-                    let top = ui.cursor().top();
-                    if !spans.is_empty() {
-                        separator(ui);
-                    }
-                    let open = Tray::section_open(key);
-                    match section_header(ui, key, &tr(title, &[]), open) {
-                        HeaderEvent::Toggle => Tray::set_section_open(key, !open),
-                        HeaderEvent::Close => w.set_tray_section_shown(key, false),
-                        HeaderEvent::Drag => dragged = Some(key),
-                        HeaderEvent::Drop => dropped = Some(key),
-                        HeaderEvent::None => {}
-                    }
-                    if open {
-                        // the body starts under the title, with no
-                        // indent line (the header and the rules mark it);
-                        // nested indents inside it keep the theme's own
-                        let (indent, vline) =
-                            (ui.spacing().indent, ui.visuals().indent_has_left_vline);
-                        ui.scope(|ui| {
-                            ui.visuals_mut().indent_has_left_vline = false;
-                            ui.spacing_mut().indent = TITLE_INSET;
-                            ui.indent(key, |ui| {
-                                ui.spacing_mut().indent = indent;
-                                ui.visuals_mut().indent_has_left_vline = vline;
-                                match key {
-                                    "properties" => self.properties(ui, tray, w),
-                                    "model_tree" => self.model_tree(ui, tray, w),
-                                    "layers" => self.layers(ui, tray, w),
-                                    "saved_views" => self.saved_views(ui, tray, w),
-                                    "colors" => self.colors(ui, tray, w),
-                                    "components" => self.components(ui, tray, w),
-                                    _ => self.parts(ui, tray, w),
+        let lower: Vec<&str> = shown.iter().copied().filter(|k| *k != "model").collect();
+        if shown[0] == "model" && Tray::panel_open("model") && !lower.is_empty() {
+            let full = ui.available_height();
+            egui::Panel::bottom("dock-lower")
+                .resizable(true)
+                .default_size(full * 0.45)
+                .size_range(80.0..=(full - 120.0).max(80.0))
+                .frame(egui::Frame::NONE)
+                .show(ui, |ui| {
+                    egui::ScrollArea::vertical()
+                        .id_salt("dock-lower-scroll")
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            for (i, key) in lower.iter().enumerate() {
+                                if i > 0 {
+                                    separator(ui);
                                 }
-                            });
+                                self.panel(ui, key, tray, w, false);
+                            }
                         });
+                });
+            self.panel(ui, "model", tray, w, true);
+        } else {
+            egui::ScrollArea::vertical()
+                .id_salt("dock-scroll")
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    for (i, key) in shown.iter().enumerate() {
+                        if i > 0 {
+                            separator(ui);
+                        }
+                        self.panel(ui, key, tray, w, false);
                     }
-                    ui.add_space(4.0);
-                    spans.push((key, top, ui.cursor().top()));
-                }
-                let pointer = ui.ctx().pointer_latest_pos();
-                let bounds: Vec<(f32, f32)> = spans.iter().map(|(_, t, b)| (*t, *b)).collect();
-                if let (Some(_), Some(p)) = (dragged, pointer) {
-                    let i = drop_index(&bounds, p.y);
-                    let y = spans
-                        .get(i)
-                        .map_or_else(|| spans.last().map_or(p.y, |s| s.2), |s| s.1);
-                    let x = ui.clip_rect().x_range();
-                    let accent = egui::Stroke::new(2.0, ui.visuals().selection.bg_fill);
-                    ui.painter().hline(x, y, accent);
-                }
-                if let (Some(key), Some(p)) = (dropped, pointer) {
-                    let before = spans.get(drop_index(&bounds, p.y)).map(|s| s.0);
-                    Tray::move_section(key, before);
-                }
+                });
+        }
+    }
+
+    /// One dock panel under its header; `fill`: its body takes the height
+    /// left (the model tree above the splitter).
+    fn panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        key: &str,
+        tray: &mut Tray,
+        w: &mut MainWindow,
+        fill: bool,
+    ) {
+        let title = DOCK_PANELS
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map_or(key, |(_, t)| t);
+        let open = Tray::panel_open(key);
+        match section_header(ui, key, &tr(title, &[]), open) {
+            HeaderEvent::Toggle => Tray::set_panel_open(key, !open),
+            HeaderEvent::Close => w.set_dock_panel_shown(key, false),
+            HeaderEvent::None => {}
+        }
+        if open {
+            // the body starts under the title, with no indent line (the
+            // header and the rules mark it); nested indents inside it keep
+            // the theme's own
+            let (indent, vline) = (ui.spacing().indent, ui.visuals().indent_has_left_vline);
+            ui.scope(|ui| {
+                ui.visuals_mut().indent_has_left_vline = false;
+                ui.spacing_mut().indent = TITLE_INSET;
+                ui.indent(key, |ui| {
+                    ui.spacing_mut().indent = indent;
+                    ui.visuals_mut().indent_has_left_vline = vline;
+                    match key {
+                        "model" => self.model_tree(ui, tray, w, fill),
+                        "properties" => self.properties(ui, tray, w),
+                        _ => self.layers(ui, tray, w),
+                    }
+                });
             });
+        }
+        ui.add_space(4.0);
     }
 
     fn properties(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
@@ -314,14 +355,31 @@ impl TrayUi {
         }
     }
 
-    fn model_tree(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
+    fn model_tree(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow, fill: bool) {
         let ol = &mut tray.model_tree;
+        let mut column_change: Option<(&str, bool)> = None;
         ui.horizontal(|ui| {
+            let chip = tr("Components only", &[]);
+            let chip_w = ui.fonts_mut(|f| {
+                f.layout_no_wrap(chip.clone(), egui::FontId::default(), egui::Color32::WHITE)
+                    .size()
+                    .x
+            });
             ui.add(
                 egui::TextEdit::singleline(&mut ol.filter)
                     .hint_text(tr("Filter", &[]))
-                    .desired_width(ui.available_width() - 36.0),
+                    .desired_width((ui.available_width() - chip_w - 48.0).max(60.0)),
             );
+            if ui
+                .selectable_label(ol.components_only, chip)
+                .on_hover_text(tr(
+                    "List each component once, its copies counted; click one to select its copies",
+                    &[],
+                ))
+                .clicked()
+            {
+                ol.components_only = !ol.components_only;
+            }
             ui.menu_button("…", |ui| {
                 if ui.button(tr("Expand all", &[])).clicked() {
                     ol.expand_all();
@@ -331,26 +389,67 @@ impl TrayUi {
                     ol.collapse_all();
                     ui.close();
                 }
+                ui.separator();
+                ui.label(egui::RichText::new(tr("Columns", &[])).weak());
+                let shown = shown_columns();
+                for (key, title) in COLUMNS {
+                    let mut on = shown.contains(&key);
+                    if ui.checkbox(&mut on, tr(title, &[])).changed() {
+                        column_change = Some((key, on));
+                    }
+                }
             });
         });
+        if let Some((key, on)) = column_change {
+            ol.set_column_shown(w, key, on);
+        }
+        if ol.components_only {
+            self.component_list(ui, tray, w);
+            return;
+        }
+        let ol = &mut tray.model_tree;
+        let columns = shown_columns();
         let mut action: Option<ModelTreeAction> = None;
-        egui::ScrollArea::vertical()
-            .max_height(24.0 * 20.0)
+        let scroll_to = ol.scroll_to.take();
+        let height = if fill {
+            ui.available_height()
+        } else {
+            24.0 * 20.0
+        };
+        egui::ScrollArea::both()
+            .max_height(height)
+            .auto_shrink([false, !fill])
             .id_salt("ol-scroll")
             .show(ui, |ui| {
-                let root = ui.selectable_label(
-                    ol.root_selected,
-                    egui::RichText::new(&ol.root_name).strong(),
-                );
-                if root.clicked() {
-                    action = Some(ModelTreeAction::Root);
-                }
-                if let Some(g) = root.dnd_release_payload::<GroupId>() {
-                    action = Some(ModelTreeAction::Drop(*g, None));
-                }
+                ui.horizontal(|ui| {
+                    let root = ui.selectable_label(
+                        ol.root_selected,
+                        egui::RichText::new(&ol.root_name).strong(),
+                    );
+                    if root.clicked() {
+                        action = Some(ModelTreeAction::Root);
+                    }
+                    if let Some(g) = root.dnd_release_payload::<GroupId>() {
+                        action = Some(ModelTreeAction::Drop(*g, None));
+                    }
+                    if !columns.is_empty() {
+                        let title = |key: &str| {
+                            COLUMNS
+                                .iter()
+                                .find(|(k, _)| *k == key)
+                                .map(|(_, t)| tr(t, &[]))
+                                .unwrap_or_default()
+                        };
+                        column_cells(ui, &columns, title, true);
+                    }
+                });
                 let rows = ol.rows.clone();
+                let row = RowContext {
+                    columns: &columns,
+                    scroll_to,
+                };
                 for r in &rows {
-                    self.model_tree_row(ui, ol, r, 1, &mut action);
+                    self.model_tree_row(ui, ol, r, 1, &row, &mut action);
                 }
             });
         if let Some(a) = action {
@@ -366,6 +465,8 @@ impl TrayUi {
                 ModelTreeAction::Edit(g) => ol.edit_group(w, g),
                 ModelTreeAction::Rename(g, name) => ol.rename(w, g, &name),
                 ModelTreeAction::Hide(gs, h) => ol.set_hidden(w, &gs, h),
+                ModelTreeAction::SelectCopies(g) => ol.select_copies(w, g),
+                ModelTreeAction::Split(g) => ol.split(w, g),
                 ModelTreeAction::Drop(dragged, parent) => {
                     if !ol.selected.contains(&dragged) {
                         ol.selected = vec![dragged];
@@ -378,12 +479,38 @@ impl TrayUi {
         }
     }
 
+    /// «Components only»: one row per definition; a click selects its
+    /// copies.
+    fn component_list(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
+        let ol = &mut tray.model_tree;
+        if ol.components.rows.is_empty() {
+            ui.label(egui::RichText::new(Components::empty_label()).weak());
+        }
+        let mut pick = None;
+        for (i, r) in ol.components.rows.iter().enumerate() {
+            if ui
+                .selectable_label(false, &r.label)
+                .on_hover_text(tr(
+                    "Components placed in this drawing — click one to select its copies",
+                    &[],
+                ))
+                .clicked()
+            {
+                pick = Some(i);
+            }
+        }
+        if let Some(i) = pick {
+            ol.select_definition(w, i);
+        }
+    }
+
     fn model_tree_row(
         &mut self,
         ui: &mut egui::Ui,
         ol: &mut crate::tray::model_tree::ModelTree,
         r: &Row,
         depth: usize,
+        cx: &RowContext,
         action: &mut Option<ModelTreeAction>,
     ) {
         if !ol.shown(r.group) {
@@ -422,6 +549,9 @@ impl TrayUi {
                     }
                 }
             }
+            if eye(ui, r.hidden).clicked() {
+                *action = Some(ModelTreeAction::Hide(vec![r.group], !r.hidden));
+            }
             let px = ui.text_style_height(&egui::TextStyle::Body).round();
             let (rect, icon) = ui.allocate_exact_size(egui::vec2(px, px), egui::Sense::hover());
             let key = if r.component {
@@ -456,7 +586,20 @@ impl TrayUi {
                 label = label.strong();
             }
             let resp = ui.selectable_label(ol.selected.contains(&r.group), label);
-            let resp = resp.on_hover_text(format!("{} — {kind}", r.name));
+            let resp = resp.on_hover_text(format!("{} — {kind}\n{}", r.name, r.link_tip()));
+            if cx.scroll_to == Some(r.group) {
+                resp.scroll_to_me(None);
+            }
+            if r.component && r.copies > 1 {
+                ui.label(egui::RichText::new(format!("×{}", r.copies)).weak())
+                    .on_hover_text(tr("{n} copies in the model", &[("n", &r.copies)]));
+            }
+            if r.top_level {
+                link_mark(ui, r);
+            }
+            if !cx.columns.is_empty() {
+                column_cells(ui, cx.columns, |key| r.column(key).to_string(), false);
+            }
             if resp.drag_started() {
                 resp.dnd_set_drag_payload(r.group);
             }
@@ -492,6 +635,19 @@ impl TrayUi {
                     ui.close();
                 }
                 ui.separator();
+                if r.component && ui.button(tr("Select all copies", &[])).clicked() {
+                    *action = Some(ModelTreeAction::SelectCopies(r.group));
+                    ui.close();
+                }
+                if ui
+                    .button(tr("Split into Pieces", &[]))
+                    .on_hover_text(tr("Regroup it by the solids that do not touch", &[]))
+                    .clicked()
+                {
+                    *action = Some(ModelTreeAction::Split(r.group));
+                    ui.close();
+                }
+                ui.separator();
                 if ui.button(tr("Expand all", &[])).clicked() {
                     ol.expand_all();
                     ui.close();
@@ -504,12 +660,13 @@ impl TrayUi {
         });
         if open {
             for c in &r.children {
-                self.model_tree_row(ui, ol, c, depth + 1, action);
+                self.model_tree_row(ui, ol, c, depth + 1, cx, action);
             }
         }
     }
 
-    fn layers(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
+    /// The Layers panel, docked or dropped down.
+    pub fn layers(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
         let p = &mut tray.layers;
         let mut change: Option<(String, bool, bool)> = None;
         let mut rename: Option<(String, String)> = None;
@@ -588,7 +745,8 @@ impl TrayUi {
         }
     }
 
-    fn saved_views(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
+    /// The Saved views drop-down panel.
+    pub fn saved_views(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
         let p = &mut tray.saved_views;
         ui.label(egui::RichText::new(tr("Double-click a view to show it", &[])).weak());
         let mut activate = None;
@@ -651,7 +809,8 @@ impl TrayUi {
         });
     }
 
-    fn colors(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
+    /// The Colors drop-down panel.
+    pub fn colors(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
         let p = &mut tray.colors;
         let st = crate::tools::paint::paint_state();
         ui.horizontal_wrapped(|ui| {
@@ -738,128 +897,11 @@ impl TrayUi {
         }
     }
 
-    fn components(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
-        let p = &mut tray.components;
-        ui.label(egui::RichText::new(tr("In model", &[])).strong());
-        if p.rows.is_empty() {
-            ui.label(
-                egui::RichText::new(crate::tray::components::Components::empty_label()).weak(),
-            );
-        }
-        let mut pick = None;
-        for (i, r) in p.rows.iter().enumerate() {
-            if ui
-                .selectable_label(false, &r.label)
-                .on_hover_text(tr(
-                    "Components placed in this drawing — click one to select its copies",
-                    &[],
-                ))
-                .clicked()
-            {
-                pick = Some(i);
-            }
-        }
-        if let Some(i) = pick {
-            p.select(w, i);
-        }
-    }
-
-    fn parts(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
-        let p = &mut tray.parts;
+    /// The Exploded view drop-down panel.
+    pub fn exploded(&mut self, ui: &mut egui::Ui, tray: &mut Tray, w: &mut MainWindow) {
+        let p = &mut tray.exploded;
         rich(ui, &p.title.clone());
-        if !p.lines.is_empty() {
-            let mut all = p.all_visible == AllVisible::Checked;
-            let r = ui.add(
-                egui::Checkbox::new(&mut all, tr("All parts visible", &[]))
-                    .indeterminate(p.all_visible == AllVisible::Partial),
-            );
-            if r.clicked() {
-                p.toggle_all_visible(w);
-            }
-            let mut click: Option<GroupId> = None;
-            let mut hide: Option<(GroupId, bool)> = None;
-            let mut commit = false;
-            egui::Grid::new("parts-grid")
-                .num_columns(3)
-                .striped(true)
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new(tr("Name", &[])).weak());
-                    ui.label(egui::RichText::new(tr("Size", &[])).weak());
-                    ui.label(egui::RichText::new(tr("Color", &[])).weak());
-                    ui.end_row();
-                    for l in p.lines.clone() {
-                        ui.horizontal(|ui| {
-                            let mut shown = !l.hidden;
-                            if ui.checkbox(&mut shown, "").changed() {
-                                hide = Some((l.part, !shown));
-                            }
-                            match p.editing.as_mut().filter(|(g, _)| *g == l.part) {
-                                Some((_, text)) => {
-                                    let te = ui.text_edit_singleline(text);
-                                    te.request_focus();
-                                    if te.lost_focus() {
-                                        commit = true;
-                                    }
-                                }
-                                None => {
-                                    let r = ui
-                                        .selectable_label(l.selected, &l.name)
-                                        .on_hover_text(tr("{n} faces", &[("n", &l.faces)]));
-                                    if p.scroll_to == Some(l.part) {
-                                        p.scroll_to = None;
-                                        r.scroll_to_me(None);
-                                    }
-                                    if r.double_clicked() {
-                                        p.begin_rename(l.part);
-                                    } else if r.clicked() {
-                                        click = Some(l.part);
-                                    }
-                                }
-                            }
-                        });
-                        let s = ui.label(&l.size);
-                        if !l.size_tip.is_empty() {
-                            s.on_hover_text(&l.size_tip);
-                        }
-                        ui.label(&l.color);
-                        ui.end_row();
-                    }
-                });
-            if let Some((g, h)) = hide {
-                p.set_hidden(w, g, h);
-            }
-            if commit {
-                p.commit_rename(w);
-            }
-            if let Some(g) = click {
-                let add = ui.input(|i| i.modifiers.ctrl || i.modifiers.shift);
-                let mut parts: Vec<GroupId> = if add {
-                    p.lines
-                        .iter()
-                        .filter(|l| l.selected)
-                        .map(|l| l.part)
-                        .collect()
-                } else {
-                    Vec::new()
-                };
-                parts.push(g);
-                p.click(w, &parts);
-            }
-        }
-        ui.add_enabled_ui(p.split_enabled, |ui| {
-            if ui
-                .button(tr("Split into Pieces", &[]))
-                .on_hover_text(tr(
-                    "Regroup the component by the solids that do not touch",
-                    &[],
-                ))
-                .clicked()
-            {
-                p.split(w);
-            }
-        });
-        if p.lines.len() > 1 {
-            ui.label(egui::RichText::new(tr("Exploded view", &[])).strong());
+        ui.add_enabled_ui(p.enabled, |ui| {
             ui.horizontal(|ui| {
                 let label = EXPLODE_MODES
                     .iter()
@@ -903,7 +945,7 @@ impl TrayUi {
             if r.drag_stopped() {
                 p.explode_release(w);
             }
-        }
+        });
     }
 
     /// The Styles drop-down panel.
@@ -1071,5 +1113,32 @@ enum ModelTreeAction {
     Edit(GroupId),
     Rename(GroupId, String),
     Hide(Vec<GroupId>, bool),
+    SelectCopies(GroupId),
+    Split(GroupId),
     Drop(GroupId, Option<GroupId>),
+}
+
+/// The model tree's optional columns of one row, at fixed widths so that
+/// they line up; `header`: the titles, weak.
+fn column_cells(ui: &mut egui::Ui, columns: &[&str], text: impl Fn(&str) -> String, header: bool) {
+    for (key, width) in COLUMN_WIDTHS {
+        if !columns.contains(&key) {
+            continue;
+        }
+        let t = text(key);
+        let rich = if header {
+            egui::RichText::new(t).weak()
+        } else {
+            egui::RichText::new(t)
+        };
+        ui.add_sized([width, 16.0], egui::Label::new(rich).truncate());
+    }
+}
+
+/// What every row of the model tree is drawn with.
+struct RowContext<'a> {
+    /// The optional columns shown.
+    columns: &'a [&'a str],
+    /// The row to scroll into view.
+    scroll_to: Option<GroupId>,
 }

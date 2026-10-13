@@ -85,7 +85,7 @@ pub enum ViewportEvent {
     Flash(String, u32),
     /// Ask the window to activate a tool by key ("select").
     ActivateTool(String),
-    /// Paint's eyedropper took a color: the tray shows it, the
+    /// Paint's eyedropper took a color: the Colors panel shows it, the
     /// eyedropper button releases.
     PaintSampled,
     /// A section plane was just placed: the window asks for its name and

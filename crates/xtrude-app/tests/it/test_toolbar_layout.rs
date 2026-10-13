@@ -11,6 +11,7 @@ use xtrude_model::settings::keys;
 use std::collections::BTreeSet;
 
 use serde_json::json;
+use xtrude_app::tray::Tray;
 use xtrude_app::window::toolbar_layout::{DockSpot, DropTarget, FloatingBar, LayoutGeometry, Rect};
 use xtrude_app::window::{
     CtxItem, MainWindow, MenuItem, ToolbarArea, ToolbarLayout, PANEL_PREFIX, TOOLBAR_PANELS,
@@ -509,14 +510,13 @@ fn test_reset_toolbar_layout_has_no_shortcut_and_names_what_it_leaves() {
 }
 
 #[test]
-fn test_reset_toolbar_layout_leaves_hidden_trays_hidden() {
+fn test_reset_toolbar_layout_leaves_hidden_panels_hidden() {
     let mut win = common::window();
-    win.set_tray_shown("tray_properties", false);
+    win.set_dock_panel_shown("properties", false);
     win.toggle_toolbar("main");
     win.trigger("reset_toolbar_layout");
     assert!(win.toolbar_layout.is_shown("main"));
-    assert!(!win.tray_shown("tray_properties"));
-    assert!(!MainWindow::new().tray_shown("tray_properties"));
+    assert!(!Tray::panel_shown("properties"));
 }
 
 #[test]
@@ -682,7 +682,15 @@ fn test_the_bars_hold_the_parts_tools_in_the_order_of_the_work() {
             (
                 "main",
                 "Main",
-                vec!["save_tb", "undo", "redo", "select", "eraser", "stack:paint"]
+                vec![
+                    "save_tb",
+                    "undo",
+                    "redo",
+                    "select",
+                    "eraser",
+                    "stack:paint",
+                    "panel:colors"
+                ]
             ),
             (
                 "draw",
@@ -736,7 +744,10 @@ fn test_the_bars_hold_the_parts_tools_in_the_order_of_the_work() {
                     "zoom_selection",
                     "stack:views",
                     "toggle_projection",
-                    "panel:styles"
+                    "panel:styles",
+                    "panel:layers",
+                    "panel:saved_views",
+                    "panel:exploded_view"
                 ]
             ),
             (

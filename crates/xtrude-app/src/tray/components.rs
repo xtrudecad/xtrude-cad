@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Components (`ComponentsPanel`): the components placed in this drawing,
-//! one row per definition, its copies counted wherever they are placed —
-//! click one to select its copies.
+//! The component definitions placed in this drawing, one row per
+//! definition, its copies counted wherever they are placed: the model
+//! tree's copy counts, its «Select all copies» and its «Components only»
+//! list (a row clicked selects the copies).
 
 use std::collections::HashMap;
 
@@ -92,10 +93,19 @@ impl Components {
     /// Click a row: open the first copy's parents and select the copies
     /// that share its parent (those at other levels stay unselected).
     pub fn select(&mut self, w: &mut MainWindow, row: usize) {
+        let Some(&first) = self.rows.get(row).and_then(|r| r.groups.first()) else {
+            return;
+        };
+        self.select_at_level_of(w, row, first);
+    }
+
+    /// Select the copies of row `row` that share `copy`'s parent, opening
+    /// that parent's chain.
+    pub fn select_at_level_of(&mut self, w: &mut MainWindow, row: usize, copy: GroupId) {
         let Some(r) = self.rows.get(row) else { return };
         let parents = parent_map(&w.viewport.scene);
         let level = |g: &GroupId| parents.get(g).copied().flatten();
-        let first = r.groups.first().map(level);
+        let first = Some(level(&copy));
         let groups: Vec<GroupId> = r
             .groups
             .iter()

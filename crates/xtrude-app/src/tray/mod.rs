@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The side tray's panels as toolkit-neutral models: what each panel
-//! shows, computed from the window, and what its controls do, applied to
-//! the window. The egui shell draws them; tests drive them directly.
+//! The side panels as toolkit-neutral models: what each panel shows,
+//! computed from the window, and what its controls do, applied to the
+//! window. The egui shell draws them; tests drive them directly.
+//!
+//! The left dock holds the [`DOCK_PANELS`]: the model tree on top, and
+//! under a splitter Properties and, when the user docks it, Layers. The
+//! others are drop-down panels on the bars (`window::TOOLBAR_PANELS`).
 
 pub mod colors;
 pub mod components;
 pub mod dimstyle;
+pub mod exploded;
 pub mod layers;
 pub mod model_tree;
-pub mod parts;
 pub mod properties;
 pub mod saved_views;
 pub mod styles;
@@ -20,17 +24,17 @@ use xtrude_model::ids::GroupId;
 use xtrude_model::model_tree::{ancestors, parent_map};
 use xtrude_model::settings::{self, keys};
 
-/// The Properties tray (`Tray`): its sections, top to bottom.
+/// The side panels' models.
 #[derive(Default)]
 pub struct Tray {
-    pub properties: properties::Properties,
+    /// The left dock's panels.
     pub model_tree: model_tree::ModelTree,
+    pub properties: properties::Properties,
     pub layers: layers::Layers,
+    /// The drop-down panels on the bars (Layers is one too).
     pub saved_views: saved_views::SavedViews,
     pub colors: colors::Colors,
-    pub components: components::Components,
-    pub parts: parts::Parts,
-    /// The on-demand panels (toolbar drop-downs).
+    pub exploded: exploded::ExplodedView,
     pub styles: styles::Styles,
     pub dimstyle: dimstyle::DimensionStyle,
 }
@@ -58,16 +62,16 @@ pub enum TrayAction {
     DimensionColor,
 }
 
-/// `(key, title)` of the tray's sections, in order.
-pub const SECTIONS: [(&str, &str); 7] = [
+/// `(key, title)` of the left dock's panels, top to bottom: the model
+/// tree, then under the splitter Properties and Layers.
+pub const DOCK_PANELS: [(&str, &str); 3] = [
+    ("model", "Model"),
     ("properties", "Properties"),
-    ("model_tree", "Model tree"),
     ("layers", "Layers"),
-    ("saved_views", "Saved views"),
-    ("colors", "Colors"),
-    ("components", "Components"),
-    ("parts", "Parts"),
 ];
+
+/// The dock panels hidden on a first start, and after Reset panel layout.
+const FACTORY_HIDDEN: [&str; 1] = ["layers"];
 
 impl Tray {
     /// Bring every panel up to date.
@@ -77,8 +81,7 @@ impl Tray {
         self.layers.refresh(w);
         self.saved_views.refresh(w);
         self.colors.refresh_in_model(w);
-        self.components.refresh_in_model(w);
-        self.parts.refresh(w);
+        self.exploded.refresh(w);
         self.styles.refresh(w);
     }
 
@@ -98,97 +101,67 @@ impl Tray {
         });
     }
 
-    /// Whether a section is open: as the user left it last time
-    /// (`tray/collapsed/<panel class>`), open on
-    /// a first start. Keyed by the panel, not its title, which changes with
-    /// the language.
-    pub fn section_open(key: &str) -> bool {
-        !settings::read(&keys::tray_collapsed(panel_class(key)))
+    /// Whether a dock panel is unfolded: as the user left it last time
+    /// (`dock/collapsed/<panel class>`), open on a first start. Keyed by
+    /// the panel, not its title.
+    pub fn panel_open(key: &str) -> bool {
+        !settings::read(&keys::dock_collapsed(panel_class(key)))
     }
 
-    pub fn set_section_open(key: &str, open: bool) {
-        settings::write(&keys::tray_collapsed(panel_class(key)), &!open);
+    pub fn set_panel_open(key: &str, open: bool) {
+        settings::write(&keys::dock_collapsed(panel_class(key)), &!open);
     }
 
-    /// Whether a section is drawn: every one is, until its close button or
-    /// its Window ▸ Panels entry hides it (`ui/hidden_tray_sections`). A
-    /// hidden section keeps its fold and its place in the order.
-    pub fn section_shown(key: &str) -> bool {
-        !stored_sections(&keys::HIDDEN_TRAY_SECTIONS).contains(&key)
+    /// Whether a dock panel is drawn: Model and Properties are, Layers is
+    /// not, until a close button or a Window ▸ Panels entry changes it
+    /// (`ui/hidden_dock_panels`). A hidden panel keeps its fold.
+    pub fn panel_shown(key: &str) -> bool {
+        !hidden_panels().contains(&key)
     }
 
-    pub fn set_section_shown(key: &str, shown: bool) {
-        let mut hidden = stored_sections(&keys::HIDDEN_TRAY_SECTIONS);
+    pub fn set_panel_shown(key: &str, shown: bool) {
+        let mut hidden = hidden_panels();
         hidden.retain(|k| *k != key);
         if !shown {
-            hidden.extend(section_key(key));
+            hidden.extend(panel_key(key));
         }
-        store_sections(&keys::HIDDEN_TRAY_SECTIONS, &hidden);
+        let classes: Vec<&str> = hidden.iter().map(|k| panel_class(k)).collect();
+        settings::write(&keys::HIDDEN_DOCK_PANELS, &serde_json::json!(classes));
     }
 
-    /// The section keys top to bottom, hidden ones included: the saved
-    /// order (`ui/tray_section_order`) with unknown classes dropped and
-    /// the missing sections after it, in their [`SECTIONS`] order.
-    pub fn section_order() -> Vec<&'static str> {
-        let mut order = stored_sections(&keys::TRAY_SECTION_ORDER);
-        for (key, _) in SECTIONS {
-            if !order.contains(&key) {
-                order.push(key);
-            }
-        }
-        order
+    /// The dock panels drawn, top to bottom.
+    pub fn shown_panels() -> Vec<&'static str> {
+        DOCK_PANELS
+            .iter()
+            .map(|(k, _)| *k)
+            .filter(|k| Self::panel_shown(k))
+            .collect()
     }
 
-    /// Move the section `key` just above `before`, or to the bottom for
-    /// `None`, and save the order. The other sections, hidden ones
-    /// included, keep their order.
-    pub fn move_section(key: &str, before: Option<&str>) {
-        let Some(moved) = section_key(key) else {
-            return;
-        };
-        if before == Some(moved) {
-            return;
-        }
-        let mut order = Self::section_order();
-        order.retain(|k| *k != moved);
-        let at = before
-            .and_then(|b| order.iter().position(|k| *k == b))
-            .unwrap_or(order.len());
-        order.insert(at, moved);
-        store_sections(&keys::TRAY_SECTION_ORDER, &order);
-    }
-
-    /// The factory layout: every section shown, in the [`SECTIONS`] order.
-    /// The folds (`tray/collapsed/<panel class>`) stay as they are.
+    /// The factory layout: Model and Properties shown, Layers hidden. The
+    /// folds (`dock/collapsed/<panel class>`) stay as they are.
     pub fn reset_layout() {
-        settings::clear(&keys::TRAY_SECTION_ORDER);
-        settings::clear(&keys::HIDDEN_TRAY_SECTIONS);
+        settings::clear(&keys::HIDDEN_DOCK_PANELS);
     }
 }
 
-/// Where a section dragged by its grip lands among the shown sections,
-/// given each one's top and bottom: the index of the first section whose
-/// middle is below `y`, or the end.
-pub fn drop_index(spans: &[(f32, f32)], y: f32) -> usize {
-    spans
-        .iter()
-        .position(|(top, bottom)| y < (top + bottom) / 2.0)
-        .unwrap_or(spans.len())
+/// The dock panel key in [`DOCK_PANELS`] named `key`.
+fn panel_key(key: &str) -> Option<&'static str> {
+    DOCK_PANELS.iter().map(|(k, _)| *k).find(|k| *k == key)
 }
 
-/// The section key in [`SECTIONS`] named `key`.
-fn section_key(key: &str) -> Option<&'static str> {
-    SECTIONS.iter().map(|(k, _)| *k).find(|k| *k == key)
-}
-
-/// A list of panel classes in the settings as section keys, each once:
-/// anything but a list of strings reads as empty, unknown classes are
-/// dropped.
-fn stored_sections(key: &settings::Key<serde_json::Value>) -> Vec<&'static str> {
+/// The dock panels the settings hide, each once: the factory ones when
+/// nothing is stored; anything but a list of strings reads as none hidden,
+/// unknown classes are dropped.
+fn hidden_panels() -> Vec<&'static str> {
+    let stored = settings::read(&keys::HIDDEN_DOCK_PANELS);
+    if stored.is_null() {
+        return FACTORY_HIDDEN.to_vec();
+    }
     let mut out: Vec<&'static str> = Vec::new();
-    if let serde_json::Value::Array(a) = settings::read(key) {
+    if let serde_json::Value::Array(a) = stored {
         for class in a.iter().filter_map(|v| v.as_str()) {
-            let found = SECTIONS
+            let found = DOCK_PANELS
                 .iter()
                 .map(|(k, _)| *k)
                 .find(|k| panel_class(k) == class);
@@ -200,26 +173,12 @@ fn stored_sections(key: &settings::Key<serde_json::Value>) -> Vec<&'static str> 
     out
 }
 
-fn store_sections(key: &settings::Key<serde_json::Value>, sections: &[&str]) {
-    let classes: Vec<&str> = sections.iter().map(|k| panel_class(k)).collect();
-    settings::write(key, &serde_json::json!(classes));
-}
-
-/// The panel class name a section's collapsed state is remembered by, as
-/// the settings already store it (`keys::tray_collapsed`).
+/// The panel class name a dock panel's settings are stored by.
 fn panel_class(key: &str) -> &str {
     match key {
-        // named after the section's former title, as stored
-        "properties" => "EntityInfoPanel",
-        // named after the section's former title, as stored
-        "model_tree" => "OutlinerPanel",
+        "model" => "ModelPanel",
+        "properties" => "PropertiesPanel",
         "layers" => "LayersPanel",
-        // titled Scenes when the settings key was chosen
-        "saved_views" => "ScenesPanel",
-        // titled Materials when the settings key was chosen
-        "colors" => "MaterialsPanel",
-        "components" => "ComponentsPanel",
-        "parts" => "PartsPanel",
         other => other,
     }
 }

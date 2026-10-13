@@ -161,6 +161,8 @@ pub struct XtrudeApp {
     tray_ui: tray_ui::TrayUi,
     tray_key: Option<(u64, usize, bool)>,
     open_panel: Option<&'static str>,
+    /// Where each drop-down panel's button last was: its panel opens there.
+    panel_anchors: std::collections::HashMap<&'static str, egui::Pos2>,
     prefs: Option<prefs_dialog::PrefsState>,
     about: bool,
     /// The About box's lockup and whether it is the dark one.
@@ -210,6 +212,7 @@ impl XtrudeApp {
             tray_ui: Default::default(),
             tray_key: None,
             open_panel: None,
+            panel_anchors: Default::default(),
             prefs: None,
             about: false,
             about_logo: None,
@@ -451,15 +454,15 @@ impl XtrudeApp {
             });
     }
 
-    /// LibreOffice's handle: a slim button on the line between the viewport
-    /// and the trays, half-way down; it folds the trays away (resting at the
-    /// window's edge) and brings them back.
+    /// A slim button on the line between the left dock and the viewport,
+    /// half-way down; it folds the dock away (resting at the viewport's
+    /// left edge) and brings it back.
     fn sidebar_handle(&mut self, ctx: &egui::Context, vp: egui::Rect) {
         let on = self.window.sidebar_visible();
         let (w, h) = (14.0, 56.0);
-        let x = (vp.right() - w / 2.0)
-            .min(ctx.content_rect().right() - w)
-            .max(0.0);
+        let x = (vp.left() - w / 2.0)
+            .max(ctx.content_rect().left())
+            .min(ctx.content_rect().right() - w);
         let pos = egui::pos2(x, vp.center().y - h / 2.0);
         let key = if on { "side_collapse" } else { "side_expand" };
         let ink = ctx.global_style().visuals.text_color();
@@ -496,17 +499,9 @@ impl XtrudeApp {
             });
     }
 
-    /// The right-hand tray, refreshed when the document or selection moved.
-    fn side_tray(&mut self, ui: &mut egui::Ui) {
-        let shown = self.window.sidebar_visible() && self.window.tray_shown("tray_properties");
-        let clean = self
-            .window
-            .actions
-            .get("clean_screen")
-            .is_some_and(|a| a.checked);
-        if !shown || clean {
-            return;
-        }
+    /// The left dock; the panels (the drop-downs too) are refreshed when
+    /// the document or selection moved.
+    fn dock(&mut self, ui: &mut egui::Ui) {
         let key = (
             self.window.viewport.scene.version,
             self.window.viewport.scene.edit_stack.len(),
@@ -516,7 +511,16 @@ impl XtrudeApp {
             self.tray_key = Some(key);
             self.tray.refresh(&self.window);
         }
-        egui::Panel::right("tray")
+        let shown = self.window.sidebar_visible();
+        let clean = self
+            .window
+            .actions
+            .get("clean_screen")
+            .is_some_and(|a| a.checked);
+        if !shown || clean {
+            return;
+        }
+        egui::Panel::left("dock")
             .resizable(true)
             .default_size(300.0)
             .min_size(240.0)
@@ -1128,14 +1132,14 @@ impl eframe::App for XtrudeApp {
                     });
                 });
             });
-            // toolbar areas outside the side trays, top and bottom
+            // toolbar areas outside the left dock, top and bottom
             // across the whole width
             self.toolbar_area(ui, ToolbarArea::Top);
             egui::Panel::bottom("statusbar").show(ui, |ui| self.status_bar(ui));
             self.toolbar_area(ui, ToolbarArea::Bottom);
             self.toolbar_area(ui, ToolbarArea::Left);
             self.toolbar_area(ui, ToolbarArea::Right);
-            self.side_tray(ui);
+            self.dock(ui);
             let central = ui.available_rect_before_wrap();
             self.floating_toolbars(&ctx, central);
             self.toolbar_drag_frame(&ctx);
@@ -1151,6 +1155,7 @@ impl eframe::App for XtrudeApp {
             self.clean_screen_exit(&ctx, vp_rect);
         } else {
             self.sidebar_handle(&ctx, vp_rect);
+            self.drop_down_window(&ctx, vp_rect);
         }
         self.apply_theme(&ctx);
         self.preferences_dialog(&ctx);

@@ -109,16 +109,16 @@ fn test_clean_screen_shows_an_exit_button_at_the_top_right() {
 }
 
 #[test]
-fn test_the_sidebar_handle_sits_on_the_resize_line_and_folds_the_trays() {
-    // The shell draws the handle on the line between the viewport and the
-    // trays, half-way down; a click folds the trays and unfolds them.
+fn test_the_sidebar_handle_sits_on_the_resize_line_and_folds_the_dock() {
+    // The shell draws the handle on the line between the left dock and the
+    // viewport, half-way down; a click folds the dock and unfolds it.
     let mut win = common::window();
-    assert!(win.sidebar_visible() && win.tray_shown("tray_properties"));
+    assert!(win.sidebar_visible());
     win.set_sidebar_visible(false); // fold
     assert!(!win.sidebar_visible());
     assert!(!win.actions.get("sidebar").unwrap().checked);
     win.trigger("sidebar"); // unfold (Ctrl+F5)
-    assert!(win.sidebar_visible() && win.tray_shown("tray_properties"));
+    assert!(win.sidebar_visible());
 }
 
 #[test]

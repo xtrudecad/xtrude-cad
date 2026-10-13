@@ -37,7 +37,7 @@ use xtrude_model::style::{builtin_styles, Style};
 
 use crate::input::{KeyEvent, MouseEvent};
 use crate::tools::{self, Tool};
-use crate::tray::{Tray, SECTIONS};
+use crate::tray::{Tray, DOCK_PANELS};
 use crate::viewport::{NavMode, RestMode, Viewport, ViewportEvent};
 pub use actions::{Action, ActionList, KeySeq, MenuItem};
 pub use context::CtxItem;
@@ -96,12 +96,6 @@ pub fn make_tool(key: &str) -> Option<Box<dyn Tool>> {
     })
 }
 
-/// The side trays: `(object name, title)` — the Properties tray.
-pub const TRAYS: [(&str, &str); 1] = [(PROPERTIES_TRAY, "Properties")];
-
-/// The tray that holds the tray sections ([`SECTIONS`]).
-pub const PROPERTIES_TRAY: &str = "tray_properties";
-
 /// The toolbars in the order of the work: `(object name, title, action
 /// ids)`. The members of a stack ([`toolbar_stacks::TOOLBAR_STACKS`]) fold
 /// into one stacked button where the first of them stands; a
@@ -118,6 +112,7 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
             "eraser",
             "paint",
             "eyedropper",
+            "panel:colors",
         ],
     ),
     (
@@ -201,6 +196,9 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
             "view:bottom",
             "toggle_projection",
             "panel:styles",
+            "panel:layers",
+            "panel:saved_views",
+            "panel:exploded_view",
         ],
     ),
     (
@@ -214,9 +212,41 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
 pub const PANEL_PREFIX: &str = "panel:";
 
 /// The drop-down panels a bar can hold: `(key, title)`; the key names the
-/// icon too.
-pub const TOOLBAR_PANELS: [(&str, &str); 2] =
-    [("styles", "Styles"), ("dimension_style", "Dimension style")];
+/// icon too. Those with a menu entry have an action of the same id as
+/// their bar entry ([`PANEL_PREFIX`] + key), which asks the shell to open
+/// them ([`MainWindow::panel_requested`]).
+pub const TOOLBAR_PANELS: [(&str, &str); 6] = [
+    ("styles", "Styles"),
+    ("dimension_style", "Dimension style"),
+    ("colors", "Colors"),
+    ("layers", "Layers"),
+    ("saved_views", "Saved views"),
+    ("exploded_view", "Exploded view"),
+];
+
+/// The drop-down panels a menu opens: `(key, menu text, tip)`.
+const MENU_PANELS: [(&str, &str, &str); 4] = [
+    (
+        "colors",
+        "Colors…",
+        "The colours in the model and the colour library; pick one to paint with.",
+    ),
+    (
+        "layers",
+        "Layers…",
+        "Show, hide and lock layers. Window > Panels > Layers docks them under Properties.",
+    ),
+    (
+        "saved_views",
+        "Saved views…",
+        "Save the camera and the layers shown, and go back to a saved view.",
+    ),
+    (
+        "exploded_view",
+        "Exploded view…",
+        "Draw the parts of the selected group apart, to see how they fit.",
+    ),
+];
 
 /// Every tool, in the order of the bars, then the context-menu ones.
 const TOOL_KEYS: &[&str] = &[
@@ -356,6 +386,9 @@ pub struct MainWindow {
     pub background_imports: bool,
     /// Model Info was asked for: the shell opens the dialog.
     pub model_info_requested: bool,
+    /// A drop-down panel a menu asked for (its [`TOOLBAR_PANELS`] key):
+    /// the shell takes it and opens the panel.
+    pub panel_requested: Option<&'static str>,
     /// The open Solid Inspector (one instance; modeless, the shell draws it).
     pub solid_inspector: Option<solid_inspector::SolidInspector>,
     saved_content: i64,
@@ -373,7 +406,7 @@ pub struct MainWindow {
     /// The window asked to close (File ▸ Quit, confirmed).
     pub quit_requested: bool,
     /// Every viewport signal the window has handled, for the shell and the
-    /// trays to read (and drain) after each event.
+    /// panels to read (and drain) after each event.
     pub seen_events: Vec<ViewportEvent>,
     /// The Lua extensions and their menu.
     pub extensions: extensions::Extensions,
@@ -415,6 +448,7 @@ impl MainWindow {
             import_job: None,
             background_imports: false,
             model_info_requested: false,
+            panel_requested: None,
             solid_inspector: None,
             saved_content: 0,
             status_message: None,
@@ -869,9 +903,12 @@ impl MainWindow {
         a.add(
             Action::new("sidebar", &tr("Sidebar", &[]))
                 .keys(&["Ctrl+F5"])
-                .tip(&tr("Show or hide the trays on the right.", &[]))
+                .tip(&tr("Show or hide the panels on the left.", &[]))
                 .checkable(true),
         );
+        for (key, text, tip) in MENU_PANELS {
+            a.add(Action::new(&format!("{PANEL_PREFIX}{key}"), &tr(text, &[])).tip(&tr(tip, &[])));
+        }
         a.add(
             Action::new("reset_toolbar_layout", &tr("Reset toolbar layout", &[])).tip(&tr(
                 "Put every toolbar back in its first place and show them all; the side panels stay as they are.",
@@ -995,6 +1032,10 @@ impl MainWindow {
             S,
             act("toggle_projection"),
             S,
+            act("panel:layers"),
+            act("panel:saved_views"),
+            act("panel:exploded_view"),
+            S,
             M(tr("Style", &[]), style_items),
             M(
                 tr("Rest of model while editing", &[]),
@@ -1092,6 +1133,7 @@ impl MainWindow {
             S,
             act("paint"),
             act("eyedropper"),
+            act("panel:colors"),
             S,
             act(print_material::DOCUMENT_ACTION),
         ];
@@ -1347,9 +1389,16 @@ impl MainWindow {
             files::clear_recent();
             return true;
         }
-        if let Some(key) = id.strip_prefix("tray_section:") {
-            let shown = self.tray_section_visible(key);
-            self.set_tray_section_shown(key, !shown);
+        if let Some(key) = id.strip_prefix("dock_panel:") {
+            let shown = Tray::panel_shown(key);
+            self.set_dock_panel_shown(key, !shown);
+            return true;
+        }
+        if let Some(key) = id.strip_prefix(PANEL_PREFIX) {
+            let Some(&(key, _)) = TOOLBAR_PANELS.iter().find(|(k, _)| *k == key) else {
+                return false;
+            };
+            self.panel_requested = Some(key);
             return true;
         }
         if let Some(bar) = id.strip_prefix("toolbar:") {
@@ -1514,51 +1563,12 @@ impl MainWindow {
         true
     }
 
-    // ---- the side trays ----------------------------------------------------------------
-    /// The side trays the sidebar holds: `(name, title)`.
-    pub fn trays(&self) -> Vec<(String, String)> {
-        TRAYS
-            .iter()
-            .map(|(n, t)| (n.to_string(), tr(t, &[])))
-            .collect()
-    }
-
-    fn hidden_trays() -> Vec<String> {
-        match settings::read(&keys::HIDDEN_TRAYS) {
-            serde_json::Value::Array(a) => a
-                .iter()
-                .filter_map(|v| v.as_str().map(String::from))
-                .collect(),
-            serde_json::Value::String(s) => vec![s],
-            _ => Vec::new(),
-        }
-    }
-
-    /// Whether the tray `name` is shown (its tab, not the fold).
-    pub fn tray_shown(&self, name: &str) -> bool {
-        !Self::hidden_trays().iter().any(|n| n == name)
-    }
-
-    /// Show or hide one tray and remember it; asking for a tray unfolds a
-    /// folded sidebar (`set_tray_shown`).
-    pub fn set_tray_shown(&mut self, name: &str, shown: bool) {
-        if shown && !self.sidebar_visible() {
-            self.set_sidebar_visible(true);
-        }
-        let mut hidden = Self::hidden_trays();
-        hidden.retain(|n| n != name);
-        if !shown {
-            hidden.push(name.to_string());
-        }
-        hidden.sort();
-        settings::write(&keys::HIDDEN_TRAYS, &serde_json::json!(hidden));
-    }
-
+    // ---- the left dock ----------------------------------------------------------------
     pub fn sidebar_visible(&self) -> bool {
         self.actions.get("sidebar").is_some_and(|a| a.checked)
     }
 
-    /// Fold the trays away or bring them back; a folded sidebar opens
+    /// Fold the left dock away or bring it back; a folded dock opens
     /// unfolded at the next start (the fold is not remembered).
     pub fn set_sidebar_visible(&mut self, on: bool) {
         if let Some(a) = self.actions.get_mut("sidebar") {
@@ -1566,17 +1576,16 @@ impl MainWindow {
         }
     }
 
-    /// Window ▸ Panels: one checkable entry per tray section, top to
-    /// bottom, ticked when it is on screen, then Reset panel layout.
+    /// Window ▸ Panels: one checkable entry per dock panel, top to bottom,
+    /// ticked when it is shown, then Reset panel layout.
     pub fn panels_menu(&self) -> Vec<context::CtxItem> {
-        let mut items: Vec<context::CtxItem> = Tray::section_order()
-            .into_iter()
-            .filter_map(|key| SECTIONS.iter().find(|(k, _)| *k == key))
+        let mut items: Vec<context::CtxItem> = DOCK_PANELS
+            .iter()
             .map(|(key, title)| context::CtxItem::Entry {
-                id: format!("tray_section:{key}"),
+                id: format!("dock_panel:{key}"),
                 text: tr(title, &[]),
                 enabled: true,
-                checked: Some(self.tray_section_visible(key)),
+                checked: Some(Tray::panel_shown(key)),
             })
             .collect();
         items.push(context::CtxItem::Separator);
@@ -1591,26 +1600,20 @@ impl MainWindow {
         items
     }
 
-    /// Every tray section back in its factory place and shown, and the
-    /// tray shown in an unfolded sidebar. The folds stay as they are. Not
-    /// undoable, like the toolbar layout.
+    /// The dock panels back as they come on a first start, in an unfolded
+    /// dock. The folds stay as they are. Not undoable, like the toolbar
+    /// layout.
     pub fn reset_panel_layout(&mut self) {
         Tray::reset_layout();
-        self.set_tray_shown(PROPERTIES_TRAY, true);
+        self.set_sidebar_visible(true);
     }
 
-    /// Whether the tray section `key` is on screen: shown, in a shown
-    /// tray.
-    pub fn tray_section_visible(&self, key: &str) -> bool {
-        self.tray_shown(PROPERTIES_TRAY) && Tray::section_shown(key)
-    }
-
-    /// Show or hide one tray section and remember it; showing one also
-    /// shows its tray and unfolds a folded sidebar (`set_tray_shown`).
-    pub fn set_tray_section_shown(&mut self, key: &str, shown: bool) {
-        Tray::set_section_shown(key, shown);
+    /// Show or hide one dock panel and remember it; showing one unfolds a
+    /// folded dock.
+    pub fn set_dock_panel_shown(&mut self, key: &str, shown: bool) {
+        Tray::set_panel_shown(key, shown);
         if shown {
-            self.set_tray_shown(PROPERTIES_TRAY, true);
+            self.set_sidebar_visible(true);
         }
     }
 
@@ -1813,7 +1816,7 @@ impl MainWindow {
     }
 
     /// Every toolbar back in its factory place and shown, saved at once.
-    /// The trays keep their state: only the toolbars are reset. Not
+    /// The panels keep their state: only the toolbars are reset. Not
     /// undoable, like any other toolbar change.
     pub fn reset_toolbar_layout(&mut self) {
         let known: Vec<String> = self.toolbars.iter().map(|(id, _, _)| id.clone()).collect();
