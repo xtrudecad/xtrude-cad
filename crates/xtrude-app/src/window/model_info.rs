@@ -59,12 +59,18 @@ pub struct ColorStat {
 impl ColorStat {
     /// The registry name, or `rgb(r,g,b)` for an anonymous colour.
     pub fn label(&self) -> String {
-        match &self.mat {
-            Some(m) if !m.is_empty() => m.clone(),
-            _ => {
-                let [r, g, b] = self.rgb.map(byte);
-                format!("rgb({r},{g},{b})")
-            }
+        color_label(self.rgb, self.mat.as_deref())
+    }
+}
+
+/// A colour as the panels name it: its registry name when it has one,
+/// else `rgb(r,g,b)` with each channel 0–255.
+pub fn color_label(rgb: Rgb, mat: Option<&str>) -> String {
+    match mat {
+        Some(m) if !m.is_empty() => m.to_string(),
+        _ => {
+            let [r, g, b] = rgb.map(byte);
+            format!("rgb({r},{g},{b})")
         }
     }
 }

@@ -9,8 +9,9 @@ use xtrude_model::commands::{layer_of, AssignLayerCommand, RenameGroupCommand};
 use xtrude_model::entity::EntityRef;
 use xtrude_model::i18n::tr;
 use xtrude_model::ids::GroupId;
-use xtrude_model::units::fmt_len;
+use xtrude_model::units::{fmt_area, fmt_len, fmt_volume};
 
+use crate::window::model_info::color_label;
 use crate::window::MainWindow;
 
 /// The layer field: `None` entry = «(several)».
@@ -178,20 +179,16 @@ impl Properties {
                         return tr("Nothing selected", &[]);
                     }
                     let face = mesh.face(f);
-                    let mat = match face.attrs.paint.color {
-                        Some(c) => format!(
-                            "color ({}, {}, {})",
-                            (c[0] * 100.0).round() / 100.0,
-                            (c[1] * 100.0).round() / 100.0,
-                            (c[2] * 100.0).round() / 100.0
-                        ),
+                    let paint = &face.attrs.paint;
+                    let mat = match paint.color {
+                        Some(c) => color_label(c, paint.mat.as_deref()),
                         None => "—".into(),
                     };
                     return format!(
-                        "<b>{}</b><br>{}: {:.3} m²<br>{}: {}<br>{}: {}",
+                        "<b>{}</b><br>{}: {}<br>{}: {}<br>{}: {}",
                         tr("Face", &[]),
                         tr("Area", &[]),
-                        mesh.loop_area(&face.outer),
+                        fmt_area(mesh.loop_area(&face.outer)),
                         tr("Vertices", &[]),
                         face.outer.len(),
                         tr("Color", &[]),
@@ -229,7 +226,7 @@ impl Properties {
                     };
                     let faces = scene.doc.mesh(grp.mesh).face_ids().len();
                     let solid = vol.map_or(String::new(), |v| {
-                        format!("<br>{}: {:.3} m³", tr("Volume", &[]), v)
+                        format!("<br>{}: {}", tr("Volume", &[]), fmt_volume(v))
                     });
                     if grp.is_component() {
                         let kin = scene

@@ -11,7 +11,7 @@ use xtrude_app::tools::rectangle::RectangleTool;
 use xtrude_app::tools::Tool;
 use xtrude_app::value_box::parse_length_field;
 use xtrude_model::units::{
-    bind, default_model_units, fmt_area, fmt_len, fmt_pair, unit_label, Units,
+    bind, default_model_units, fmt_area, fmt_len, fmt_pair, fmt_volume, unit_label, Units,
 };
 
 /// A fresh document's units bound, restored after.
@@ -51,6 +51,43 @@ fn test_readouts_follow_the_models_units() {
     b.set("ft-in", 0);
     assert_eq!(fmt_len(0.3048 * 2.0 + 0.0254 * 6.0), "2'6\"");
     assert_eq!(fmt_area(0.3048 * 0.3048), "1 ft²");
+}
+
+#[test]
+fn test_a_volume_reads_in_cm3_in_mm_and_cm_documents() {
+    let b = Bound::new();
+    assert_eq!(fmt_volume(8e-6), "8.00 cm³"); // the default: mm
+    b.set("cm", 1);
+    assert_eq!(fmt_volume(2.5e-5), "25.0 cm³");
+}
+
+#[test]
+fn test_a_volume_reads_in_m3_in_metre_documents() {
+    let b = Bound::new();
+    b.set("m", 3);
+    assert_eq!(fmt_volume(0.25), "0.250 m³");
+}
+
+#[test]
+fn test_a_volume_reads_in_in3_in_inch_documents() {
+    let b = Bound::new();
+    let inch3 = 0.0254f64.powi(3);
+    b.set("in", 2);
+    assert_eq!(fmt_volume(8.0 * inch3), "8.00 in³");
+    b.set("in-frac", 1);
+    assert_eq!(fmt_volume(1.5 * inch3), "1.5 in³");
+}
+
+#[test]
+fn test_a_volume_reads_in_ft3_in_feet_documents() {
+    let b = Bound::new();
+    let foot3 = 0.3048f64.powi(3);
+    b.set("ft", 1);
+    assert_eq!(fmt_volume(foot3), "1.0 ft³");
+    b.set("ft-in", 0);
+    assert_eq!(fmt_volume(2.0 * foot3), "2 ft³");
+    b.set("ft-in-frac", 0);
+    assert_eq!(fmt_volume(3.0 * foot3), "3 ft³");
 }
 
 fn parse(s: &str) -> f64 {

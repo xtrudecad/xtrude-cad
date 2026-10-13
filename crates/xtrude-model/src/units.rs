@@ -410,6 +410,21 @@ pub fn fmt_area(square_metres: f64) -> String {
     }
 }
 
+/// A volume in the model's units cubed, except that mm and cm documents
+/// read cm³, the unit a printed part's volume is usually given in.
+pub fn fmt_volume(cubic_metres: f64) -> String {
+    let u = model_unit();
+    let n = model_precision().clamp(0, 20) as usize;
+    match u.as_str() {
+        "m" => format!("{} m³", fmt_fixed(cubic_metres, n)),
+        "cm" | "mm" => format!("{} cm³", fmt_fixed(cubic_metres * 1e6, n)),
+        s if s.starts_with("ft") => {
+            format!("{} ft³", fmt_fixed(cubic_metres / (FT_M * FT_M * FT_M), n))
+        }
+        _ => format!("{} in³", fmt_fixed(cubic_metres / (IN_M * IN_M * IN_M), n)),
+    }
+}
+
 /// RAII helper for tests: bind metre units for this thread while alive.
 pub struct UnitsOverride;
 
