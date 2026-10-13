@@ -9,6 +9,7 @@ mod common;
 mod test_3mf_export;
 mod test_app_version;
 mod test_clipboard_windows;
+mod test_colour_slots;
 mod test_component_copies_share_nested;
 mod test_convert_step;
 mod test_copies_split_on_load;

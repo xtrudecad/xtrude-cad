@@ -12,7 +12,9 @@
 //! within an object and triangles wind counter-clockwise seen from the
 //! side the face's normal points to. The paint colours in use form one
 //! `<basematerials>`: an object of one colour points at it as a whole, an
-//! object of several colours per triangle.
+//! object of several colours per triangle. [`colour_slots`] gives those
+//! colours in the same order, with their face areas: a slicer's filament
+//! slot n is the n-th.
 
 use std::collections::HashMap;
 use std::fmt::Write as _;
@@ -21,7 +23,8 @@ use std::path::Path;
 
 use indexmap::IndexMap;
 use xtrude_core::attrs::{FaceAttrs, Paint, Rgb};
-use xtrude_core::math::{DMat4, MatExt};
+use xtrude_core::math::{DMat3, DMat4, MatExt};
+use xtrude_core::measure::face_net_area;
 use xtrude_core::{DVec3, Mesh};
 use xtrude_model::entity::EntityRef;
 use xtrude_model::group::{effective_material, iter_placements, Group};
@@ -60,13 +63,30 @@ pub enum ThreeMfError {
 }
 
 /// One `<object>`: shared vertices (millimetres) and triangles, each with
-/// its material index.
+/// its material index, and the faces they come from.
 #[derive(Default)]
 struct Object {
     name: String,
     vertices: Vec<DVec3>,
     index: HashMap<[u64; 3], usize>,
     triangles: Vec<([usize; 3], usize)>,
+    faces: Vec<FaceArea>,
+}
+
+/// A face of an object: its material index, unit normal and net area
+/// (square model units), in the object's coordinates.
+struct FaceArea {
+    mat: usize,
+    normal: DVec3,
+    area: f64,
+}
+
+/// What `collect` builds: the triangles for the file, or only the faces
+/// (enough for the colours and their areas).
+#[derive(Clone, Copy, PartialEq)]
+enum Build {
+    Triangles,
+    Faces,
 }
 
 impl Object {
@@ -86,6 +106,14 @@ impl Object {
         })
     }
 
+    /// Whether the object holds nothing to write.
+    fn is_empty(&self, build: Build) -> bool {
+        match build {
+            Build::Triangles => self.triangles.is_empty(),
+            Build::Faces => self.faces.is_empty(),
+        }
+    }
+
     /// Every face of `mesh` kept by `keep`, mapped through `m` (`None`:
     /// as they are), painted with its own paint, else `owner`'s.
     fn add_mesh(
@@ -95,6 +123,7 @@ impl Object {
         owner: Option<&Paint>,
         keep: &dyn Fn(xtrude_core::FaceId) -> bool,
         materials: &mut Materials,
+        build: Build,
     ) {
         let map = |p: DVec3| m.map_or(p, |mm| mm.project_point(p)) * MM;
         // A mirroring matrix turns every triangle inside out.
@@ -105,6 +134,15 @@ impl Object {
             }
             let mat = materials.index(&mesh.face(f).attrs, owner);
             let normal = mesh.face_normal(f);
+            let (n, area) = mapped_area(m.as_ref(), normal, face_net_area(mesh, f));
+            self.faces.push(FaceArea {
+                mat,
+                normal: n,
+                area,
+            });
+            if build == Build::Faces {
+                continue;
+            }
             for [a, b, c] in mesh.face_triangulate(f, None) {
                 let ccw = (b - a).cross(c - a).dot(normal) >= 0.0;
                 let [a, b, c] = if ccw == mirrored {
@@ -123,6 +161,24 @@ impl Object {
             }
         }
     }
+}
+
+/// The unit normal and area of a planar face of unit normal `n` and area
+/// `area` once mapped through `m` (`None`: as it is). The area scales by
+/// the length of the cofactor matrix times `n`, which holds for any linear
+/// map, mirroring or not.
+fn mapped_area(m: Option<&DMat4>, n: DVec3, area: f64) -> (DVec3, f64) {
+    let Some(m) = m else {
+        return (n, area);
+    };
+    let l = DMat3::from_mat4(*m);
+    let (a, b, c) = (l.x_axis, l.y_axis, l.z_axis);
+    let cof = b.cross(c) * n.x + c.cross(a) * n.y + a.cross(b) * n.z;
+    let len = cof.length();
+    if len < 1e-30 {
+        return (n, 0.0);
+    }
+    (cof / len, area * len)
 }
 
 /// The paint colours in use, in first-seen order.
@@ -161,16 +217,17 @@ fn item_matrix(m: &DMat4) -> bool {
     affine && m.determinant() > 0.0
 }
 
-/// Collect the scene's objects and build items.
-fn collect(scene: &Scene) -> (Vec<Object>, Vec<Item>, Materials) {
+/// Collect the scene's objects and build items. The colours are numbered
+/// in the order this walk meets them, whatever `build` asks for.
+fn collect(scene: &Scene, build: Build) -> (Vec<Object>, Vec<Item>, Materials) {
     let mut materials = Materials::default();
     let mut objects = Vec::new();
     let mut items = Vec::new();
     let loose = scene.loose_mesh();
     let visible = |f| scene.entity_visible(&EntityRef::Face(MeshId::LOOSE, f));
     let mut obj = Object::new(&xtrude_model::i18n::tr("Loose geometry", &[]));
-    obj.add_mesh(loose, None, None, &visible, &mut materials);
-    if !obj.triangles.is_empty() {
+    obj.add_mesh(loose, None, None, &visible, &mut materials, build);
+    if !obj.is_empty(build) {
         items.push(Item {
             object: objects.len(),
             transform: None,
@@ -191,8 +248,15 @@ fn collect(scene: &Scene) -> (Vec<Object>, Vec<Item>, Materials) {
                 Some(&i) => i,
                 None => {
                     let mut obj = Object::new(&g.name);
-                    obj.add_mesh(scene.doc.mesh(g.mesh), None, own, &all, &mut materials);
-                    if obj.triangles.is_empty() {
+                    obj.add_mesh(
+                        scene.doc.mesh(g.mesh),
+                        None,
+                        own,
+                        &all,
+                        &mut materials,
+                        build,
+                    );
+                    if obj.is_empty(build) {
                         continue;
                     }
                     objects.push(obj);
@@ -207,8 +271,8 @@ fn collect(scene: &Scene) -> (Vec<Object>, Vec<Item>, Materials) {
             continue;
         }
         let mut obj = Object::new(&g.name);
-        add_placements(scene, g, &mut obj, &mut materials);
-        if !obj.triangles.is_empty() {
+        add_placements(scene, g, &mut obj, &mut materials, build);
+        if !obj.is_empty(build) {
             items.push(Item {
                 object: objects.len(),
                 transform: None,
@@ -220,7 +284,13 @@ fn collect(scene: &Scene) -> (Vec<Object>, Vec<Item>, Materials) {
 }
 
 /// `g` and its visible nested placements, in world coordinates.
-fn add_placements(scene: &Scene, g: &Group, obj: &mut Object, materials: &mut Materials) {
+fn add_placements(
+    scene: &Scene,
+    g: &Group,
+    obj: &mut Object,
+    materials: &mut Materials,
+    build: Build,
+) {
     let all = |_| true;
     for (pg, m) in iter_placements(g, None) {
         if pg.id != g.id && !scene.entity_visible(&EntityRef::Group(pg.id)) {
@@ -230,8 +300,47 @@ fn add_placements(scene: &Scene, g: &Group, obj: &mut Object, materials: &mut Ma
             continue;
         };
         let paint = effective_material(pg.material.as_ref(), g.material.as_ref());
-        obj.add_mesh(mesh, m, paint, &all, materials);
+        obj.add_mesh(mesh, m, paint, &all, materials, build);
     }
+}
+
+/// One colour the export writes, as a slicer's filament slot.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ColourSlot {
+    /// The colour and opacity it is written with (unpainted faces: the
+    /// default colour).
+    pub key: MaterialKey,
+    /// The registry name of the first face met with one.
+    pub mat: Option<String>,
+    /// Whether it is the colour of unpainted faces.
+    pub unpainted: bool,
+    /// The net area of its faces, every placed copy counted (square
+    /// model units).
+    pub area: f64,
+}
+
+/// The colours a 3MF export of `scene` writes, in its `<basematerials>`
+/// order: slot 1 first. Only the faces are walked, not triangulated.
+pub fn colour_slots(scene: &Scene) -> Vec<ColourSlot> {
+    let (objects, items, materials) = collect(scene, Build::Faces);
+    let mut areas = vec![0.0; materials.0.len()];
+    for item in &items {
+        for f in &objects[item.object].faces {
+            areas[f.mat] += mapped_area(item.transform.as_ref(), f.normal, f.area).1;
+        }
+    }
+    let unpainted = material_key(&FaceAttrs::default());
+    materials
+        .0
+        .into_iter()
+        .zip(areas)
+        .map(|((key, info), area)| ColourSlot {
+            unpainted: key == unpainted && info.mat.is_none(),
+            key,
+            mat: info.mat,
+            area,
+        })
+        .collect()
 }
 
 fn paint_attrs(p: &Paint) -> FaceAttrs {
@@ -291,7 +400,7 @@ fn transform_attr(m: &DMat4) -> String {
 
 /// The `3D/3dmodel.model` document of `scene`.
 pub fn model_xml(scene: &Scene) -> Result<String, ThreeMfError> {
-    let (objects, items, materials) = collect(scene);
+    let (objects, items, materials) = collect(scene, Build::Triangles);
     let mut x = String::new();
     writeln!(x, r#"<?xml version="1.0" encoding="UTF-8"?>"#)?;
     writeln!(
