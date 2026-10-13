@@ -13,13 +13,12 @@
 //! Masses are at 100 % infill: how a slicer fills the part is the
 //! slicer's business. Densities are in kg/m³, the model being in metres.
 
-use xtrude_core::math::DMat4;
 use xtrude_core::solids::solid_report;
 
 use crate::group::{iter_placements, Group};
 use crate::history::{CmdResult, Command};
 use crate::ids::GroupId;
-use crate::scene::{Doc, Scene};
+use crate::scene::{parents_placement, Doc, Scene};
 
 /// A print material: a name and a density in kg/m³.
 #[derive(Clone, Debug, PartialEq)]
@@ -92,23 +91,6 @@ pub fn default_print_material() -> PrintMaterial {
     PrintMaterial::new(BUILT_IN[0].0, BUILT_IN[0].1)
 }
 
-/// The groups from the top level down to `id`, `id` last; `None` when no
-/// group has that id.
-fn chain(doc: &Doc, id: GroupId) -> Option<Vec<&Group>> {
-    fn rec<'a>(groups: &'a [Group], id: GroupId, out: &mut Vec<&'a Group>) -> bool {
-        for g in groups {
-            out.push(g);
-            if g.id == id || rec(&g.children, id, out) {
-                return true;
-            }
-            out.pop();
-        }
-        false
-    }
-    let mut out = Vec::new();
-    rec(&doc.groups, id, &mut out).then_some(out)
-}
-
 /// The material `group` is printed in, its top-level group being `link`:
 /// its own, else `link`'s, else the document's.
 fn material_in<'a>(doc: &'a Doc, link: &'a Group, group: &'a Group) -> &'a PrintMaterial {
@@ -138,7 +120,7 @@ pub enum MaterialFrom {
 
 /// The print material of group `id` and where it comes from.
 pub fn print_material_from(doc: &Doc, id: GroupId) -> (&PrintMaterial, MaterialFrom) {
-    let Some(path) = chain(doc, id) else {
+    let Some(path) = doc.group_path(id) else {
         return (&doc.print_material, MaterialFrom::Document);
     };
     let (link, group) = (path[0], path[path.len() - 1]);
@@ -158,16 +140,9 @@ pub fn print_material_from(doc: &Doc, id: GroupId) -> (&PrintMaterial, MaterialF
 /// times its material's density. A group whose faces are all in its
 /// nested groups (a part made of several bodies) weighs their sum.
 pub fn group_mass(doc: &Doc, id: GroupId) -> Option<f64> {
-    let path = chain(doc, id)?;
+    let path = doc.group_path(id)?;
     let (link, group) = (path[0], path[path.len() - 1]);
-    let mut base: Option<DMat4> = None;
-    for g in &path[..path.len() - 1] {
-        base = match (base, g.xform) {
-            (None, x) => x,
-            (Some(b), None) => Some(b),
-            (Some(b), Some(x)) => Some(b * x),
-        };
-    }
+    let base = parents_placement(&path);
     let mut total = 0.0;
     let mut bodies = 0;
     for (g, m) in iter_placements(group, base) {
@@ -213,7 +188,7 @@ impl Command for SetPrintMaterialCommand {
     fn apply(&mut self, scene: &mut Scene) -> CmdResult {
         let material = self.material.clone().filter(PrintMaterial::is_valid);
         for &id in &self.groups {
-            let Some(path) = chain(&scene.doc, id) else {
+            let Some(path) = scene.doc.group_path(id) else {
                 continue;
             };
             let target = path[path.len() - 1];
