@@ -35,6 +35,10 @@ open directly, and documents written by Xtrude CAD open in IngeTrazo.
 - **Export:** STL (millimetres), 3MF (millimetres, one object per part,
   with colours), Wavefront OBJ, glTF/GLB, COLLADA and images.
 
+3MF export writes colours the standard way (core 3MF base materials).
+OrcaSlicer does not read colours from a 3MF it did not write: it opens
+the parts in its first filament's colour; assign the filaments there.
+
 A STEP file describes exact surfaces; Xtrude CAD models with flat faces,
 so it tessellates the file on import (0.01 mm chord tolerance by
 default). Each part becomes a group with its name, placement and
