@@ -148,6 +148,7 @@ mod test_preferences;
 mod test_preferences_layout;
 mod test_profile_lines;
 mod test_properties_name;
+mod test_properties_units;
 mod test_protractor;
 mod test_protractor_drag_axis;
 mod test_purge;
