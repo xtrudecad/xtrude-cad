@@ -3,7 +3,7 @@
 //! Picking: the flat pick index of the scene (every loose and placed face
 //! as world triangles, every loose edge, every group hard edge) and the
 //! queries over it — face / group / edge / vertex picks, occlusion, the
-//! orbit pivot and the zoom focus.
+//! point a pan grabs and the zoom focus.
 //!
 //! The index is plain vectors with per-placement AABB spans (huge models),
 //! and each mesh's local triangles are cached by its
@@ -1395,12 +1395,12 @@ impl Viewport {
         None
     }
 
-    /// Where an orbit gesture starting at `(x, y)` turns: the model
-    /// point under the cursor, else the middle of the view's central ray
-    /// through the model box, else the target.
+    /// The point a pan starting at `(x, y)` grabs: the model point under
+    /// the cursor, else the middle of the view's central ray through the
+    /// model box, else the target.
     /// The model point comes from the frame on screen when it can
     /// ([`Self::depth_world_at`]), from the pick ray otherwise.
-    pub fn orbit_pivot_at(&mut self, x: f64, y: f64) -> DVec3 {
+    pub fn grab_point_at(&mut self, x: f64, y: f64) -> DVec3 {
         let seen = self.depth_world_at(x, y);
         if let Some(DepthSeen::Hit(p)) = seen {
             return p;

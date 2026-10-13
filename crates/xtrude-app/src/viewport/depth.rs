@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! What the frame on screen shows, read from its depth. The shell reads the
 //! depth back from the GPU and hands it over with
-//! [`Viewport::set_depth_snap`]; the zoom, the orbit pivot and the overlay's
+//! [`Viewport::set_depth_snap`]; the zoom, the pan and the overlay's
 //! annotations then answer with a lookup instead of a ray cast against the
 //! whole model.
 
@@ -84,7 +84,7 @@ impl Viewport {
     }
 
     /// [`Self::wants_depth`], for an input about to be handled: a press
-    /// (it may start an orbit about the point under it), a move that
+    /// (it may start a pan that grabs the point under it), a move that
     /// starts a camera drag with no button (the Touchpad style), or a
     /// wheel notch that picks its focus. The notches of a run that reuse
     /// the last focus read nothing.
@@ -126,9 +126,9 @@ impl Viewport {
 
     /// What the last frame shows under widget pixel `(x, y)`, read from
     /// its depth, or `None` when there is no frame to read (the camera
-    /// moved since, an export, no read-back). The zoom and the orbit pivot
-    /// ask this first: what is on screen, hidden objects and cuts included,
-    /// without building the pick index.
+    /// moved since, an export, no read-back). The zoom and the pan's
+    /// grabbed point ask this first: what is on screen, hidden objects and
+    /// cuts included, without building the pick index.
     pub fn depth_world_at(&self, x: f64, y: f64) -> Option<DepthSeen> {
         let (painted, _) = self.nav.painted_view?;
         if self.view_proj() != painted {

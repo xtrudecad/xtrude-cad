@@ -25,7 +25,6 @@ mod test_local_axes_drawing;
 mod test_mass_properties;
 mod test_mesh;
 mod test_mesh_bulk;
-mod test_orbit_pivot;
 mod test_orient;
 mod test_pan_depth;
 mod test_perp_on_slope;

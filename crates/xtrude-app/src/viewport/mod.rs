@@ -910,11 +910,6 @@ impl Viewport {
         self.input.alt_down
     }
 
-    /// Where the current orbit gesture turns (`None` between gestures).
-    pub fn orbit_pivot(&self) -> Option<DVec3> {
-        self.nav.orbit_pivot
-    }
-
     pub fn toggle_projection(&mut self) {
         self.camera.toggle_projection();
         self.update();
