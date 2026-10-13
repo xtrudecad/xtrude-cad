@@ -26,6 +26,7 @@ mod test_fuzz_regressions;
 mod test_group_material;
 mod test_group_vs_component;
 mod test_insert_document;
+mod test_links;
 mod test_local_axes_drawing;
 mod test_make_group_in_open_group;
 mod test_make_independent_nested;

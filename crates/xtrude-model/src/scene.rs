@@ -70,6 +70,20 @@ impl Default for Doc {
     }
 }
 
+/// The placement of the last group of `path` (top level first) comes
+/// after its parents': theirs composed, `None` when none has one.
+pub fn parents_placement(path: &[&Group]) -> Option<DMat4> {
+    let mut base: Option<DMat4> = None;
+    for g in &path[..path.len().saturating_sub(1)] {
+        base = match (base, g.xform) {
+            (None, x) => x,
+            (Some(b), None) => Some(b),
+            (Some(b), Some(x)) => Some(b * x),
+        };
+    }
+    base
+}
+
 impl Doc {
     pub fn mesh(&self, id: MeshId) -> &Mesh {
         static EMPTY: std::sync::OnceLock<Mesh> = std::sync::OnceLock::new();
@@ -98,6 +112,38 @@ impl Doc {
 
     pub fn find_group_mut(&mut self, id: GroupId) -> Option<&mut Group> {
         self.groups.iter_mut().find_map(|g| g.find_mut(id))
+    }
+
+    /// The groups from the top level down to `id`, `id` last; `None` when
+    /// no group has that id.
+    pub fn group_path(&self, id: GroupId) -> Option<Vec<&Group>> {
+        fn rec<'a>(groups: &'a [Group], id: GroupId, out: &mut Vec<&'a Group>) -> bool {
+            for g in groups {
+                out.push(g);
+                if g.id == id || rec(&g.children, id, out) {
+                    return true;
+                }
+                out.pop();
+            }
+            false
+        }
+        let mut out = Vec::new();
+        rec(&self.groups, id, &mut out).then_some(out)
+    }
+
+    /// Every vertex position of group `id` and its nested groups, its
+    /// parents' placements applied: where they are in the model.
+    pub fn group_world_points(&self, id: GroupId) -> Vec<DVec3> {
+        let Some(path) = self.group_path(id) else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for (g, m) in iter_placements(path[path.len() - 1], parents_placement(&path)) {
+            for (_, v) in self.mesh(g.mesh).verts.iter() {
+                out.push(m.map_or(v.position, |mm| mm.project_point(v.position)));
+            }
+        }
+        out
     }
 
     pub fn layer(&self, name: &str) -> Option<&Layer> {
