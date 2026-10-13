@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! The properties panel (`Properties`): facts about the selection, the name of
-//! one group or component, and its layer — the one thing changed here.
+//! The properties panel (`Properties`): facts about the selection (for one
+//! group: its print material and its mass), the name of one group or
+//! component, and its layer — the one thing changed here.
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -9,7 +10,8 @@ use xtrude_model::commands::{layer_of, AssignLayerCommand, RenameGroupCommand};
 use xtrude_model::entity::EntityRef;
 use xtrude_model::i18n::tr;
 use xtrude_model::ids::GroupId;
-use xtrude_model::units::{fmt_area, fmt_len, fmt_volume};
+use xtrude_model::print_material::{group_mass, print_material_from, MaterialFrom};
+use xtrude_model::units::{fmt_area, fmt_len, fmt_mass, fmt_volume};
 
 use crate::window::model_info::color_label;
 use crate::window::MainWindow;
@@ -32,6 +34,7 @@ pub struct Properties {
     pub name: String,
     pub layer: LayerField,
     solid_cache: Option<(u64, HashMap<GroupId, Option<f64>>)>,
+    mass_cache: Option<(u64, HashMap<GroupId, Option<f64>>)>,
 }
 
 fn taggable(e: &EntityRef) -> bool {
@@ -165,6 +168,45 @@ impl Properties {
         })
     }
 
+    fn group_mass(&mut self, w: &MainWindow, g: GroupId) -> Option<f64> {
+        let version = w.viewport.scene.version;
+        if self.mass_cache.as_ref().is_none_or(|c| c.0 != version) {
+            self.mass_cache = Some((version, HashMap::new()));
+        }
+        let cache = &mut self.mass_cache.as_mut()?.1;
+        *cache
+            .entry(g)
+            .or_insert_with(|| group_mass(&w.viewport.scene.doc, g))
+    }
+
+    /// A group's print material and mass, as two lines.
+    fn material_lines(&mut self, w: &MainWindow, g: GroupId) -> String {
+        let mass = self.group_mass(w, g);
+        let doc = &w.viewport.scene.doc;
+        let (material, from) = print_material_from(doc, g);
+        let material = match from {
+            MaterialFrom::Own => material.name.clone(),
+            MaterialFrom::Part(p) => tr(
+                "{name} (from {part})",
+                &[
+                    ("name", &material.name),
+                    (
+                        "part",
+                        &doc.find_group(p)
+                            .map(|p| p.name.clone())
+                            .unwrap_or_default(),
+                    ),
+                ],
+            ),
+            MaterialFrom::Document => tr("{name} (document)", &[("name", &material.name)]),
+        };
+        let mass = match mass {
+            Some(kg) => format!("{}: {}", tr("Mass (100 % infill)", &[]), fmt_mass(kg)),
+            None => tr("Not a closed solid: no mass", &[]),
+        };
+        format!("<br>{}: {material}<br>{mass}", tr("Print material", &[]))
+    }
+
     /// What the selection is.
     pub fn describe(&mut self, w: &MainWindow, sel: &[EntityRef]) -> String {
         if sel.is_empty() {
@@ -220,6 +262,7 @@ impl Properties {
                 }
                 EntityRef::Group(g) => {
                     let vol = self.solid_volume(w, g);
+                    let printed = self.material_lines(w, g);
                     let scene = &w.viewport.scene;
                     let Some(grp) = scene.doc.find_group(g) else {
                         return tr("Nothing selected", &[]);
@@ -241,7 +284,7 @@ impl Properties {
                             tr("Component", &[])
                         };
                         return format!(
-                            "<b>{title}</b><br>{}: {faces}<br>{}: {kin}{solid}",
+                            "<b>{title}</b><br>{}: {faces}<br>{}: {kin}{solid}{printed}",
                             tr("Faces", &[]),
                             tr("In model", &[])
                         );
@@ -251,7 +294,10 @@ impl Properties {
                     } else {
                         tr("Group", &[])
                     };
-                    return format!("<b>{title}</b><br>{}: {faces}{solid}", tr("Faces", &[]));
+                    return format!(
+                        "<b>{title}</b><br>{}: {faces}{solid}{printed}",
+                        tr("Faces", &[])
+                    );
                 }
                 _ => {}
             }

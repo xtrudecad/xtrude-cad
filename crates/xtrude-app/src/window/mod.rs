@@ -19,6 +19,7 @@ pub mod hints;
 pub mod hole_form;
 pub mod model_info;
 pub mod preferences;
+pub mod print_material;
 pub mod progress;
 pub mod solid_inspector;
 pub mod status_bar;
@@ -890,6 +891,16 @@ impl MainWindow {
             )),
         );
         a.add(
+            Action::new(
+                print_material::DOCUMENT_ACTION,
+                &tr("Document print material…", &[]),
+            )
+            .tip(&tr(
+                "Choose the print material the parts are made of, which gives their mass; a group can have its own from its context menu.",
+                &[],
+            )),
+        );
+        a.add(
             Action::new("model_info", &tr(model_info::NAME, &[]))
                 .tip(&tr(model_info::DESCRIPTION, &[]))
                 .icon("model_info"),
@@ -1081,6 +1092,8 @@ impl MainWindow {
             S,
             act("paint"),
             act("eyedropper"),
+            S,
+            act(print_material::DOCUMENT_ACTION),
         ];
         let inspect = vec![
             act("measure"),
@@ -1374,7 +1387,10 @@ impl MainWindow {
             self.run_repeatable("Add Crossing Edges", id, |w| w.on_add_crossing_edges(mode));
             return true;
         }
-        if self.dispatch_context(id) || self.dispatch_extensions(id) {
+        if self.dispatch_context(id)
+            || self.dispatch_print_material(id)
+            || self.dispatch_extensions(id)
+        {
             return true;
         }
         match id {
@@ -1472,6 +1488,7 @@ impl MainWindow {
                     a.checked = !a.checked;
                 }
             }
+            print_material::DOCUMENT_ACTION => self.on_document_print_material(),
             "model_info" => {
                 // one-shot: the tool in hand stays
                 self.remembered(model_info::NAME, id);

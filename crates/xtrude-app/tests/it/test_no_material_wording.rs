@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! The app shows colours, so what the user reads says "color", never
-//! "material".
+//! "material". The one material it names is what a part is printed in,
+//! always called a "print material".
 
 use crate::common;
 
@@ -15,7 +16,16 @@ use xtrude_model::ids::MeshId;
 use xtrude_model::scene::SelectMode;
 
 fn says_material(text: &str) -> bool {
-    text.to_lowercase().contains("material")
+    text.to_lowercase()
+        .replace("print material", "")
+        .contains("material")
+}
+
+#[test]
+fn test_only_a_print_material_is_a_material() {
+    assert!(says_material("Paint material"));
+    assert!(says_material("Print material, or the material it gets"));
+    assert!(!says_material("Document print material…"));
 }
 
 #[test]
