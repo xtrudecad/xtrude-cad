@@ -17,6 +17,12 @@ pub const MIN_DISTANCE: f64 = 0.02;
 /// Ceiling: past this the model is a dot and the depth buffer is noise.
 pub const MAX_DISTANCE: f64 = 10000.0;
 
+/// The parallel projection's depth range holds everything within this many
+/// distances of the target, besides [`OrbitCamera::depth_box`]: the guide
+/// lines (15 distances long), the axis dashes and a tool's rubber band
+/// around the view stay between the planes.
+const PARALLEL_VIEW_REACH: f64 = 16.0;
+
 /// Camera that orbits around a target point.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OrbitCamera {
@@ -30,6 +36,9 @@ pub struct OrbitCamera {
     pub znear: f64,
     pub zfar: f64,
     pub perspective: bool,
+    /// What the parallel projection's depth range must hold: the scene's
+    /// box, set by whoever draws it. `None`: ±[`Self::zfar`].
+    pub depth_box: Option<(DVec3, DVec3)>,
 }
 
 impl Default for OrbitCamera {
@@ -45,6 +54,7 @@ impl Default for OrbitCamera {
             znear: 0.1,
             zfar: 10000.0,
             perspective: true,
+            depth_box: None,
         }
     }
 }
@@ -163,8 +173,37 @@ impl OrbitCamera {
         } else {
             let half_h = self.distance * (self.fov_deg.to_radians() / 2.0).tan();
             let half_w = half_h * self.aspect;
-            DMat4::orthographic_rh_gl(-half_w, half_w, -half_h, half_h, -self.zfar, self.zfar)
+            let (near, far) = self.depth_range();
+            DMat4::orthographic_rh_gl(-half_w, half_w, -half_h, half_h, near, far)
         }
+    }
+
+    /// The near and far planes, as depths in front of the eye. Perspective:
+    /// [`Self::near`] and `zfar`. Parallel: fitted to what is drawn, the
+    /// [`Self::depth_box`] and the space around the target, with the eye's
+    /// plane allowed inside (the eye is only a position there, and what is
+    /// behind it still shows). The depth buffer is `f32` and a parallel
+    /// projection spreads it evenly over the range: ±10 km left steps of
+    /// about a millimetre, and edges and faces behind a thin plate showed
+    /// through it.
+    pub fn depth_range(&self) -> (f64, f64) {
+        if self.perspective {
+            return (self.near(), self.zfar);
+        }
+        let Some((lo, hi)) = self.depth_box else {
+            return (-self.zfar, self.zfar);
+        };
+        let reach = self.distance * PARALLEL_VIEW_REACH;
+        let mut near = (self.distance - reach).max(-self.zfar);
+        let mut far = (self.distance + reach).min(self.zfar);
+        let (eye, f) = (self.eye(), self.forward());
+        let centre = (lo + hi) * 0.5;
+        let radius = (hi - lo).length() * 0.5;
+        let depth = (centre - eye).dot(f);
+        near = near.min(depth - radius);
+        far = far.max(depth + radius);
+        let margin = (far - near) * 0.01 + 1e-3;
+        (near - margin, far + margin)
     }
 
     /// The part of segment `a`–`b` between the near and far planes, cut in
@@ -172,12 +211,13 @@ impl OrbitCamera {
     /// segment kilometres long that crosses the eye's plane, its cut lands
     /// centimetres off, which a near plane of a few millimetres turns into
     /// a line flung across the screen. The cut keeps 1 % inside the near
-    /// plane so the GPU has nothing left to clip there.
+    /// plane so the GPU has nothing left to clip there. In parallel it cuts
+    /// at [`Self::depth_range`].
     pub fn clip_to_depth(&self, a: DVec3, b: DVec3) -> Option<(DVec3, DVec3)> {
         let (lo, hi) = if self.perspective {
             (self.near() * 1.01, self.zfar)
         } else {
-            (-self.zfar, self.zfar)
+            self.depth_range()
         };
         let (eye, f) = (self.eye(), self.forward());
         let (da, db) = ((a - eye).dot(f), (b - eye).dot(f));
