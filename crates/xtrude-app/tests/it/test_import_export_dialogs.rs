@@ -136,6 +136,32 @@ fn test_open_of_another_format_starts_a_new_document_holding_it() {
 }
 
 #[test]
+fn test_open_of_another_format_leaves_it_unsaved_whatever_the_case_of_its_extension() {
+    let dir = TmpDir::new();
+    let stl = dir.path().join("BOX.STL");
+    std::fs::copy(golden("box.stl"), &stl).unwrap();
+    let mut w = window();
+    assert!(w.open_path(&golden("box.xtrude")));
+    assert!(!w.is_dirty());
+    let d = scripted(&mut w);
+    d.borrow_mut().open_paths.push(Some(stl));
+    d.borrow_mut().stl.push(Some((2, 0))); // millimetres, no simplification
+    w.trigger("open");
+    assert_eq!(w.import_name.as_deref(), Some("BOX.STL"));
+    assert!(w.current_path.is_none());
+    assert!(face_count(&w) > 0);
+    // a model that is in no file yet: New asks before it goes
+    assert!(w.is_dirty());
+    d.borrow_mut()
+        .unsaved
+        .push(xtrude_app::window::SaveChoice::Cancel);
+    w.trigger("new");
+    assert!(face_count(&w) > 0, "cancelled: the model stays");
+    let asked = &d.borrow().asked;
+    assert_eq!(asked.last().map(|(k, _)| k.as_str()), Some("unsaved"));
+}
+
+#[test]
 fn test_export_writes_the_format_its_extension_names() {
     let dir = TmpDir::new();
     let mut w = window();
