@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! What the transform tools (Move, Rotate, Scale, Flip) act on, and the
-//! copies they stamp.
+//! What the transform tools (Move, Rotate, Scale, Flip, the patterns) act
+//! on, and the copies they stamp.
 
 use std::collections::HashSet;
 
@@ -21,6 +21,7 @@ use xtrude_model::ids::{GroupId, ObjId};
 use xtrude_model::scene::Scene;
 
 use super::ToolContext;
+use crate::value_box::ArrayKind;
 use crate::viewport::Viewport;
 
 /// A face as it was when the operation started (copies stamp these).
@@ -253,6 +254,80 @@ pub fn face_snap(mesh: &Mesh, f: FaceId) -> FaceSnap {
         holes: mesh.face_hole_positions(f),
         attrs: mesh.face(f).attrs.clone(),
     }
+}
+
+/// What a copy stamps: the groups (copied as Move's copy does, a
+/// component instance staying an instance), and the faces and edges as
+/// they were when the operation started.
+#[derive(Clone, Debug, Default)]
+pub struct CopySet {
+    pub groups: Vec<GroupId>,
+    pub faces: Vec<FaceSnap>,
+    pub edges: Vec<EdgeSnap>,
+}
+
+impl CopySet {
+    /// The copy set of `groups` and the loose selection (or the loose
+    /// entity under the cursor), and the wireframe its preview carries.
+    pub fn gather(
+        vp: &mut Viewport,
+        ctx: &ToolContext,
+        groups: &[GroupId],
+    ) -> (CopySet, Vec<(DVec3, DVec3)>) {
+        let (faces, edges, segs) = gather_copy_entities(vp, ctx, groups);
+        let set = CopySet {
+            groups: groups.to_vec(),
+            faces,
+            edges,
+        };
+        (set, segs)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.groups.is_empty() && self.faces.is_empty() && self.edges.is_empty()
+    }
+
+    /// The copies moved by each of `deltas`, or `None` with nothing to copy.
+    pub fn translated(&self, deltas: Vec<DVec3>) -> Option<Box<dyn Command>> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(Box::new(TranslateCopies {
+            groups: self.groups.clone(),
+            faces: self.faces.clone(),
+            edges: self.edges.clone(),
+            deltas,
+        }))
+    }
+
+    /// The copies turned by each of `degs` about the axis through
+    /// `center`, or `None` with nothing to copy.
+    pub fn rotated(&self, center: DVec3, axis: DVec3, degs: Vec<f64>) -> Option<Box<dyn Command>> {
+        if self.is_empty() {
+            return None;
+        }
+        Some(Box::new(RotateCopies {
+            groups: self.groups.clone(),
+            faces: self.faces.clone(),
+            edges: self.edges.clone(),
+            center,
+            axis,
+            degs,
+        }))
+    }
+}
+
+/// The multiples of a step at which an array of `count` copies lies:
+/// 1, 2 … `count` ([`ArrayKind::External`]), or the step divided into
+/// `count` equal parts ([`ArrayKind::Internal`]).
+pub fn array_multiples(count: u32, kind: ArrayKind) -> Vec<f64> {
+    let n = count as f64;
+    (1..=count)
+        .map(|k| match kind {
+            ArrayKind::Internal => k as f64 / n,
+            ArrayKind::External => k as f64,
+        })
+        .collect()
 }
 
 /// Which command a hot retype / array may replace: the history depth and

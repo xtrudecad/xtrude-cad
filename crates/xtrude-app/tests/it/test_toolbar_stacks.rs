@@ -261,6 +261,7 @@ fn test_the_new_stacks_hold_their_families() {
         ),
         ("circles", &["circle", "polygon", "slot"]),
         ("edges", &["fillet", "chamfer"]),
+        ("patterns", &["pattern_linear", "pattern_circular"]),
         (
             "nav",
             &["nav:orbit", "nav:pan", "nav:zoom", "nav:zoom_window"],

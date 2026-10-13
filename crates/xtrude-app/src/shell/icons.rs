@@ -739,6 +739,41 @@ fn sweep(p: &mut Painter, _ink: Rgba) {
     dot(p, 36.0, 14.0, 3.2, None);
 }
 
+/// Three squares in a row: the original in ink, its copies in the
+/// accent, the direction dashed beneath them.
+fn pattern_linear(p: &mut Painter, ink: Rgba) {
+    p.no_brush();
+    p.draw_rect(5.0, 14.0, 11.0, 11.0);
+    p.save();
+    p.set_pen(Pen::round(ACCENT, 2.8));
+    p.draw_rect(19.0, 14.0, 11.0, 11.0);
+    p.draw_rect(33.0, 14.0, 11.0, 11.0);
+    p.restore();
+    guide(p, ink, (10.5, 34.0), (31.0, 34.0), true);
+    solid_arrow(p, ACCENT, (30.0, 34.0), (40.0, 34.0), 2.4, 5.5);
+}
+
+/// Squares round a centre: the original in ink, its copies in the accent.
+fn pattern_circular(p: &mut Painter, ink: Rgba) {
+    let (cx, cy, r, h) = (24.0f32, 24.0f32, 15.0f32, 3.4f32);
+    p.no_brush();
+    p.save();
+    p.set_pen(Pen::new(ink.alpha(110), 1.6).dashed());
+    p.draw_ellipse(cx, cy, r, r);
+    p.restore();
+    for k in 0..6 {
+        let a = (90.0 - 60.0 * k as f32).to_radians();
+        let (x, y) = (cx + r * a.cos(), cy - r * a.sin());
+        p.save();
+        if k > 0 {
+            p.set_pen(Pen::round(ACCENT, 2.4));
+        }
+        p.draw_rect(x - h, y - h, 2.0 * h, 2.0 * h);
+        p.restore();
+    }
+    dot(p, cx, cy, 2.4, None);
+}
+
 const SECTION_FRAME: [(f32, f32); 4] = [(9.0, 30.0), (26.0, 39.0), (39.0, 21.0), (22.0, 12.0)];
 
 fn section(p: &mut Painter, _ink: Rgba) {
@@ -1580,6 +1615,8 @@ pub const KEYS: &[&str] = &[
     "rotate",
     "scale",
     "flip",
+    "pattern_linear",
+    "pattern_circular",
     "sweep",
     "pushpull",
     "hole",
@@ -1647,6 +1684,8 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "rotate" => rotate,
         "scale" => scale,
         "flip" => flip,
+        "pattern_linear" => pattern_linear,
+        "pattern_circular" => pattern_circular,
         "sweep" => sweep,
         "pushpull" => pushpull,
         "offset" => offset,
@@ -1763,9 +1802,8 @@ fn pencil_badge(key: &str) -> Option<Option<&'static str>> {
 fn hotspot(key: &str) -> Option<(f32, f32)> {
     Some(match key {
         "move" | "rotate" | "scale" | "flip" | "pushpull" | "offset" | "sweep" | "fillet"
-        | "chamfer" | "shell" | "hole" | "text" | "text3d" | "protractor" | "orbit" | "pan" => {
-            (24.0, 24.0)
-        }
+        | "chamfer" | "shell" | "hole" | "text" | "text3d" | "protractor" | "orbit" | "pan"
+        | "pattern_linear" | "pattern_circular" | "revolve" => (24.0, 24.0),
         "dimension" => (12.0, 30.0),
         "paint" => (13.0, 35.0),
         "eyedropper" => (9.5, 38.5),

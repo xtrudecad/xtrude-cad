@@ -131,6 +131,14 @@ fn hint_entry(key: &str) -> Option<Hint> {
             "Select something, then drag a grip: corners uniform, edges along an axis.",
             "Drag, or type a factor (2) or a size (2m). Ctrl = centre, Shift = uniform.",
         ),
+        "pattern_linear" => Two(
+            "Click what to repeat (or select it first), at the start of the direction.",
+            "Click the spacing, or type count;spacing or count/span and Enter.",
+        ),
+        "pattern_circular" => Two(
+            "Click the centre (or select first); on a face, the protractor takes its plane.",
+            "Type count;angle (count alone: full turn), or click the angle.",
+        ),
         "flip" => Always("Click the plane to mirror the selection across."),
         "sweep" => Two(
             "Select the path, then click the profile face. Alt = sweep along the selection.",

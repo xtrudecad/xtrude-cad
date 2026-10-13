@@ -24,8 +24,8 @@ use xtrude_model::units::fmt_len;
 
 use super::rotate::RotateTool;
 use super::transform::{
-    gather_copy_entities, gather_dimensions, gather_labels, gather_targets,
-    selected_section_planes, CmdMark, EdgeSnap, FaceSnap, TranslateCopies,
+    array_multiples, gather_copy_entities, gather_dimensions, gather_labels, gather_targets,
+    selected_section_planes, CmdMark, CopySet, EdgeSnap, FaceSnap,
 };
 use super::{
     OverlayLayer, Plane, Rgba, SnapExcluded, SnapPrefs, Tool, ToolContext, ToolInfo, ToolValue,
@@ -89,24 +89,8 @@ pub fn rotation_grips(obb: ((DVec3, DVec3, DVec3), DVec3, DVec3), eye: DVec3) ->
 #[derive(Clone, Debug)]
 struct LastCopy {
     mark: CmdMark,
-    groups: Vec<GroupId>,
-    faces: Vec<FaceSnap>,
-    edges: Vec<EdgeSnap>,
+    set: CopySet,
     delta: DVec3,
-}
-
-impl LastCopy {
-    fn build(&self, deltas: Vec<DVec3>) -> Option<Box<dyn Command>> {
-        if self.groups.is_empty() && self.faces.is_empty() && self.edges.is_empty() {
-            return None;
-        }
-        Some(Box::new(TranslateCopies {
-            groups: self.groups.clone(),
-            faces: self.faces.clone(),
-            edges: self.edges.clone(),
-            deltas,
-        }))
-    }
 }
 
 #[derive(Default)]
@@ -327,12 +311,14 @@ impl MoveTool {
         if self.copy && delta.length() > 1e-9 {
             let mut last = LastCopy {
                 mark: CmdMark::sentinel(),
-                groups: self.groups.clone(),
-                faces: self.sel_faces.clone(),
-                edges: self.sel_edges.clone(),
+                set: CopySet {
+                    groups: self.groups.clone(),
+                    faces: self.sel_faces.clone(),
+                    edges: self.sel_edges.clone(),
+                },
                 delta,
             };
-            if let Some(mut cmd) = last.build(vec![delta]) {
+            if let Some(mut cmd) = last.set.translated(vec![delta]) {
                 vp.execute(cmd.as_mut());
                 last.mark = CmdMark::now(vp);
                 self.last = Some(last);
@@ -428,18 +414,12 @@ impl MoveTool {
             self.last = None;
             return false;
         }
-        let n = count as f64;
-        let deltas: Vec<DVec3> = (1..=count)
-            .map(|k| {
-                if kind == ArrayKind::Internal {
-                    last.delta * (k as f64 / n)
-                } else {
-                    last.delta * k as f64
-                }
-            })
+        let deltas: Vec<DVec3> = array_multiples(count, kind)
+            .into_iter()
+            .map(|k| last.delta * k)
             .collect();
         vp.undo();
-        let Some(mut cmd) = last.build(deltas) else {
+        let Some(mut cmd) = last.set.translated(deltas) else {
             self.last = None;
             return false;
         };

@@ -69,6 +69,8 @@ pub fn make_tool(key: &str) -> Option<Box<dyn Tool>> {
         "rotate" => Box::new(rotate::RotateTool::new()),
         "scale" => Box::new(scale::ScaleTool::new()),
         "flip" => Box::new(flip::FlipTool::new()),
+        "pattern_linear" => Box::new(pattern::LinearPatternTool::new()),
+        "pattern_circular" => Box::new(pattern::CircularPatternTool::new()),
         "sweep" => Box::new(sweep::SweepTool::new()),
         "fillet" => Box::new(fillet::FilletTool::new()),
         "chamfer" => Box::new(chamfer::ChamferTool::new()),
@@ -157,7 +159,14 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
     (
         "transform",
         "Transform",
-        &["move", "rotate", "scale", "flip"],
+        &[
+            "move",
+            "rotate",
+            "scale",
+            "flip",
+            "pattern_linear",
+            "pattern_circular",
+        ],
     ),
     (
         "inspect",
@@ -240,6 +249,8 @@ const TOOL_KEYS: &[&str] = &[
     "rotate",
     "scale",
     "flip",
+    "pattern_linear",
+    "pattern_circular",
     "measure",
     "protractor",
     "section",
@@ -1025,6 +1036,8 @@ impl MainWindow {
             act("rotate"),
             act("scale"),
             act("flip"),
+            act("pattern_linear"),
+            act("pattern_circular"),
             S,
             M(
                 tr("Solids", &[]),

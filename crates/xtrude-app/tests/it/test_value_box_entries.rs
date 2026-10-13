@@ -11,7 +11,7 @@ use std::rc::Rc;
 use xtrude_app::input::{Key, KeyEvent, Modifiers};
 use xtrude_app::tools::circle::RadialTool;
 use xtrude_app::tools::{Tool, ToolInfo, ToolValue};
-use xtrude_app::value_box::{ArrayKind, ArraySpec, ValueSpec};
+use xtrude_app::value_box::{ArrayKind, ArraySpec, PatternEntry, ValueSpec};
 use xtrude_app::viewport::Viewport;
 
 /// A tool that only records what the box hands it.
@@ -98,6 +98,68 @@ fn test_an_array_step_reaches_only_a_tool_that_takes_one() {
         }]
     );
     assert!(enter(ValueSpec::default(), "3x").is_empty());
+}
+
+fn pattern(count: u32, step: Option<f64>, spread: bool) -> Vec<ToolValue> {
+    vec![ToolValue::Pattern(PatternEntry {
+        count,
+        step,
+        spread,
+    })]
+}
+
+#[test]
+fn test_a_pattern_takes_its_count_bare_and_its_spacing_as_a_length() {
+    let spec = ValueSpec {
+        pattern: true,
+        comma_lists: true,
+        ..ValueSpec::default()
+    };
+    assert_eq!(enter(spec, "4"), pattern(4, None, false));
+    assert_eq!(enter(spec, "4;15mm"), pattern(4, Some(0.015), false));
+    assert_eq!(enter(spec, "4 2"), pattern(4, Some(2.0), false));
+    assert_eq!(enter(spec, "4,2"), pattern(4, Some(2.0), false));
+    assert_eq!(enter(spec, "4;1,5"), pattern(4, Some(1.5), false));
+    assert_eq!(enter(spec, "4/"), pattern(4, None, true));
+    assert_eq!(enter(spec, "4/45mm"), pattern(4, Some(0.045), true));
+    // the count is no length: a millimetre document leaves it alone
+    let _mm = MetreDocument::new();
+    xtrude_model::units::set_override(Some(xtrude_model::units::Units::new("mm", 1)));
+    let mut vp = stub();
+    let got = Rc::new(RefCell::new(Vec::new()));
+    vp.set_active_tool(Some(Box::new(Recorder {
+        spec,
+        got: got.clone(),
+    })));
+    vp.set_value_buffer("4;15");
+    assert!(vp.handle_value_key(&return_key()));
+    let got = got.borrow().clone();
+    let [ToolValue::Pattern(p)] = got.as_slice() else {
+        panic!("{got:?}");
+    };
+    assert_eq!(p.count, 4);
+    assert!((p.step.unwrap() - 0.015).abs() < 1e-12, "{p:?}");
+}
+
+#[test]
+fn test_a_circular_pattern_takes_its_angle_unitless() {
+    let spec = ValueSpec {
+        pattern: true,
+        unitless: true,
+        comma_lists: true,
+        ..ValueSpec::default()
+    };
+    assert_eq!(enter(spec, "6;60"), pattern(6, Some(60.0), false));
+    assert_eq!(enter(spec, "5/90"), pattern(5, Some(90.0), true));
+}
+
+#[test]
+fn test_count_and_spacing_are_two_lengths_outside_a_pattern() {
+    let spec = ValueSpec {
+        comma_lists: true,
+        ..ValueSpec::default()
+    };
+    assert_eq!(enter(spec, "4;15"), vec![ToolValue::Pair(4.0, 15.0)]);
 }
 
 #[test]

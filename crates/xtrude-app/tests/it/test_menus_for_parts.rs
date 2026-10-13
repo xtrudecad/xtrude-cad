@@ -206,6 +206,8 @@ fn test_the_model_menu() {
             "rotate",
             "scale",
             "flip",
+            "pattern_linear",
+            "pattern_circular",
             "-",
             "Solids ▸",
             "  solid_union",

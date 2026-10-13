@@ -137,6 +137,7 @@ mod test_paint_alt_pointer;
 mod test_paint_materials;
 mod test_parts;
 mod test_paste;
+mod test_pattern_tools;
 mod test_pick_face_parallel_view;
 mod test_pick_index;
 mod test_pick_index_lazy;

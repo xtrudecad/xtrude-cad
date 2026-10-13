@@ -21,8 +21,8 @@ use xtrude_model::ids::{GroupId, MeshId, ObjId};
 
 use super::protractor::ProtractorBase;
 use super::transform::{
-    gather_copy_entities, gather_targets, selected_section_planes, CmdMark, EdgeSnap, FaceSnap,
-    RotateCopies,
+    array_multiples, gather_copy_entities, gather_targets, selected_section_planes, CmdMark,
+    CopySet, EdgeSnap, FaceSnap,
 };
 use super::{
     Plane, Rgba, SnapExcluded, SnapPrefs, Tool, ToolContext, ToolInfo, ToolValue, WorkPlane,
@@ -51,31 +51,20 @@ struct LastRotation {
     sign: f64,
     start: DVec3,
     axis: DVec3,
-    groups: Vec<GroupId>,
+    set: CopySet,
     splanes: Vec<ObjId>,
     positions: Vec<DVec3>,
-    faces: Vec<FaceSnap>,
-    edges: Vec<EdgeSnap>,
 }
 
 impl LastRotation {
     /// The command for `degs` (one angle, or a copy fan).
     fn build(&self, degs: &[f64]) -> Option<Box<dyn Command>> {
         if self.copy {
-            if self.groups.is_empty() && self.faces.is_empty() && self.edges.is_empty() {
-                return None;
-            }
-            return Some(Box::new(RotateCopies {
-                groups: self.groups.clone(),
-                faces: self.faces.clone(),
-                edges: self.edges.clone(),
-                center: self.start,
-                axis: self.axis,
-                degs: degs.to_vec(),
-            }));
+            return self.set.rotated(self.start, self.axis, degs.to_vec());
         }
         let deg = *degs.last()?;
         let mut cmds: Vec<Box<dyn Command>> = self
+            .set
             .groups
             .iter()
             .map(|&g| {
@@ -267,11 +256,13 @@ impl RotateTool {
             sign: 1.0,
             start: self.p.start_point.unwrap_or_default(),
             axis: self.p.axis(),
-            groups: self.groups.clone(),
+            set: CopySet {
+                groups: self.groups.clone(),
+                faces: self.sel_faces.clone(),
+                edges: self.sel_edges.clone(),
+            },
             splanes: self.splanes.clone(),
             positions: self.positions.clone(),
-            faces: self.sel_faces.clone(),
-            edges: self.sel_edges.clone(),
         }
     }
 
@@ -329,15 +320,9 @@ impl RotateTool {
             self.last = None;
             return false;
         }
-        let n = count as f64;
-        let degs: Vec<f64> = (1..=count)
-            .map(|k| {
-                if kind == ArrayKind::Internal {
-                    last.deg * (k as f64 / n)
-                } else {
-                    last.deg * k as f64
-                }
-            })
+        let degs: Vec<f64> = array_multiples(count, kind)
+            .into_iter()
+            .map(|k| last.deg * k)
             .collect();
         vp.undo();
         let Some(mut cmd) = last.build(&degs) else {
