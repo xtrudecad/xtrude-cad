@@ -19,6 +19,8 @@ use serde_json::Value;
 
 pub const IN_M: f64 = 0.0254;
 pub const FT_M: f64 = 0.3048;
+/// Kilograms per pound (avoirdupois).
+pub const LB_KG: f64 = 0.453_592_37;
 
 /// Every unit a dimension style may name, in the order the pickers show.
 pub const UNIT_CHOICES: [&str; 8] = [
@@ -423,6 +425,53 @@ pub fn fmt_volume(cubic_metres: f64) -> String {
         }
         _ => format!("{} in³", fmt_fixed(cubic_metres / (IN_M * IN_M * IN_M), n)),
     }
+}
+
+/// Whether the document's unit is imperial (inches or feet).
+fn imperial() -> bool {
+    !matches!(model_unit().as_str(), "m" | "cm" | "mm")
+}
+
+/// A mass in grams (kilograms from 10 kg) for a metric document, in
+/// pounds for an imperial one, at the document's precision.
+pub fn fmt_mass(kg: f64) -> String {
+    let n = model_precision().clamp(0, 20) as usize;
+    if imperial() {
+        format!("{} lb", fmt_fixed(kg / LB_KG, n))
+    } else if kg.abs() >= 10.0 {
+        format!("{} kg", fmt_fixed(kg, n))
+    } else {
+        format!("{} g", fmt_fixed(kg * 1000.0, n))
+    }
+}
+
+/// The unit a density is shown and typed in: g/cm³ for a metric
+/// document, lb/in³ for an imperial one.
+pub fn density_unit() -> &'static str {
+    if imperial() {
+        "lb/in³"
+    } else {
+        "g/cm³"
+    }
+}
+
+/// kg/m³ per [`density_unit`].
+pub fn density_scale() -> f64 {
+    if imperial() {
+        LB_KG / (IN_M * IN_M * IN_M)
+    } else {
+        1000.0
+    }
+}
+
+/// A density (kg/m³) in [`density_unit`], with its unit.
+pub fn fmt_density(kg_per_m3: f64) -> String {
+    let n = if imperial() { 4 } else { 2 };
+    format!(
+        "{} {}",
+        fmt_fixed(kg_per_m3 / density_scale(), n),
+        density_unit()
+    )
 }
 
 /// RAII helper for tests: bind metre units for this thread while alive.

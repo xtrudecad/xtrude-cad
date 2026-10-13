@@ -38,6 +38,7 @@ mod test_orient_faces;
 mod test_paint;
 mod test_parts;
 mod test_plugin_data;
+mod test_print_material;
 mod test_purge;
 mod test_pushpull_accepts;
 mod test_pushpull_against_wall;

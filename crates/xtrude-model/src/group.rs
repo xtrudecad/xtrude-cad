@@ -26,6 +26,7 @@ use xtrude_core::mesh::{EdgeFlags, Mesh};
 use xtrude_core::topology::maximal_holes;
 
 use crate::ids::{next_id, GroupId, MeshId};
+use crate::print_material::PrintMaterial;
 
 /// The scene's mesh table.
 pub type MeshTable = HashMap<MeshId, Arc<Mesh>>;
@@ -93,6 +94,9 @@ pub struct Group {
     pub uid: String,
     /// The container's own paint.
     pub material: Option<Paint>,
+    /// The material the part is printed in, when it has its own (see
+    /// [`crate::print_material`]).
+    pub print_material: Option<PrintMaterial>,
     pub exploded: Option<Exploded>,
     pub explode_offset: Option<DVec3>,
     /// Component instance placement (local → world); `None` = classic group.
@@ -117,6 +121,7 @@ impl Group {
             hidden: false,
             uid: new_uid(),
             material: None,
+            print_material: None,
             exploded: None,
             explode_offset: None,
             xform: None,
@@ -457,6 +462,7 @@ pub fn copy_group(
     g.ext = group.ext.clone();
     g.hidden = group.hidden;
     g.material = group.material.clone();
+    g.print_material = group.print_material.clone();
     g.component = group.component;
     g.exploded = group.exploded.clone();
     g.explode_offset = group.explode_offset;

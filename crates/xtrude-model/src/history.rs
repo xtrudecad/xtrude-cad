@@ -262,6 +262,9 @@ impl History {
         if from.plugin_data != to.plugin_data {
             cur.plugin_data = to.plugin_data.clone();
         }
+        if from.print_material != to.print_material {
+            cur.print_material = to.print_material.clone();
+        }
         // An open group-edit context whose group no longer resolves cannot
         // stay open.
         let valid = scene
