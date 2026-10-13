@@ -701,6 +701,7 @@ fn test_the_bars_hold_the_parts_tools_in_the_order_of_the_work() {
                     "pushpull",
                     "hole",
                     "sweep",
+                    "revolve",
                     "offset",
                     "stack:edges",
                     "shell",

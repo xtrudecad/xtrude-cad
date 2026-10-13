@@ -774,6 +774,19 @@ fn pattern_circular(p: &mut Painter, ink: Rgba) {
     dot(p, cx, cy, 2.4, None);
 }
 
+/// A profile beside its dashed axis, and the turn round the axis.
+fn revolve(p: &mut Painter, ink: Rgba) {
+    guide(p, ink, (15.0, 4.0), (15.0, 44.0), true);
+    p.no_brush();
+    p.draw_rect(21.0, 8.0, 10.0, 21.0);
+    p.save();
+    p.set_pen(Pen::round(ACCENT, 2.8));
+    // the front half of the turn, right to left, round the axis
+    p.draw_arc(4.0, 31.0, 22.0, 10.0, 0.0, -180.0 * 16.0);
+    p.restore();
+    solid_arrow(p, ACCENT, (4.0, 37.0), (4.5, 29.0), 2.8, 6.0);
+}
+
 const SECTION_FRAME: [(f32, f32); 4] = [(9.0, 30.0), (26.0, 39.0), (39.0, 21.0), (22.0, 12.0)];
 
 fn section(p: &mut Painter, _ink: Rgba) {
@@ -1618,6 +1631,7 @@ pub const KEYS: &[&str] = &[
     "pattern_linear",
     "pattern_circular",
     "sweep",
+    "revolve",
     "pushpull",
     "hole",
     "offset",
@@ -1687,6 +1701,7 @@ pub fn draw(p: &mut Painter, key: &str, ink: Rgba) -> bool {
         "pattern_linear" => pattern_linear,
         "pattern_circular" => pattern_circular,
         "sweep" => sweep,
+        "revolve" => revolve,
         "pushpull" => pushpull,
         "offset" => offset,
         "fillet" => fillet,
