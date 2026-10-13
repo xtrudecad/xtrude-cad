@@ -22,6 +22,7 @@ mod test_from_point_during_an_operation;
 mod test_fuse;
 mod test_heal;
 mod test_local_axes_drawing;
+mod test_mass_properties;
 mod test_mesh;
 mod test_mesh_bulk;
 mod test_orbit_pivot;
