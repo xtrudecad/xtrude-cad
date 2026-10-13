@@ -47,6 +47,7 @@ mod test_non_finite_values;
 mod test_obj_import;
 mod test_obj_parts;
 mod test_plugin_data;
+mod test_print_materials;
 mod test_saved_views;
 mod test_sections;
 mod test_skp_backend;

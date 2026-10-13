@@ -10,8 +10,13 @@
 //!   "edges": [{"a": [x, y, z], "b": [x, y, z]}, ...],
 //!   "faces": [{"vertices": [[x, y, z], ...]}],
 //!   "groups": [...], "protos": [...], ...
+//!   "print_material": {"name": "PLA", "density": 1240.0}
 //! }
 //! ```
+//!
+//! A print material (the document's, and a group's own) is its name and
+//! its density in kg/m³; one that is missing or not valid reads as none
+//! (the document's: PLA).
 
 use std::collections::HashMap;
 
@@ -29,6 +34,7 @@ use xtrude_model::guide::Guide;
 use xtrude_model::ids::MeshId;
 use xtrude_model::layers::{Layer, DEFAULT_LAYER};
 use xtrude_model::materials::Material;
+use xtrude_model::print_material::{default_print_material, PrintMaterial};
 use xtrude_model::saved_views::CameraHome;
 use xtrude_model::saved_views::SavedView;
 use xtrude_model::scene::{Doc, Scene};
@@ -87,6 +93,15 @@ fn paint_from_json(raw: &Map<String, Value>) -> Paint {
             .map(str::to_string),
         opacity: raw.get("opacity").and_then(Value::as_f64),
     }
+}
+
+fn print_material_json(m: &PrintMaterial) -> Value {
+    json!({"name": m.name, "density": num(m.density)})
+}
+
+fn print_material_from_json(v: &Value) -> Option<PrintMaterial> {
+    let m = PrintMaterial::new(v.get("name")?.as_str()?, v.get("density")?.as_f64()?);
+    m.is_valid().then_some(m)
 }
 
 fn face_json(mesh: &Mesh, f: xtrude_core::FaceId) -> Value {
@@ -221,6 +236,9 @@ impl Protos<'_> {
         if let Some(p) = g.material.as_ref().filter(|p| !p.is_empty()) {
             e.insert("material".into(), Value::Object(paint_json(p)));
         }
+        if let Some(m) = &g.print_material {
+            e.insert("print_material".into(), print_material_json(m));
+        }
         if let Some(t) = g.text3d.as_ref().filter(|t| !t.is_empty()) {
             e.insert("text3d".into(), Value::Object(t.clone()));
         }
@@ -316,6 +334,10 @@ pub(crate) fn scene_payload(scene: &Scene) -> Map<String, Value> {
         payload.insert("camera".into(), Value::Object(cam.to_json()));
     }
     payload.insert("units".into(), scene.units.to_json());
+    payload.insert(
+        "print_material".into(),
+        print_material_json(&doc.print_material),
+    );
     if !doc.plugin_data.is_empty() {
         payload.insert("plugin_data".into(), Value::Object(doc.plugin_data.clone()));
     }
@@ -790,6 +812,10 @@ pub(crate) fn read_payload(scene: &mut Scene, payload: &Value, tick: &mut dyn Fn
         units::legacy_document_units()
     };
     scene.bind_units();
+    scene.doc.print_material = payload
+        .get("print_material")
+        .and_then(print_material_from_json)
+        .unwrap_or_else(default_print_material);
     scene.doc.plugin_data = payload
         .get("plugin_data")
         .and_then(Value::as_object)
@@ -912,6 +938,7 @@ fn group_from(
         let p = paint_from_json(m);
         group.material = if p.is_empty() { None } else { Some(p) };
     }
+    group.print_material = raw.get("print_material").and_then(print_material_from_json);
     if let Some(x) = raw.get("exploded").and_then(Value::as_object) {
         group.exploded = Some(Exploded {
             factor: x.get("factor").and_then(Value::as_f64).unwrap_or(0.0),

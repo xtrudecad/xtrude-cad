@@ -6,7 +6,7 @@
 //!
 //! ```text
 //! {
-//!   "xtrude_format": 1,
+//!   "xtrude_format": 2,
 //!   "app_version": "...",
 //!   "scene": { ... }
 //! }
@@ -15,6 +15,11 @@
 //! The `scene` object is the schema in [`crate::schema`]. A reader
 //! refuses a document whose `xtrude_format` is newer than [`FORMAT`]; it
 //! also reads the JSON uncompressed (a document unpacked by hand).
+//!
+//! Format 2 added the print materials (the document's and the groups'
+//! own): a format-1 reader would drop them on save, so it refuses the
+//! document instead. A format-1 document opens with every group in the
+//! default material, PLA.
 //! IngeTrazo's `.igz` documents are read by [`crate::igz`]; this build
 //! never writes one.
 
@@ -35,7 +40,7 @@ pub const EXTENSION: &str = "xtrude";
 /// The document's MIME type.
 pub const MIME: &str = "application/x-xtrudecad";
 /// The format this build writes, and the newest it reads.
-pub const FORMAT: i64 = 1;
+pub const FORMAT: i64 = 2;
 const GZIP_MAGIC: &[u8] = b"\x1f\x8b";
 
 #[derive(Debug, thiserror::Error)]
