@@ -139,6 +139,7 @@ mod test_overlay_annotations;
 mod test_packaging;
 mod test_paint_alt_pointer;
 mod test_paint_materials;
+mod test_parallel_depth_precision;
 mod test_paste;
 mod test_pattern_tools;
 mod test_pick_face_parallel_view;
