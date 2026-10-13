@@ -341,9 +341,6 @@ pub struct MainWindow {
     pub title: String,
     /// The window asked to close (File ▸ Quit, confirmed).
     pub quit_requested: bool,
-    /// File ▸ Export ▸ Image asked for, with the suggested base name: the
-    /// GPU shell renders and saves it.
-    pub export_image_requested: Option<String>,
     /// Every viewport signal the window has handled, for the shell and the
     /// trays to read (and drain) after each event.
     pub seen_events: Vec<ViewportEvent>,
@@ -398,7 +395,6 @@ impl MainWindow {
             scene_serial: 0,
             title: String::new(),
             quit_requested: false,
-            export_image_requested: None,
             seen_events: Vec::new(),
             extensions: extensions::Extensions::default(),
             open_folder_requested: None,
@@ -628,11 +624,6 @@ impl MainWindow {
                 "export:obj",
                 "Wavefront OBJ (.obj)…",
                 "Save the model as Wavefront OBJ with its materials.",
-            ),
-            (
-                "export:image",
-                "Image (PNG / JPG)…",
-                "Save the view on screen as a PNG or JPG picture at the width you choose.",
             ),
         ] {
             a.add(Action::new(id, &tr(text, &[])).tip(&tr(tip, &[])));
@@ -961,7 +952,7 @@ impl MainWindow {
             ),
             M(
                 tr("Export", &[]),
-                ["stl", "3mf", "obj", "glb", "dae", "image"]
+                ["stl", "3mf", "obj", "glb", "dae"]
                     .map(|k| act(&format!("export:{k}")))
                     .to_vec(),
             ),
