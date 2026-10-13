@@ -168,7 +168,10 @@ pub struct Action {
     /// What it does — the status bar line and the second tooltip line.
     pub status_tip: String,
     pub shortcuts: Vec<KeySeq>,
+    /// A menu draws the check mark only for a checkable action.
     pub checkable: bool,
+    /// Pressed on a toolbar. `checked` without `checkable`: pressed on a
+    /// toolbar, no check mark in a menu (Toggle X-ray).
     pub checked: bool,
     pub enabled: bool,
     pub icon: Option<String>,

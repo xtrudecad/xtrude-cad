@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Alt+X switches X-ray on and, pressed again, returns to the style you were
-//! in — your tweaks included.
+//! in — your tweaks included. Its View bar button is pressed exactly while
+//! the faces draw in X-ray, however that came about; the menu entry is not
+//! checkable and shows no check mark.
 
 use crate::common;
 
-use common::window;
+use common::{window, TmpDir};
+use xtrude_app::tray::saved_views::SavedViews;
+use xtrude_app::tray::styles::Styles;
 use xtrude_app::window::actions::KeySeq;
 use xtrude_app::window::MainWindow;
 
@@ -53,4 +57,64 @@ fn test_xray_picked_from_the_menu_toggles_out_to_default() {
     w.trigger("style:X-ray");
     w.trigger("toggle_xray");
     assert_eq!(w.viewport.scene.display_style.name, "Default");
+}
+
+#[test]
+fn test_the_button_is_pressed_while_in_xray() {
+    let mut w = window();
+    let a = w.actions.get("toggle_xray").unwrap();
+    assert!(!a.checkable && !a.checked);
+    assert_eq!(a.icon.as_deref(), Some("xray"));
+    w.trigger("toggle_xray");
+    assert!(checked(&w, "toggle_xray"));
+    w.trigger("toggle_xray");
+    assert!(!checked(&w, "toggle_xray"));
+    assert!(!w.actions.get("toggle_xray").unwrap().checkable);
+}
+
+#[test]
+fn test_the_button_follows_the_style_menu() {
+    let mut w = window();
+    w.trigger("style:X-ray");
+    assert!(checked(&w, "toggle_xray"));
+    w.trigger("style:Default");
+    assert!(!checked(&w, "toggle_xray"));
+}
+
+#[test]
+fn test_the_button_follows_a_style_edited_to_xray() {
+    let mut w = window();
+    let mut p = Styles::default();
+    p.refresh(&w);
+    p.edit(&mut w, |s| s.face_mode = "xray".into());
+    assert!(checked(&w, "toggle_xray"));
+}
+
+#[test]
+fn test_the_button_follows_a_saved_view_in_xray() {
+    let mut w = window();
+    let mut p = SavedViews::default();
+    w.trigger("style:X-ray");
+    p.add(&mut w);
+    let id = p.rows[0].0;
+    w.trigger("style:Default");
+    assert!(!checked(&w, "toggle_xray"));
+    p.activate(&mut w, id);
+    assert_eq!(w.viewport.scene.display_style.face_mode, "xray");
+    assert!(checked(&w, "toggle_xray"));
+}
+
+#[test]
+fn test_the_button_follows_a_document_saved_in_xray() {
+    let dir = TmpDir::new();
+    let mut w = window();
+    w.mark_saved();
+    w.trigger("style:X-ray");
+    let path = dir.path().join("xray.xtrude");
+    w.do_save(&path);
+    w.trigger("style:Default");
+    assert!(!checked(&w, "toggle_xray"));
+    w.mark_saved();
+    assert!(w.open_path(&path));
+    assert!(checked(&w, "toggle_xray"));
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
-//! Every tool key still draws an icon, the standard views are told apart, and
+//! Every tool key still draws an icon, the standard views are told apart, the
+//! X-ray button does not look like its neighbours, and
 //! the Solids tools cursor draws every state. The icons are rendered by
 //! tiny-skia at 48 px.
 
@@ -40,6 +41,15 @@ fn test_the_standard_views_are_all_different() {
     ];
     let drawn: std::collections::HashSet<Vec<u8>> = views.iter().map(|k| pixels(k)).collect();
     assert_eq!(drawn.len(), views.len(), "two views draw the same");
+}
+
+#[test]
+fn test_xray_differs_from_projection_and_styles() {
+    let xray = pixels("xray");
+    assert!(xray.iter().any(|&b| b != 0));
+    for other in ["projection", "styles", "view_iso"] {
+        assert_ne!(xray, pixels(other), "xray draws like {other}");
+    }
 }
 
 #[test]
