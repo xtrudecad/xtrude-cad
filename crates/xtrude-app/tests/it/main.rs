@@ -24,6 +24,7 @@ mod test_back_edges;
 mod test_box_select;
 mod test_center_inference;
 mod test_chained_questions;
+mod test_chamfer_tool;
 mod test_chunk_stale_materials;
 mod test_chunk_turn_about_centre;
 mod test_clipboard_shortcuts;

@@ -28,6 +28,7 @@ use crate::viewport::overlay::Paint;
 use crate::viewport::{Cursor, Viewport};
 
 pub mod arc;
+pub mod chamfer;
 pub mod change_axes;
 pub mod circle;
 pub mod dimension;

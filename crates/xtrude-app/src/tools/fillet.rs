@@ -55,6 +55,31 @@ pub struct FilletTool {
     message: Option<String>,
 }
 
+/// The distance from `p` to the nearest of `edges`' lines; `None` when
+/// none is left or `p` is on one.
+pub(super) fn distance_to_edges(vp: &Viewport, edges: &[EdgeId], p: DVec3) -> Option<f64> {
+    let mesh = vp.scene.mesh();
+    let mut best: Option<f64> = None;
+    for &e in edges {
+        if !mesh.has_edge(e) {
+            continue;
+        }
+        let (a, b) = mesh.edge_ab(e);
+        let d = b - a;
+        let ln = d.length();
+        if ln < 1e-9 {
+            continue;
+        }
+        let d = d / ln;
+        let off = (p - a) - d * (p - a).dot(d);
+        let r = off.length();
+        if best.is_none_or(|b| r < b) {
+            best = Some(r);
+        }
+    }
+    best.filter(|b| *b >= 1e-4)
+}
+
 impl FilletTool {
     pub fn new() -> FilletTool {
         FilletTool::default()
@@ -65,13 +90,13 @@ impl FilletTool {
     }
 
     /// The loose edge under the cursor, if the hovered edge is one.
-    fn hovered_loose_edge(vp: &Viewport) -> Option<EdgeId> {
+    pub(super) fn hovered_loose_edge(vp: &Viewport) -> Option<EdgeId> {
         let (m, e) = vp.inference.hover_edge.as_ref()?.edge?;
         (m == vp.scene.active_mesh_id() && vp.scene.mesh().has_edge(e)).then_some(e)
     }
 
     /// The hovered edge, joined by the selection when it is selected.
-    fn target_edges(vp: &Viewport) -> Vec<EdgeId> {
+    pub(super) fn target_edges(vp: &Viewport) -> Vec<EdgeId> {
         let Some(e) = Self::hovered_loose_edge(vp) else {
             return Vec::new();
         };
@@ -132,26 +157,7 @@ impl FilletTool {
     }
 
     fn radius_from(&self, vp: &Viewport, p: DVec3) -> Option<f64> {
-        let mesh = vp.scene.mesh();
-        let mut best: Option<f64> = None;
-        for &e in &self.edges {
-            if !mesh.has_edge(e) {
-                continue;
-            }
-            let (a, b) = mesh.edge_ab(e);
-            let d = b - a;
-            let ln = d.length();
-            if ln < 1e-9 {
-                continue;
-            }
-            let d = d / ln;
-            let off = (p - a) - d * (p - a).dot(d);
-            let r = off.length();
-            if best.is_none_or(|b| r < b) {
-                best = Some(r);
-            }
-        }
-        best.filter(|b| *b >= 1e-4)
+        distance_to_edges(vp, &self.edges, p)
     }
 
     fn commit(&mut self, vp: &mut Viewport) {

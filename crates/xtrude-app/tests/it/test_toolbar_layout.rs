@@ -701,7 +701,7 @@ fn test_the_bars_hold_the_parts_tools_in_the_order_of_the_work() {
                     "pushpull",
                     "sweep",
                     "offset",
-                    "fillet",
+                    "stack:edges",
                     "stack:booleans",
                     "solid_split",
                     "merge_solids",

@@ -141,6 +141,16 @@ fn hint_entry(key: &str) -> Option<Hint> {
                 "Move to set the radius, or type it and Enter; click to round. 'Ns' = segments.",
             ),
         ]),
+        "chamfer" => Phases(&[
+            (
+                "idle",
+                "Click an edge to chamfer it (or select edges first); type the distance and Enter.",
+            ),
+            (
+                "sizing",
+                "Move to set the distance along the faces, or type it and Enter; click to chamfer.",
+            ),
+        ]),
         "measure" => Two(
             "Click a point or an edge to measure. Arrows lock an axis.",
             "Click the second point, or type the distance and Enter.",
