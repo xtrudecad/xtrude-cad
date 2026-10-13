@@ -253,6 +253,10 @@ fn test_the_new_stacks_hold_their_families() {
     for (id, members) in [
         ("paint", &["paint", "eyedropper"][..]),
         ("lines", &["line", "freehand"]),
+        (
+            "rectangles",
+            &["rectangle", "rectangle_center", "rotated_rect"],
+        ),
         ("circles", &["circle", "polygon"]),
         ("edges", &["fillet", "chamfer"]),
         (

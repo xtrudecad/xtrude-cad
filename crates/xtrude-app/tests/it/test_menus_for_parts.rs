@@ -176,6 +176,7 @@ fn test_the_draw_menu() {
             "  sector",
             "Shapes ▸",
             "  rectangle",
+            "  rectangle_center",
             "  rotated_rect",
             "  circle",
             "  polygon",

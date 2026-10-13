@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! Rectangle tool: two clicks define opposite corners on the work plane; one
-//! undo step.
+//! undo step. Centre Rectangle is the same tool started from the centre:
+//! the first click is the centre, the second a corner. Ctrl switches
+//! either between the two ways.
 //!
 //! No axis magnet, deliberately: the second click is the
 //! opposite corner, and a corner pulled onto the axis through the first is
@@ -53,6 +55,8 @@ pub struct RectangleTool {
     pub hover_point: Option<DVec3>,
     /// Ctrl: the first click is the CENTRE.
     pub from_center: bool,
+    /// Centre Rectangle: starts from the centre, under its own key.
+    centre_tool: bool,
     pub chain_first_point: Option<DVec3>,
     pub work_plane: Option<Plane>,
     pub lock: PlaneLock,
@@ -67,6 +71,16 @@ pub const SQUARE_TOL: f64 = 0.04;
 impl RectangleTool {
     pub fn new() -> RectangleTool {
         RectangleTool::default()
+    }
+
+    /// Centre Rectangle: the first click is the centre, the second a
+    /// corner.
+    pub fn centre() -> RectangleTool {
+        RectangleTool {
+            from_center: true,
+            centre_tool: true,
+            ..RectangleTool::default()
+        }
     }
 
     pub fn reset(&mut self) {
@@ -228,10 +242,21 @@ impl Tool for RectangleTool {
             icon: Some("rectangle_center"),
             ..RECTANGLE
         };
-        if self.from_center {
-            &FROM_CENTER
-        } else {
-            &RECTANGLE
+        static CENTRE: ToolInfo = ToolInfo {
+            icon: Some("rectangle_center"),
+            description: Some("Draw a rectangle from its centre and a corner."),
+            ..ToolInfo::new("rectangle_center", "Centre Rectangle")
+        };
+        // From a corner (Ctrl): the same tool, the corner's icon.
+        static CENTRE_FROM_CORNER: ToolInfo = ToolInfo {
+            icon: Some("rectangle"),
+            ..CENTRE
+        };
+        match (self.centre_tool, self.from_center) {
+            (false, false) => &RECTANGLE,
+            (false, true) => &FROM_CENTER,
+            (true, true) => &CENTRE,
+            (true, false) => &CENTRE_FROM_CORNER,
         }
     }
     fn value_box_caption(&self) -> Option<String> {
@@ -244,7 +269,8 @@ impl Tool for RectangleTool {
 
     fn on_activate(&mut self, vp: &mut Viewport) {
         self.reset();
-        self.set_from_center(vp, false);
+        let centre = self.centre_tool;
+        self.set_from_center(vp, centre);
     }
 
     fn on_deactivate(&mut self, _vp: &mut Viewport) {

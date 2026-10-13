@@ -52,6 +52,7 @@ pub fn make_tool(key: &str) -> Option<Box<dyn Tool>> {
         "line" => Box::new(line::LineTool::new()),
         "freehand" => Box::new(freehand::FreehandTool::new()),
         "rectangle" => Box::new(rectangle::RectangleTool::new()),
+        "rectangle_center" => Box::new(rectangle::RectangleTool::centre()),
         "rotated_rect" => Box::new(rotated_rectangle::RotatedRectangleTool::new()),
         "circle" => Box::new(circle::RadialTool::circle()),
         "polygon" => Box::new(circle::RadialTool::polygon()),
@@ -119,6 +120,7 @@ pub const TOOLBAR_LAYOUT: [(&str, &str, &[&str]); 7] = [
             "line",
             "freehand",
             "rectangle",
+            "rectangle_center",
             "rotated_rect",
             "circle",
             "polygon",
@@ -207,6 +209,7 @@ const TOOL_KEYS: &[&str] = &[
     "line",
     "freehand",
     "rectangle",
+    "rectangle_center",
     "rotated_rect",
     "circle",
     "polygon",
@@ -987,9 +990,15 @@ impl MainWindow {
             ),
             M(
                 tr("Shapes", &[]),
-                ["rectangle", "rotated_rect", "circle", "polygon"]
-                    .map(act)
-                    .to_vec(),
+                [
+                    "rectangle",
+                    "rectangle_center",
+                    "rotated_rect",
+                    "circle",
+                    "polygon",
+                ]
+                .map(act)
+                .to_vec(),
             ),
             S,
             act("eraser"),
