@@ -131,7 +131,11 @@ draft a **pre-release**. Publishing it leaves the "Set as a pre-release"
 box ticked: GitHub does not show it as the latest release, and
 `flathub-update.yml`, which skips pre-releases, never sends it to
 Flathub. For the final release, set the version back to `X.Y.Z` and add
-its own metainfo entry (`type="stable"`) above the rc's.
+its own metainfo entry (`type="stable"`) above the rc's. In that
+commit, write the rc entries' versions with a tilde, `X.Y.Z~rc.N`:
+AppStream sorts `X.Y.Z-rc.N` after `X.Y.Z`, so `appstreamcli validate`
+would warn that the releases are out of order (`test_packaging.rs`
+checks it too).
 
 ## Checking a release file
 

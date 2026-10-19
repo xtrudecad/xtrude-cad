@@ -71,7 +71,24 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
-    <release version="0.1.0-rc.3" date="2026-10-13" type="development">
+    <release version="0.1.0" date="2026-10-19" type="stable">
+      <description>
+        <p>The first release of Xtrude CAD.</p>
+        <ul>
+          <li>Push/pull modelling with lengths typed as you draw, in millimetres by default.</li>
+          <li>Drawing: lines, rectangles, centre rectangles, slots, circles and arcs, snapping to edges, midpoints and axes.</li>
+          <li>Modelling: offset, fillet, chamfer, shell (hollow a solid to a wall thickness), holes (ISO 273 clearance holes from M2 to M8, through or blind, with a countersink or counterbore), sweep, revolve, linear and circular patterns; move, rotate and scale; groups and components.</li>
+          <li>Print materials (PLA, PETG, ABS, ASA, TPU, PA, PC or custom) for the document and for each group.</li>
+          <li>A left dock with the model tree and Properties, which measures parts: size, whether the part is a closed solid, volume and mass at 100 % infill.</li>
+          <li>Measurements and dimensions; the Colors panel lists the colours as filament slots.</li>
+          <li>Documents are saved in Xtrude CAD's own format, <code>.xtrude</code>. IngeTrazo <code>.igz</code> documents, up to 0.5.8, open as new unsaved documents.</li>
+          <li>STL, OBJ and 3MF export for the slicer; STEP, STL, OBJ and DXF import.</li>
+          <li>Lua extensions, with gear and box examples.</li>
+          <li>A portable tarball for x86_64 Linux and a Flatpak bundle.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.0~rc.3" date="2026-10-13" type="development">
       <description>
         <p>The third release candidate of Xtrude CAD 0.1.0.</p>
         <ul>
@@ -88,7 +105,7 @@
         </ul>
       </description>
     </release>
-    <release version="0.1.0-rc.2" date="2026-10-13" type="development">
+    <release version="0.1.0~rc.2" date="2026-10-13" type="development">
       <description>
         <p>The second release candidate of Xtrude CAD 0.1.0.</p>
         <ul>
@@ -102,7 +119,7 @@
         </ul>
       </description>
     </release>
-    <release version="0.1.0-rc.1" date="2026-10-12" type="development">
+    <release version="0.1.0~rc.1" date="2026-10-12" type="development">
       <description>
         <p>The first release of Xtrude CAD.</p>
         <ul>
