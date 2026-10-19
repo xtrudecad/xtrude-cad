@@ -14,7 +14,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0-rc.3"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.85"
 # The licence is set here once; every crate inherits it (see AUTHORS/LICENSE).

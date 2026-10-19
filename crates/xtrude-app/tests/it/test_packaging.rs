@@ -194,6 +194,30 @@ fn the_newest_metainfo_release_is_the_workspace_version() {
 }
 
 #[test]
+fn the_candidates_of_a_listed_release_are_in_appstream_order() {
+    let text = metainfo();
+    let doc = roxmltree::Document::parse(&text).expect("well-formed XML");
+    let versions: Vec<&str> = doc
+        .descendants()
+        .filter(|n| n.has_tag_name("releases"))
+        .flat_map(|n| n.children().filter(|c| c.has_tag_name("release")))
+        .filter_map(|r| r.attribute("version"))
+        .collect();
+    // AppStream sorts `0.1.0-rc.3` after `0.1.0` (`appstreamcli validate`
+    // warns `releases-not-in-order`), and `0.1.0~rc.3` before it: once a
+    // release is listed, its candidates below it use the tilde.
+    for (i, newer) in versions.iter().enumerate() {
+        for older in &versions[i + 1..] {
+            assert!(
+                older.split_once('-').is_none_or(|(v, _)| v != *newer),
+                "{older} is listed below {newer}: write it {}",
+                older.replacen('-', "~", 1)
+            );
+        }
+    }
+}
+
+#[test]
 fn the_metainfo_gives_the_project_contacts() {
     let text = metainfo();
     let doc = roxmltree::Document::parse(&text).expect("well-formed XML");
