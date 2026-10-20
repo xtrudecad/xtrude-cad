@@ -151,6 +151,8 @@ pub enum Asker {
     SectionName(ObjId),
     /// The Hole tool's form.
     HoleSpec,
+    /// A file from the command line whose import asks (STL, OBJ).
+    Open(PathBuf),
 }
 
 impl Asker {
@@ -163,6 +165,9 @@ impl Asker {
             Asker::Tray(action) => tray.run(w, action),
             Asker::SectionName(id) => w.name_section_plane(id),
             Asker::HoleSpec => w.prompt_hole_spec(),
+            Asker::Open(path) => {
+                w.open_as_asker(&path);
+            }
         }
         w.pump_events();
     }

@@ -131,6 +131,7 @@ mod test_non_finite_values;
 mod test_offset_edges;
 mod test_offset_keeps_paint;
 mod test_offset_regions;
+mod test_open_stl_obj_on_start;
 mod test_orbit_never_sticks;
 mod test_orbit_view_centre;
 mod test_orient_keeps_paint_by_side;
