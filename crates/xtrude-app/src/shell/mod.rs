@@ -1185,7 +1185,8 @@ impl eframe::App for XtrudeApp {
             self.last_title = self.window.title.clone();
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(self.last_title.clone()));
         }
-        // a .skp from the command line comes in once the window has painted
+        // a .skp, STEP, STL or OBJ from the command line comes in once the
+        // window has painted
         if self.window.pending_import.is_some() {
             if self.painted {
                 self.window.open_pending();

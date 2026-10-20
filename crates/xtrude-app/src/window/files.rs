@@ -22,7 +22,7 @@ use xtrude_model::units;
 use super::context::CtxItem;
 pub use super::progress::SkpParse;
 use super::progress::{ImportJob, ImportProgress, ImportResult};
-use super::{filedialogs, MainWindow, SaveChoice};
+use super::{filedialogs, Asker, MainWindow, SaveChoice};
 use crate::tools::place_group::PlaceGroupTool;
 
 /// Save and Save As: the Xtrude CAD document.
@@ -458,13 +458,16 @@ impl MainWindow {
 
     /// The document given on the command line: a `.skp` or a STEP file is
     /// imported after the window's first paint (a big model parses for
-    /// seconds — the window must be visible, not frozen before it shows);
+    /// seconds — the window must be visible, not frozen before it shows),
+    /// and so is an STL or an OBJ, whose import asks a question first;
     /// anything else opens now.
     pub fn open_on_start(&mut self, path: &Path) {
-        let is_skp = path
-            .extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case("skp"));
-        if is_skp || step::is_step_path(path) {
+        let deferred = path.extension().is_some_and(|e| {
+            ["skp", "stl", "obj"]
+                .iter()
+                .any(|x| e.eq_ignore_ascii_case(x))
+        });
+        if deferred || step::is_step_path(path) {
             self.pending_import = Some(path.to_path_buf());
         } else {
             self.open_path(path);
@@ -474,16 +477,23 @@ impl MainWindow {
     /// Run the import [`Self::open_on_start`] deferred, if any.
     pub fn open_pending(&mut self) -> bool {
         match self.pending_import.take() {
-            Some(path) => self.open_path(&path),
+            Some(path) => self.open_as_asker(&path),
             None => false,
         }
+    }
+
+    /// [`Self::open_path`] as an [`Asker`], so that the question an STL or
+    /// an OBJ import asks is answered and the import replays with the
+    /// answer; a cancelled question leaves the document as it was.
+    pub fn open_as_asker(&mut self, path: &Path) -> bool {
+        self.ask_as(Asker::Open(path.to_path_buf()), |w| w.open_path(path))
     }
 
     /// Open a document at `path` (File dialog, command line, double-click).
     /// An IngeTrazo `.igz` opens as a new, unsaved document with no path,
     /// so Save asks where to write the Xtrude CAD document and the `.igz`
-    /// is never overwritten. `.dae`, `.skp`, `.dxf`, `.step` and `.stp`
-    /// import instead.
+    /// is never overwritten. `.dae`, `.skp`, `.dxf`, `.step`, `.stp`,
+    /// `.stl` and `.obj` import instead.
     pub fn open_path(&mut self, path: &Path) -> bool {
         let suffix = path
             .extension()
@@ -494,6 +504,8 @@ impl MainWindow {
             "skp" => return self.import_skp_path(path),
             "dxf" => return self.import_dxf_path(path),
             "step" | "stp" => return self.import_step_path(path),
+            "stl" => return self.import_stl_path(path),
+            "obj" => return self.import_obj_path(path),
             _ => {}
         }
         let from_igz = igz::is_igz_path(path);
@@ -629,8 +641,12 @@ impl MainWindow {
                 self.import_dae_path(path);
             }
             "glb" => self.import_glb_path(path),
-            "obj" => self.import_obj_path(path),
-            "stl" => self.import_stl_path(path),
+            "obj" => {
+                self.import_obj_path(path);
+            }
+            "stl" => {
+                self.import_stl_path(path);
+            }
             "step" => {
                 self.import_step_path(path);
             }
@@ -952,17 +968,17 @@ impl MainWindow {
             .map(|(_, f)| *f)
     }
 
-    pub fn import_obj_path(&mut self, path: &Path) {
+    pub fn import_obj_path(&mut self, path: &Path) -> bool {
         let Some(scale) = self.obj_unit(path) else {
-            return;
+            return false;
         };
         let p = path.to_path_buf();
         self.run_import(path, "Import OBJ failed", move |s| {
             obj::load_obj(s, &p, None, scale, None).map_err(|e| e.to_string())
-        });
+        })
     }
 
-    pub fn import_stl_path(&mut self, path: &Path) {
+    pub fn import_stl_path(&mut self, path: &Path) -> bool {
         let (keys, labels) = unit_labels();
         let guess = settings::read(&keys::STL_UNIT);
         let idx = keys.iter().position(|k| *k == guess).unwrap_or(2);
@@ -984,10 +1000,10 @@ impl MainWindow {
             .dialogs
             .stl_options(&labels, idx, &mode_labels, mode_idx)
         else {
-            return;
+            return false;
         };
         let (Some(unit), Some((mode_key, _))) = (keys.get(u), modes.get(m)) else {
-            return;
+            return false;
         };
         settings::write(&keys::STL_UNIT, &unit.to_string());
         settings::write(&keys::STL_SIMPLIFY_MODE, &mode_key.to_string());
@@ -999,13 +1015,12 @@ impl MainWindow {
         };
         self.import_progress(&tr("Importing {name}…", &[("name", &file_name(path))]));
         match ImportJob::stl(path, scale, mode) {
-            Ok(job) => {
-                self.start_import(job);
-            }
+            Ok(job) => self.start_import(job),
             Err(e) => {
                 self.close_progress();
                 self.dialogs
                     .warn(&tr("Import STL failed", &[]), &e.to_string());
+                false
             }
         }
     }

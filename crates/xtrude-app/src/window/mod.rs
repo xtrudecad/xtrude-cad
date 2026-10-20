@@ -371,8 +371,8 @@ pub struct MainWindow {
     pub current_path: Option<PathBuf>,
     /// The name of an IMPORTED file shown in the title until saved.
     pub import_name: Option<String>,
-    /// A `.skp` or STEP file from the command line, imported after the
-    /// first paint.
+    /// A `.skp`, STEP, STL or OBJ file from the command line, imported
+    /// after the first paint.
     pub pending_import: Option<PathBuf>,
     /// The STEP helper program to run; `None` finds it as
     /// `HelperBackend::locate` does (next to the executable). Tests point
