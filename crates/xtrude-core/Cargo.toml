@@ -18,7 +18,8 @@ thiserror.workspace = true
 indexmap.workspace = true
 manifold-csg = { version = "0.4", default-features = false }
 fontdb = "0.24"
-rustybuzz = "0.20"
+harfrust = "0.12"
+skrifa = { version = "0.44", default-features = false, features = ["std"] }
 
 [lints]
 workspace = true
