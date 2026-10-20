@@ -50,7 +50,7 @@ fn the_time_limit_is_per_run() {
 
 #[test]
 fn huge_allocation_hits_the_memory_limit() {
-    let rt = common::tight_runtime();
+    let rt = common::memory_runtime();
     let err = rt
         .run_chunk::<()>("local s = string.rep('x', 1 << 30)", "big.lua")
         .expect_err("the allocation must fail");
@@ -60,7 +60,7 @@ fn huge_allocation_hits_the_memory_limit() {
 
 #[test]
 fn growing_table_hits_the_memory_limit() {
-    let rt = common::tight_runtime();
+    let rt = common::memory_runtime();
     let err = rt
         .run_chunk::<()>("local t = {} while true do t[#t + 1] = {} end", "grow.lua")
         .expect_err("the table must stop growing");

@@ -9,11 +9,23 @@ use mlua::Value;
 use xtrude_ext::{Limits, Runtime, ScriptCommand};
 use xtrude_model::{History, Scene};
 
-/// A runtime with small limits, so that the limit tests end quickly.
+/// A runtime with small limits, so that the time-limit tests end quickly.
 pub fn tight_runtime() -> Runtime {
     Runtime::with_limits(Limits {
         memory: 16 << 20,
         time: Duration::from_millis(200),
+    })
+    .expect("Lua runtime")
+}
+
+/// A runtime with the same small memory limit as `tight_runtime()` and a
+/// time limit long enough that it cannot fire first: filling 16 MiB takes
+/// longer than 200 ms on a busy machine, and the memory tests must see the
+/// memory limit whatever the load.
+pub fn memory_runtime() -> Runtime {
+    Runtime::with_limits(Limits {
+        memory: 16 << 20,
+        time: Duration::from_secs(60),
     })
     .expect("Lua runtime")
 }
