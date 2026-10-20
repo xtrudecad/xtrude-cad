@@ -114,7 +114,7 @@ fn the_install_script_is_executable_and_rewrites_the_desktop_exec() {
 
 /// The types the desktop entry opens that shared-mime-info already
 /// defines; start-up imports them (`MainWindow::open_on_start`).
-const SYSTEM_TYPES: &[&str] = &["image/vnd.dxf"];
+const SYSTEM_TYPES: &[&str] = &["image/vnd.dxf", "model/stl", "model/obj"];
 
 #[test]
 fn the_desktop_file_opens_documents_igz_and_the_system_types_start_up_imports() {
