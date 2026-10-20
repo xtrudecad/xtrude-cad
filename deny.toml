@@ -40,13 +40,7 @@ ignore = false
 multiple-versions = "allow"
 
 [advisories]
-# Unmaintained, not vulnerable: rustybuzz shapes the 3D Text glyphs and
-# ttf-parser (under rustybuzz and fontdb) reads the fonts. Replacing them
-# is a change of its own; remove these when the font stack moves on.
-ignore = [
-    { id = "RUSTSEC-2026-0206", reason = "rustybuzz unmaintained; 3D Text shaping, to be replaced" },
-    { id = "RUSTSEC-2026-0192", reason = "ttf-parser unmaintained; font reading, to be replaced" },
-]
+ignore = []
 
 [sources]
 unknown-registry = "deny"

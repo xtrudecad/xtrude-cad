@@ -2,8 +2,9 @@
 // SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
 //! 3D Text — real, editable geometry generated from font glyphs.
 //!
-//! The system fonts (`fontdb`) supply the glyph outlines, shaped with
-//! `rustybuzz` (kerning included) and flattened into polygons by
+//! The system fonts (`fontdb`) supply the glyphs, shaped with `harfrust`
+//! (kerning included); `skrifa` reads their outlines and metrics, and the
+//! outlines are flattened into polygons by
 //! recursive subdivision; each outline ring is classified
 //! outer/hole by containment parity, becomes a front face (with holes) and,
 //! when a thickness is given, a back face plus side walls — one closed
@@ -16,7 +17,10 @@ use std::sync::OnceLock;
 
 use fontdb::{Database, Family, Query, Stretch, Style, Weight};
 use glam::DVec3;
-use rustybuzz::ttf_parser;
+use harfrust::{ShapeOptions, ShaperData, UnicodeBuffer};
+use skrifa::instance::{LocationRef, Size};
+use skrifa::outline::{DrawSettings, OutlineGlyphCollection, OutlinePen};
+use skrifa::{FontRef, GlyphId, MetadataProvider};
 
 use crate::mesh::Mesh;
 
@@ -170,7 +174,7 @@ impl Flattener {
     }
 }
 
-impl ttf_parser::OutlineBuilder for Flattener {
+impl OutlinePen for Flattener {
     fn move_to(&mut self, x: f32, y: f32) {
         self.flush();
         let p = self.pt(x, y);
@@ -207,9 +211,16 @@ impl ttf_parser::OutlineBuilder for Flattener {
     }
 }
 
-/// Shape `text` and hand each glyph `(glyph id, pen x in pixels)` to `f`;
-/// returns the total advance in pixels.
-fn shape<F: FnMut(&rustybuzz::Face<'_>, ttf_parser::GlyphId, f64, f64)>(
+/// The font's metrics in font units (the default instance of a variable
+/// font).
+fn unscaled_metrics(font: &FontRef<'_>) -> skrifa::metrics::Metrics {
+    font.metrics(Size::unscaled(), LocationRef::default())
+}
+
+/// Shape `text` and hand each glyph `(the font's outlines, glyph id, pen x
+/// in pixels, pixels per font unit)` to `f`; returns the total advance in
+/// pixels.
+fn shape<F: FnMut(&OutlineGlyphCollection<'_>, GlyphId, f64, f64)>(
     family: &str,
     bold: bool,
     italic: bool,
@@ -219,20 +230,37 @@ fn shape<F: FnMut(&rustybuzz::Face<'_>, ttf_parser::GlyphId, f64, f64)>(
     let id = face_id(family, bold, italic)?;
     database()
         .with_face_data(id, |data, index| {
-            let face = rustybuzz::Face::from_slice(data, index)?;
-            let scale = FONT_PX / face.units_per_em() as f64;
-            let mut buf = rustybuzz::UnicodeBuffer::new();
+            let font = FontRef::from_index(data, index).ok()?;
+            let scale = FONT_PX / unscaled_metrics(&font).units_per_em as f64;
+            let outlines = font.outline_glyphs();
+            let shaper_data = ShaperData::new(&font);
+            let shaper = shaper_data.shaper(&font).build();
+            let mut buf = UnicodeBuffer::new();
             buf.push_str(text);
-            let out = rustybuzz::shape(&face, &[], buf);
+            buf.guess_segment_properties();
+            let out = shaper.shape(buf, ShapeOptions::new());
             let mut pen = 0.0;
             for (info, pos) in out.glyph_infos().iter().zip(out.glyph_positions()) {
                 let x = pen + pos.x_offset as f64 * scale;
-                f(&face, ttf_parser::GlyphId(info.glyph_id as u16), x, scale);
+                f(&outlines, GlyphId::new(info.glyph_id), x, scale);
                 pen += pos.x_advance as f64 * scale;
             }
             Some(pen)
         })
         .flatten()
+}
+
+/// Draw glyph `gid` into `pen` in font units (the default instance of a
+/// variable font); false when the font has no outline for it.
+fn draw_glyph(
+    outlines: &OutlineGlyphCollection<'_>,
+    gid: GlyphId,
+    pen: &mut impl OutlinePen,
+) -> bool {
+    let settings = DrawSettings::unhinted(Size::unscaled(), LocationRef::default());
+    outlines
+        .get(gid)
+        .is_some_and(|glyph| glyph.draw(settings, pen).is_ok())
 }
 
 /// Glyph outline rings in font pixels (y up). `x` is where the text
@@ -244,14 +272,20 @@ pub fn rings(text: &str, font_family: &str, bold: bool, italic: bool, x: f64) ->
         scale: 1.0,
         x0: 0.0,
     };
-    shape(font_family, bold, italic, text, |face, gid, pen, scale| {
-        fl.scale = scale;
-        fl.x0 = x + pen;
-        if face.outline_glyph(gid, &mut fl).is_some() {
-            fl.flush();
-        }
-        fl.cur.clear();
-    });
+    shape(
+        font_family,
+        bold,
+        italic,
+        text,
+        |glyphs, gid, pen, scale| {
+            fl.scale = scale;
+            fl.x0 = x + pen;
+            if draw_glyph(glyphs, gid, &mut fl) {
+                fl.flush();
+            }
+            fl.cur.clear();
+        },
+    );
     fl.rings
 }
 
@@ -261,10 +295,10 @@ pub fn vertical_metrics(font_family: &str, bold: bool, italic: bool) -> Option<(
     let id = face_id(font_family, bold, italic)?;
     database()
         .with_face_data(id, |data, index| {
-            let face = ttf_parser::Face::parse(data, index).ok()?;
-            let scale = FONT_PX / face.units_per_em() as f64;
-            let ascent = face.ascender() as f64 * scale;
-            let descent = -(face.descender() as f64) * scale;
+            let metrics = unscaled_metrics(&FontRef::from_index(data, index).ok()?);
+            let scale = FONT_PX / metrics.units_per_em as f64;
+            let ascent = metrics.ascent as f64 * scale;
+            let descent = -(metrics.descent as f64) * scale;
             Some((ascent, descent, ascent + descent))
         })
         .flatten()
