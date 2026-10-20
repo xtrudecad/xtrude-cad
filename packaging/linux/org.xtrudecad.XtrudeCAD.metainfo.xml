@@ -40,6 +40,8 @@
     <mediatype>application/x-xtrudecad</mediatype>
     <mediatype>application/x-ingetrazo</mediatype>
     <mediatype>image/vnd.dxf</mediatype>
+    <mediatype>model/stl</mediatype>
+    <mediatype>model/obj</mediatype>
   </provides>
 
   <url type="homepage">https://xtrudecad.org</url>

@@ -10,6 +10,6 @@ Icon=org.xtrudecad.XtrudeCAD
 Terminal=false
 Categories=Graphics;3DGraphics;Engineering;
 Keywords=CAD;3D;modelling;printing;STL;
-MimeType=application/x-xtrudecad;application/x-ingetrazo;image/vnd.dxf;
+MimeType=application/x-xtrudecad;application/x-ingetrazo;image/vnd.dxf;model/stl;model/obj;
 StartupNotify=true
 StartupWMClass=org.xtrudecad.XtrudeCAD
