@@ -109,7 +109,7 @@ fn format3_with(edit: impl Fn(&[u8]) -> Option<Vec<u8>>) -> Vec<u8> {
         let mut f = z.by_index(i).unwrap();
         let mut bytes = Vec::new();
         std::io::Read::read_to_end(&mut f, &mut bytes).unwrap();
-        let name = f.name().to_string();
+        let name = f.name().unwrap().into_owned();
         if name == "geom/0.bin" {
             match edit(&bytes) {
                 Some(b) => entries.push((name, b)),
@@ -182,12 +182,12 @@ fn format3_with_document(edit: impl Fn(&mut serde_json::Value)) -> Vec<u8> {
         let mut f = z.by_index(i).unwrap();
         let mut bytes = Vec::new();
         std::io::Read::read_to_end(&mut f, &mut bytes).unwrap();
-        if f.name() == "document.json" {
+        if f.name().unwrap() == "document.json" {
             let mut doc: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
             edit(&mut doc);
             bytes = doc.to_string().into_bytes();
         }
-        entries.push((f.name().to_string(), bytes));
+        entries.push((f.name().unwrap().into_owned(), bytes));
     }
     let refs: Vec<(&str, &[u8])> = entries.iter().map(|(n, b)| (n.as_str(), &b[..])).collect();
     zip_with(&refs)

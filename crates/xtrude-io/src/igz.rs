@@ -97,8 +97,9 @@ fn read_document(path: &Path) -> Result<RawDocument, IgzError> {
             .read_to_string(&mut s)?;
         let names: Vec<String> = archive
             .file_names()
+            .filter_map(Result::ok)
             .filter(|n| n.starts_with(geom::GEOM_PREFIX))
-            .map(str::to_string)
+            .map(|n| n.into_owned())
             .collect();
         for member in names {
             let mut bytes = Vec::new();

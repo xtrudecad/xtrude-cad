@@ -40,7 +40,14 @@ ignore = false
 multiple-versions = "allow"
 
 [advisories]
-ignore = []
+# Unmaintained, not vulnerable: zbus 6 merged zbus_names and zvariant
+# into itself, but the screen-reader stack (eframe's `accesskit` feature)
+# still needs zbus 5. Remove these when an accesskit release moves to zbus 6.
+ignore = [
+    { id = "RUSTSEC-2026-0370", reason = "zvariant unmaintained; eframe accesskit → accesskit_unix → atspi → zbus 5, until an accesskit release on zbus 6" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names unmaintained; eframe accesskit → accesskit_unix → atspi → zbus 5, until an accesskit release on zbus 6" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive unmaintained; eframe accesskit → accesskit_unix → atspi → zbus 5, until an accesskit release on zbus 6" },
+]
 
 [sources]
 unknown-registry = "deny"
