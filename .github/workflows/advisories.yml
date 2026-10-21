@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-FileCopyrightText: 2026 The Xtrude CAD Authors (see AUTHORS)
+# The security advisories of the locked dependencies (`cargo deny check
+# advisories`), weekly and on pull requests that change the dependencies.
+# Kept out of `scripts/check.sh` and not a required check: an advisory
+# published against a dependency marks this run red without blocking
+# unrelated pull requests.
+name: advisories
+
+on:
+  schedule:
+    # Mondays, 05:17 UTC.
+    - cron: "17 5 * * 1"
+  pull_request:
+    paths:
+      - Cargo.lock
+      - deny.toml
+      - .github/workflows/advisories.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@f7e5d7c961414b23f5b25b2da9294395d08513ad # v2.87.26
+        with:
+          tool: cargo-deny@0.20.2
+      - name: Check the advisories
+        run: cargo deny check advisories
