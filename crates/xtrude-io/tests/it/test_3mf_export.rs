@@ -51,7 +51,7 @@ struct Package {
 
 fn read_package(path: &Path) -> Package {
     let mut z = zip::ZipArchive::new(std::fs::File::open(path).unwrap()).unwrap();
-    let names = z.file_names().map(str::to_string).collect();
+    let names = z.file_names().map(|n| n.unwrap().into_owned()).collect();
     let mut part = |name: &str| {
         let mut s = String::new();
         z.by_name(name).unwrap().read_to_string(&mut s).unwrap();

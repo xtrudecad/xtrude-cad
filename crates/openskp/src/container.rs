@@ -131,8 +131,9 @@ pub struct VffArchive {
 impl VffArchive {
     /// Entry names in archive order (`ZipFile.namelist()`).
     pub fn names(&self) -> Vec<String> {
-        (0..self.zip.len())
-            .filter_map(|i| self.zip.name_for_index(i).map(str::to_owned))
+        self.zip
+            .file_names()
+            .filter_map(|n| n.ok().map(|n| n.into_owned()))
             .collect()
     }
 
