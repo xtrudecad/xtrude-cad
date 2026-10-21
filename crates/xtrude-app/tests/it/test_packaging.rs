@@ -352,6 +352,50 @@ fn the_release_workflow_attests_except_in_a_private_repository() {
     assert!(warning.contains("::warning::"));
 }
 
+#[test]
+fn the_advisories_workflow_is_separate_and_not_a_required_check() {
+    let workflows = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../.github/workflows");
+    let read = |name: &str| std::fs::read_to_string(workflows.join(name)).expect(name);
+    let workflow = read("advisories.yml");
+    // cargo-deny is installed as the check job installs it, and only the
+    // advisories are checked: `scripts/check.sh` checks the rest.
+    let checks = read("checks.yml");
+    let install = checks
+        .split("      - ")
+        .find(|step| step.starts_with("uses: taiki-e/install-action@"))
+        .expect("the cargo-deny install step in checks.yml");
+    assert!(install.contains("tool: cargo-deny@"), "{install}");
+    assert!(
+        workflow.contains(&format!("      - {install}")),
+        "{install}"
+    );
+    assert!(workflow.contains("run: cargo deny check advisories\n"));
+    let script = read("../../scripts/check.sh");
+    assert!(script.contains("cargo deny check licenses bans sources\n"));
+    // Weekly, on the pull requests that change the dependencies, and by hand.
+    assert!(workflow.contains("  schedule:\n"));
+    assert!(workflow.contains("    - cron: "));
+    for path in [
+        "Cargo.lock",
+        "deny.toml",
+        ".github/workflows/advisories.yml",
+    ] {
+        assert!(workflow.contains(&format!("      - {path}\n")), "{path}");
+    }
+    assert!(workflow.contains("  workflow_dispatch:\n"));
+    // Its one job takes none of the names the ruleset requires.
+    let jobs = workflow.split("\njobs:\n").nth(1).expect("the jobs");
+    let names: Vec<_> = jobs
+        .lines()
+        .filter(|l| !l.starts_with("   "))
+        .filter_map(|l| l.strip_prefix("  ")?.strip_suffix(':'))
+        .collect();
+    assert_eq!(names, ["advisories"]);
+    for required in ["check", "packaging", "cargo-sources", "step-helper"] {
+        assert!(!names.contains(&required), "{required}");
+    }
+}
+
 /// The crates.io packages of `Cargo.lock`, as `(name-version, checksum)`.
 fn locked_registry_crates() -> Vec<(String, String)> {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../Cargo.lock");
